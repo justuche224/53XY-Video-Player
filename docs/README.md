@@ -13,5 +13,4 @@ chat history. Update it as decisions are made and work progresses.
 - [plans/2026-06-17-foundation.md](./plans/2026-06-17-foundation.md) — Plan 1: Foundation.
 
 ## Status
-- **2026-06-17** — Brainstorm complete, v1 design approved. Roadmap drafted; Plan 1
-  (Foundation) written and ready to execute. Plans 2 (Library) & 3 (Player) not yet written.
+- **2026-06-17** — Brainstorm complete, v1 design approved. Foundation (Plan 1) code-complete on `feat/foundation` — reviewed, 10/10 tests, tsc clean; on-device verification pending. Plans 2 (Library) & 3 (Player) not yet written.
