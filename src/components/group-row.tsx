@@ -1,0 +1,28 @@
+import { StyleSheet, Text, View } from 'react-native';
+
+import { PressableScale } from './pressable-scale';
+import { ProgressBar } from './progress-bar';
+import { VideoThumbnail } from './video-thumbnail';
+import type { Group } from '@/library/types';
+import { useTheme } from '@/theme/theme-provider';
+
+export function GroupRow({ group, percent, onPress }: { group: Group; percent: number; onPress: () => void }) {
+  const { colors, spacing } = useTheme();
+  return (
+    <PressableScale onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, gap: spacing.md }}>
+      <VideoThumbnail video={group.items[0]} style={styles.thumb} />
+      <View style={{ flex: 1 }}>
+        <Text numberOfLines={1} style={[styles.title, { color: colors.onSurface }]}>{group.title}</Text>
+        <Text style={{ color: colors.onSurfaceVariant ?? colors.onSurface, fontSize: 12, marginBottom: 4 }}>
+          {group.count} video{group.count === 1 ? '' : 's'}
+        </Text>
+        <ProgressBar percent={percent} />
+      </View>
+    </PressableScale>
+  );
+}
+
+const styles = StyleSheet.create({
+  thumb: { width: 96, height: 60 },
+  title: { fontSize: 16, fontWeight: '600' },
+});
