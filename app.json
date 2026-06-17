@@ -17,7 +17,11 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "output": "static",
@@ -25,14 +29,21 @@
     },
     "plugins": [
       "expo-router",
+      "expo-video",
+      "expo-sqlite",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow 53XY to access your videos.",
+          "savePhotosPermission": "Allow 53XY to save videos.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ],
       [
         "expo-splash-screen",
         {
           "backgroundColor": "#208AEF",
-          "android": {
-            "image": "./assets/images/splash-icon.png",
-            "imageWidth": 76
-          }
+          "android": { "image": "./assets/images/splash-icon.png", "imageWidth": 76 }
         }
       ]
     ],
