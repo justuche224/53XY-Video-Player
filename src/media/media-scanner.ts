@@ -26,6 +26,7 @@ export async function scanVideos(): Promise<LibraryVideo[]> {
         width: info.width ?? null,
         height: info.height ?? null,
         folder: deriveFolder(info.uri).path,
+        thumbUri: null,
         createdAt: info.creationTime ?? null,
         modifiedAt: info.modificationTime ?? null,
       });

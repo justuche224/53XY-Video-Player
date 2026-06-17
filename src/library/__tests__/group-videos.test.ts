@@ -8,6 +8,7 @@ function v(partial: Partial<LibraryVideo> & { id: string; filename: string }): L
     width: 1280,
     height: 720,
     folder: '/storage/emulated/0/Movies',
+    thumbUri: null,
     createdAt: 0,
     modifiedAt: 0,
     ...partial,

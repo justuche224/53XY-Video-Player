@@ -9,6 +9,7 @@ const sample: LibraryVideo = {
   width: 1280,
   height: 720,
   folder: '/storage/emulated/0/Movies/Banshee',
+  thumbUri: 'file:///cache/thumb-42.jpg',
   createdAt: 111,
   modifiedAt: 222,
 };
@@ -25,6 +26,7 @@ describe('video-row mapping', () => {
       width: 1280,
       height: 720,
       folder: sample.folder,
+      thumb_uri: 'file:///cache/thumb-42.jpg',
       modified_at: 222,
       created_at: 111,
     });

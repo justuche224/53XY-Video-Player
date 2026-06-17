@@ -9,6 +9,7 @@ export interface VideoRow {
   width: number | null;
   height: number | null;
   folder: string;
+  thumb_uri: string | null;
   modified_at: number | null;
   created_at: number | null;
 }
@@ -23,6 +24,7 @@ export function toVideoRow(v: LibraryVideo): VideoRow {
     width: v.width,
     height: v.height,
     folder: v.folder,
+    thumb_uri: v.thumbUri,
     modified_at: v.modifiedAt,
     created_at: v.createdAt,
   };
@@ -37,6 +39,7 @@ export function fromVideoRow(r: VideoRow): LibraryVideo {
     width: r.width,
     height: r.height,
     folder: r.folder,
+    thumbUri: r.thumb_uri,
     createdAt: r.created_at,
     modifiedAt: r.modified_at,
   };

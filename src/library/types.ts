@@ -6,6 +6,7 @@ export interface LibraryVideo {
   width: number | null;
   height: number | null;
   folder: string;
+  thumbUri: string | null;
   createdAt: number | null;
   modifiedAt: number | null;
 }

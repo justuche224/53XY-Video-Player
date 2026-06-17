@@ -29,6 +29,10 @@ export const MIGRATIONS: Migration[] = [
       );
     `,
   },
+  {
+    version: 2,
+    up: `ALTER TABLE videos ADD COLUMN thumb_uri TEXT;`,
+  },
 ];
 
-export const LATEST_VERSION = 1;
+export const LATEST_VERSION = 2;

@@ -10,8 +10,8 @@ export async function upsertVideos(db: SQLiteDatabase, videos: LibraryVideo[]): 
       const r = toVideoRow(video);
       await db.runAsync(
         `INSERT INTO videos
-           (id, uri, filename, duration_ms, size_bytes, width, height, folder, modified_at, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           (id, uri, filename, duration_ms, size_bytes, width, height, folder, thumb_uri, modified_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(id) DO UPDATE SET
            uri = excluded.uri,
            filename = excluded.filename,
@@ -22,7 +22,7 @@ export async function upsertVideos(db: SQLiteDatabase, videos: LibraryVideo[]): 
            folder = excluded.folder,
            modified_at = excluded.modified_at,
            created_at = excluded.created_at`,
-        [r.id, r.uri, r.filename, r.duration_ms, r.size_bytes, r.width, r.height, r.folder, r.modified_at, r.created_at],
+        [r.id, r.uri, r.filename, r.duration_ms, r.size_bytes, r.width, r.height, r.folder, r.thumb_uri, r.modified_at, r.created_at],
       );
     }
   });
@@ -31,4 +31,8 @@ export async function upsertVideos(db: SQLiteDatabase, videos: LibraryVideo[]): 
 export async function getAllVideos(db: SQLiteDatabase): Promise<LibraryVideo[]> {
   const rows = await db.getAllAsync<VideoRow>('SELECT * FROM videos');
   return rows.map(fromVideoRow);
+}
+
+export async function setThumbUri(db: SQLiteDatabase, id: string, uri: string): Promise<void> {
+  await db.runAsync('UPDATE videos SET thumb_uri = ? WHERE id = ?', [uri, id]);
 }
