@@ -9,7 +9,7 @@ for the vision.
 
 | # | Plan | Delivers (runnable result) | Status |
 |---|------|----------------------------|--------|
-| 1 | [2026-06-17-foundation.md](./2026-06-17-foundation.md) | App boots as a custom dev build: Material You theme (follows system light/dark), initialized SQLite DB, navigation skeleton with empty themed screens, Jest test harness green. | ✅ Code-complete on `feat/foundation` (10/10 tests, tsc clean, whole-branch review passed); **on-device verification pending user's native build** |
+| 1 | [2026-06-17-foundation.md](./2026-06-17-foundation.md) | App boots as a custom dev build: Material You theme (follows system light/dark), initialized SQLite DB, navigation skeleton with empty themed screens, Jest test harness green. | ✅ Code-complete on `feat/foundation` (10/10 tests, tsc clean, whole-branch review passed); ✅ device-verified on device (SM-S901N): boots, Material You, light/dark, nav, DB init all confirmed |
 | 2 | `2026-06-XX-library.md` (TBD) | Device video scan → grouping engine → adaptive grid/list library, Folders tab, group-detail screen, thumbnails, resume badges, search. | Not written |
 | 3 | `2026-06-XX-player.md` (TBD) | Custom `expo-video` player: long-press-2×, double-tap-seek, swipe brightness/volume, scrub, custom controls, auto-resume, next/prev in group. | Not written |
 
