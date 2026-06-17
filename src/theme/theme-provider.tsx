@@ -11,6 +11,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const scheme = useColorScheme();
   const { theme } = useMaterial3Theme({ fallbackSourceColor: FALLBACK_SOURCE_COLOR });
   const tokens = useMemo(
+    // Double-cast: @pchmn's scheme has a nested `elevation` object incompatible with our flat Material3Scheme (Record<string, string>).
     () => resolveTheme(theme as unknown as Material3Theme, scheme === 'dark' ? 'dark' : 'light'),
     [theme, scheme],
   );
