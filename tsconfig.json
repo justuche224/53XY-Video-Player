@@ -2,6 +2,9 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    // Explicit `types` is required so tsc sees jest globals (describe/it/expect) in test files.
+    // NOTE: setting `types` disables automatic @types/* inclusion — if a new dependency ships
+    // ambient globals via an @types/* package, add its name here or tsc won't see them.
     "types": ["jest", "node"],
     "paths": {
       "@/*": [
