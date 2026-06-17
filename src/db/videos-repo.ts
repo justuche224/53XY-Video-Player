@@ -16,6 +16,7 @@ export async function upsertVideos(db: SQLiteDatabase, videos: LibraryVideo[]): 
            uri = excluded.uri,
            filename = excluded.filename,
            duration_ms = excluded.duration_ms,
+           size_bytes = excluded.size_bytes,
            width = excluded.width,
            height = excluded.height,
            folder = excluded.folder,
