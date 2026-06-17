@@ -10,7 +10,6 @@ import { LayoutToggle } from '@/components/layout-toggle';
 import { Screen } from '@/components/screen';
 import { SearchBar } from '@/components/search-bar';
 import { SegmentedTabs } from '@/components/segmented-tabs';
-import { computeProgressPercent } from '@/db/progress';
 import { getProgressMap, type ProgressMap } from '@/db/progress-repo';
 import { getSetting, setSetting } from '@/db/settings-repo';
 import { filterGroups } from '@/library/filter-groups';
