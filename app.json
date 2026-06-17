@@ -8,7 +8,8 @@
     "scheme": "53xy",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.pineappsolutions.x53XY"
     },
     "android": {
       "adaptiveIcon": {
