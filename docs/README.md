@@ -10,6 +10,7 @@ chat history. Update it as decisions are made and work progresses.
 - [2026-06-17-video-player-v1-design.md](./2026-06-17-video-player-v1-design.md) — the
   approved v1 design / spec.
 - [plans/README.md](./plans/README.md) — implementation roadmap (3 sequential plans).
+- [grouping-refinement-backlog.md](./grouping-refinement-backlog.md) — real-data grouping patterns to refine later.
 - [plans/2026-06-17-foundation.md](./plans/2026-06-17-foundation.md) — Plan 1: Foundation.
 
 ## Status
