@@ -10,7 +10,7 @@ for the vision.
 | # | Plan | Delivers (runnable result) | Status |
 |---|------|----------------------------|--------|
 | 1 | [2026-06-17-foundation.md](./2026-06-17-foundation.md) | App boots as a custom dev build: Material You theme (follows system light/dark), initialized SQLite DB, navigation skeleton with empty themed screens, Jest test harness green. | ✅ Code-complete on `feat/foundation` (10/10 tests, tsc clean, whole-branch review passed); ✅ device-verified on device (SM-S901N): boots, Material You, light/dark, nav, DB init all confirmed |
-| 2A | [2026-06-17-library-a-data-grouping.md](./2026-06-17-library-a-data-grouping.md) | Device video scan (media-library class API) → folder-derivation, title-normalization, episode-parsing, grouping engine → SQLite upsert; migration transaction + error boundary; proven by unit tests + an on-device debug list. | Written |
+| 2A | [2026-06-17-library-a-data-grouping.md](./2026-06-17-library-a-data-grouping.md) | Device video scan (media-library class API) → folder-derivation, title-normalization, episode-parsing, grouping engine → SQLite upsert; migration transaction + error boundary; proven by unit tests + an on-device debug list. | ✅ Merged to master; device-verified (scan+group+persist work; grouping refinement backlogged) |
 | 2B | `2026-06-XX-library-b-ui.md` (TBD) | Adaptive grid/list library, Videos/Folders segmented tabs, search, group-detail screen, thumbnails (expo-video-thumbnails + expo-image), resume badges, animations. | Not written |
 | 3 | `2026-06-XX-player.md` (TBD) | Custom `expo-video` player: long-press-2×, double-tap-seek, swipe brightness/volume, scrub, custom controls, auto-resume, next/prev in group. | Not written |
 
