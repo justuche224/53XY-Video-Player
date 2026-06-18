@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { scanVideos } from '@/media/media-scanner';
 import { deleteVideosByIds, getAllVideos, upsertVideos } from '@/db/videos-repo';
+import { useFilterSettings } from './filter-settings';
+import { applyLengthFilter } from './filter-videos';
 import { groupByFolder, groupByName } from './group-videos';
 import type { Group, LibraryVideo } from './types';
 
@@ -24,6 +26,7 @@ const toMessage = (e: unknown) => (e instanceof Error ? e.message : String(e));
  */
 export function useLibrary(mode: 'name' | 'folder'): LibraryState {
   const db = useSQLiteContext();
+  const { filter } = useFilterSettings();
   const [permission, requestPermission] = usePermissions({ granularPermissions: ['video'] });
   const [videos, setVideos] = useState<LibraryVideo[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -84,10 +87,10 @@ export function useLibrary(mode: 'name' | 'folder'): LibraryState {
     };
   }, [permission, requestPermission, db]);
 
-  const groups = useMemo(
-    () => (mode === 'name' ? groupByName(videos) : groupByFolder(videos)),
-    [videos, mode],
-  );
+  const groups = useMemo(() => {
+    const visible = applyLengthFilter(videos, filter);
+    return mode === 'name' ? groupByName(visible) : groupByFolder(visible);
+  }, [videos, mode, filter]);
 
   const status: LibraryState['status'] = error
     ? 'error'
