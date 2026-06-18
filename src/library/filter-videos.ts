@@ -55,3 +55,22 @@ export function formatLengthShort(ms: number): string {
   const { value, unit } = msToParts(ms);
   return `${value}${UNIT_SUFFIX[unit]}`;
 }
+
+/** Translate a glob (with * and ?) into an anchored, case-insensitive RegExp. */
+function globToRegExp(glob: string): RegExp {
+  const escaped = glob.replace(/[.+^${}()|[\]\\]/g, '\\$&'); // escape regex metachars (not * or ?)
+  const translated = escaped.replace(/\*/g, '.*').replace(/\?/g, '.');
+  return new RegExp(`^${translated}$`, 'i');
+}
+
+/**
+ * Case-insensitive. If the (trimmed) pattern contains * or ?, it is a glob
+ * matched against the whole filename; otherwise it is a substring "contains".
+ * A blank/whitespace pattern never matches (no-op safety).
+ */
+export function matchesNamePattern(filename: string, pattern: string): boolean {
+  const p = pattern.trim();
+  if (p === '') return false;
+  if (p.includes('*') || p.includes('?')) return globToRegExp(p).test(filename);
+  return filename.toLowerCase().includes(p.toLowerCase());
+}
