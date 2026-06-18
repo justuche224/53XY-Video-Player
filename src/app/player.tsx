@@ -81,6 +81,8 @@ export default function PlayerScreen() {
 
   // Saved playback rate before a boost, so we can restore it on release
   const boostPrevRateRef = useRef<number>(1);
+  // Guards handleBoostEnd against firing when no boost was ever started
+  const boostingRef = useRef<boolean>(false);
 
   // ── Orientation state ────────────────────────────────────────────────────
   const [isLandscape, setIsLandscape] = useState(false);
@@ -285,14 +287,19 @@ export default function PlayerScreen() {
 
   const handleBoostStart = useCallback(() => {
     boostPrevRateRef.current = player.playbackRate;
+    boostingRef.current = true;
     player.playbackRate = 2;
     setBoostActive(true);
   }, [player]);
 
   const handleBoostEnd = useCallback(() => {
+    if (!boostingRef.current) return;
+    boostingRef.current = false;
     player.playbackRate = boostPrevRateRef.current;
     setBoostActive(false);
   }, [player]);
+
+  const handleAutoHide = useCallback(() => setControlsVisible(false), []);
 
   // ── Rotate handler ───────────────────────────────────────────────────────
   async function handleRotate() {
@@ -363,6 +370,7 @@ export default function PlayerScreen() {
       <ControlsOverlay
         playing={playing}
         visible={controlsVisible}
+        onAutoHide={handleAutoHide}
       >
         <TopBar
           title={title ?? ''}

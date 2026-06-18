@@ -1,5 +1,5 @@
 // src/components/player/controls-overlay.tsx
-import { useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -13,55 +13,43 @@ const ANIM_DURATION_MS = 250;
 
 interface ControlsOverlayProps {
   playing: boolean;
-  /** Visibility driven by parent; toggled via gesture layer's single-tap. */
+  /** Single source of truth for visibility, driven by parent. */
   visible: boolean;
+  /** Called by the auto-hide timer so the parent can update its state. */
+  onAutoHide: () => void;
   children: ReactNode;
 }
 
-export function ControlsOverlay({ playing, visible, children }: ControlsOverlayProps) {
+export function ControlsOverlay({ playing, visible, onAutoHide, children }: ControlsOverlayProps) {
   const insets = useSafeAreaInsets();
-  const opacity = useSharedValue(1);
+  const opacity = useSharedValue(visible ? 1 : 0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const show = useCallback(() => {
-    opacity.value = withTiming(1, { duration: ANIM_DURATION_MS });
-  }, [opacity]);
+  // Animate opacity whenever visible changes — opacity is derived purely from visible.
+  useEffect(() => {
+    opacity.value = withTiming(visible ? 1 : 0, { duration: ANIM_DURATION_MS });
+  }, [visible, opacity]);
 
-  const scheduleHide = useCallback(() => {
-    if (timerRef.current !== null) {
-      clearTimeout(timerRef.current);
-    }
-    timerRef.current = setTimeout(() => {
-      opacity.value = withTiming(0, { duration: ANIM_DURATION_MS });
-    }, HIDE_DELAY_MS);
-  }, [opacity]);
-
-  const cancelHide = useCallback(() => {
+  // Auto-hide timer: runs only when visible AND playing.
+  // Calls onAutoHide() so the parent updates its state (which then drives opacity via above effect).
+  useEffect(() => {
     if (timerRef.current !== null) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
-  }, []);
-
-  // Respond to parent visibility changes (driven by gesture layer's single-tap).
-  // Also handles auto-hide-while-playing: when shown while playing, schedule a
-  // hide; when paused, cancel any pending hide and stay visible.
-  useEffect(() => {
-    if (visible) {
-      show();
-      if (playing) {
-        scheduleHide();
-      } else {
-        cancelHide();
-      }
-    } else {
-      cancelHide();
-      opacity.value = withTiming(0, { duration: ANIM_DURATION_MS });
+    if (visible && playing) {
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        onAutoHide();
+      }, HIDE_DELAY_MS);
     }
     return () => {
-      cancelHide();
+      if (timerRef.current !== null) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
     };
-  }, [visible, playing, show, scheduleHide, cancelHide, opacity]);
+  }, [visible, playing, onAutoHide]);
 
   const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
