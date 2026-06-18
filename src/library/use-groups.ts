@@ -1,42 +1,28 @@
-import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
-import { getAllVideos } from '@/db/videos-repo';
-import { groupByFolder, groupByName } from './group-videos';
 import { useFilterSettings } from './filter-settings';
 import { applyFilters } from './filter-videos';
-import type { Group, LibraryVideo } from './types';
+import { groupByFolder, groupByName } from './group-videos';
+import { useLibraryData } from './library-provider';
+import type { Group } from './types';
 
+/**
+ * Read-only grouped view over the shared {@link useLibraryData} cache. No DB
+ * read of its own — group detail and the player's prev/next resolve from the
+ * in-memory library that was already loaded at app start.
+ */
 export function useGroups(mode: 'name' | 'folder'): {
   groups: Group[];
   loading: boolean;
   reload: () => void;
 } {
-  const db = useSQLiteContext();
+  const { videos, status, reload } = useLibraryData();
   const { filter } = useFilterSettings();
-  const [videos, setVideos] = useState<LibraryVideo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(0);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    getAllVideos(db)
-      .then((all) => {
-        if (!cancelled) setVideos(all);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [db, token]);
 
   const groups = useMemo(() => {
     const visible = applyFilters(videos, filter);
     return mode === 'name' ? groupByName(visible) : groupByFolder(visible);
   }, [videos, mode, filter]);
-  const reload = useCallback(() => setToken((t) => t + 1), []);
-  return { groups, loading, reload };
+
+  return { groups, loading: status === 'loading', reload };
 }
