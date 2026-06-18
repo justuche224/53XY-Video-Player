@@ -1,6 +1,7 @@
 // src/app/player.tsx
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useKeepAwake } from 'expo-keep-awake';
+import * as Brightness from 'expo-brightness';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { StatusBar } from 'expo-status-bar';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -15,10 +16,12 @@ import { buildProgress, shouldWrite } from '@/player/progress-writer';
 import { shouldResume } from '@/player/resume';
 import { neighbors } from '@/player/playlist';
 import { seekTarget, tapZone } from '@/player/seek';
+import { panAxis, panHalf, clamp01, scrubDeltaSec } from '@/player/pan';
 import { useGroups } from '@/library/use-groups';
 import { ControlsOverlay } from '@/components/player/controls-overlay';
 import { PlayerGestures } from '@/components/player/player-gestures';
 import { GestureIndicators } from '@/components/player/gesture-indicators';
+import { PanIndicators } from '@/components/player/pan-indicators';
 import { TopBar } from '@/components/player/top-bar';
 import { CenterControls } from '@/components/player/center-controls';
 import { BottomBar } from '@/components/player/bottom-bar';
@@ -82,6 +85,23 @@ export default function PlayerScreen() {
     | null
   >(null);
 
+  // ── Pan gesture HUD state ────────────────────────────────────────────────
+  const [levelHud, setLevelHud] = useState<{ kind: 'brightness' | 'volume'; level: number } | null>(null);
+  const [scrubHud, setScrubHud] = useState<{ targetSec: number; deltaSec: number } | null>(null);
+
+  // Saved screen brightness (restored on unmount) and current brightness tracking
+  const originalBrightnessRef = useRef<number>(1);
+  const brightnessRef = useRef<number>(1);
+  // Per-drag axis lock and starting values
+  const panRef = useRef<{
+    axis: 'horizontal' | 'vertical' | null;
+    half: 'left' | 'right';
+    brightnessStart: number;
+    volumeStart: number;
+    scrubBaseSec: number;
+  }>({ axis: null, half: 'left', brightnessStart: 1, volumeStart: 1, scrubBaseSec: 0 });
+  // Committed scrub target — updated in handlePanMove, read in handlePanEnd to avoid stale closure
+  const scrubTargetRef = useRef<number>(0);
 
   // Saved playback rate before a boost, so we can restore it on release
   const boostPrevRateRef = useRef<number>(1);
@@ -217,6 +237,19 @@ export default function PlayerScreen() {
     };
   }, [flushProgress]);
 
+  // ── Brightness save on mount / restore on unmount ────────────────────────
+  useEffect(() => {
+    Brightness.getBrightnessAsync().then((b) => {
+      if (b >= 0) {
+        originalBrightnessRef.current = b;
+        brightnessRef.current = b;
+      }
+    });
+    return () => {
+      Brightness.setBrightnessAsync(originalBrightnessRef.current).catch(() => {});
+    };
+  }, []);
+
   // ── Track availability events ────────────────────────────────────────────
   useEffect(() => {
     const sub1 = player.addListener('availableSubtitleTracksChange', (payload) => {
@@ -313,6 +346,64 @@ export default function PlayerScreen() {
 
   const handleAutoHide = useCallback(() => setControlsVisible(false), []);
 
+  // ── Pan gesture handlers ─────────────────────────────────────────────────
+  const handlePanStart = useCallback(() => {
+    panRef.current = {
+      axis: null,
+      half: 'left',
+      brightnessStart: brightnessRef.current,
+      volumeStart: player.volume,
+      scrubBaseSec: lastPositionSecRef.current,
+    };
+  }, [player]);
+
+  const handlePanMove = useCallback(
+    (x: number, translationX: number, translationY: number, width: number, height: number) => {
+      const st = panRef.current;
+
+      // Axis lock: wait for 8px threshold, then decide once
+      if (st.axis === null) {
+        if (Math.abs(translationX) < 8 && Math.abs(translationY) < 8) return;
+        st.axis = panAxis(translationX, translationY);
+        if (st.axis === 'vertical') {
+          // start x = current x − translation
+          st.half = panHalf(x - translationX, width);
+        }
+      }
+
+      if (st.axis === 'horizontal') {
+        const deltaSec = scrubDeltaSec(translationX, width, 120);
+        const target = seekTarget(st.scrubBaseSec, deltaSec, lastDurationSecRef.current);
+        scrubTargetRef.current = target;
+        setScrubHud({ targetSec: target, deltaSec });
+      } else {
+        // vertical
+        const base = st.half === 'left' ? st.brightnessStart : st.volumeStart;
+        const level = clamp01(base - translationY / height);
+        if (st.half === 'left') {
+          brightnessRef.current = level;
+          Brightness.setBrightnessAsync(level).catch(() => {});
+          setLevelHud({ kind: 'brightness', level });
+        } else {
+          player.volume = level;
+          setLevelHud({ kind: 'volume', level });
+        }
+      }
+    },
+    [player],
+  );
+
+  const handlePanEnd = useCallback(() => {
+    if (panRef.current.axis === 'horizontal') {
+      const target = scrubTargetRef.current;
+      player.currentTime = target;
+      setPositionSec(target);
+      lastPositionSecRef.current = target;
+    }
+    setScrubHud(null);
+    setLevelHud(null);
+  }, [player]);
+
   // ── Rotate handler ───────────────────────────────────────────────────────
   async function handleRotate() {
     if (isLandscape) {
@@ -376,6 +467,9 @@ export default function PlayerScreen() {
         onDoubleTap={handleDoubleTap}
         onBoostStart={handleBoostStart}
         onBoostEnd={handleBoostEnd}
+        onPanStart={handlePanStart}
+        onPanMove={handlePanMove}
+        onPanEnd={handlePanEnd}
       />
 
       {/* Layer 3: Chrome overlay — box-none so empty space falls through to gesture layer */}
@@ -433,6 +527,7 @@ export default function PlayerScreen() {
 
       {/* Layer 4: Gesture indicators (pointer-events none, always on top) */}
       <GestureIndicators boostActive={boostActive} seekFlash={seekFlash} />
+      <PanIndicators levelHud={levelHud} scrubHud={scrubHud} />
 
       {tracksSheetVisible && (
         <TracksSheet
