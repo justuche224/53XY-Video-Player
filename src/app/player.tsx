@@ -78,6 +78,8 @@ export default function PlayerScreen() {
   const lastWriteRef = useRef<number>(0);
   // Track current videoId for progress writes (updated on prev/next switch)
   const currentVideoIdRef = useRef<string>(videoId);
+  // Guard: set to false on unmount so async continuations no-op
+  const mountedRef = useRef<boolean>(true);
 
   // ── Flush progress (always for the currently active video id) ───────────
   function flushProgress() {
@@ -92,10 +94,18 @@ export default function PlayerScreen() {
     lastWriteRef.current = Date.now();
   }
 
+  // Set mountedRef to false on unmount so all async continuations no-op
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   // ── Resume + init playback for a given videoId ──────────────────────────
   async function initPlayback(id: string) {
     try {
       const map = await getProgressMap(db);
+      if (!mountedRef.current) return;
       const saved = map.get(id);
       if (saved && shouldResume(saved.positionMs, saved.percent)) {
         player.currentTime = saved.positionMs / 1000;
@@ -104,6 +114,7 @@ export default function PlayerScreen() {
       }
       player.play();
     } catch {
+      if (!mountedRef.current) return;
       player.play();
     }
   }
