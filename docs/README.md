@@ -7,7 +7,7 @@ chat history. Update it as decisions are made and work progresses.
 ## Resuming the project? → **[HANDOFF.md](./HANDOFF.md)** (single pick-up guide: status, what's next, how we work, gotchas).
 
 ## Index
-- [HANDOFF.md](./HANDOFF.md) — **read first to continue.** Current state + next step (Plan 3 player) + conventions.
+- [HANDOFF.md](./HANDOFF.md) — **read first to continue.** Current state + next step (Plan 3b gestures) + conventions.
 - [00-vision-and-context.md](./00-vision-and-context.md) — the founding vision (original
   ask verbatim) + locked brainstorming decisions.
 - [2026-06-17-video-player-v1-design.md](./2026-06-17-video-player-v1-design.md) — the

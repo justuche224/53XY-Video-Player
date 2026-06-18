@@ -2,15 +2,15 @@
 
 **Read this first when resuming.** It's the single entry point to continue the project in a fresh chat.
 
-_Last updated: after the library was completed, polished, and merged to `master` (commit `80cd8bc`)._
+_Last updated: after Plan 3a (the core player) was built, device-verified on the SM-S901N, and merged to `master`._
 
 ---
 
 ## TL;DR — where we are, what's next
 - **53XY** is an Android-first, "best of all worlds" local video player built with **Expo SDK 56 / React Native 0.85**.
-- **Done & merged to `master` (all device-verified on the user's SM-S901N):** Foundation, the full Library (data + grouping engine + adaptive UI), and a round of polish (scroll perf, cache-first background rescan, grouping refinement, multi-thumbnail collages).
-- **Next big piece: Plan 3 — the custom player** (not started). It needs a native rebuild and should start with a short brainstorm on gesture/control specifics.
-- **Immediate next action:** brainstorm Plan 3 (the player), then spec → plan → subagent-driven build → device verify → merge.
+- **Done & merged to `master` (all device-verified on the user's SM-S901N):** Foundation, the full Library (data + grouping engine + adaptive UI + polish), and **Plan 3a — the core player** (`expo-video` playback, custom control overlay, auto-resume + snackbar, progress writing, orientation, keep-awake, next/prev within a group, embedded subtitle/audio track selection, pitch-preserved speed).
+- **Next big piece: Plan 3b — the signature gesture layer** (not started). Starts with a short brainstorm on gesture thresholds + the volume dependency.
+- **Immediate next action:** brainstorm Plan 3b (gestures), then spec → plan → subagent-driven build → device verify → merge.
 
 ## What this app is (vision)
 The full vision is in [00-vision-and-context.md](./00-vision-and-context.md) (the user's original ask verbatim). In short: take the best of VLC + MX Player and fix what they get wrong — smart auto-grouping, folder view, resume + progress, **long-press-to-2×**, double-tap-seek, swipe brightness/volume, advanced filters — with a **beautiful Material You UI** and smooth, satisfying animations. v1 scope = Foundation → Library → Player. Filters/libVLC fallback/playlists are v2.
@@ -22,18 +22,26 @@ The full vision is in [00-vision-and-context.md](./00-vision-and-context.md) (th
 | Library 2A | Device scan (media-library class API) → folder/title/episode parsing → grouping engine → SQLite | ✅ merged, device-verified |
 | Library 2B | Adaptive grid/list UI, Videos/Folders tabs, search, group detail, thumbnails, player placeholder | ✅ merged, device-verified |
 | Library polish | Scroll perf (FlatList tuning, idle-callback thumbnails), cache-first background rescan, grouping refinement (conservative numeric merge), multi-thumbnail collages | ✅ merged, device-verified |
-| **Plan 3 — Player** | Custom `expo-video` gesture player | ⏳ **not started — do this next** |
+| Plan 3a — Core player | `expo-video` playback, custom overlay, resume+snackbar, progress writes, orientation, keep-awake, next/prev, track select, pitch-preserved speed | ✅ merged, device-verified |
+| **Plan 3b — Gestures** | Long-press 2×, double-tap seek, swipe brightness/volume, full-screen drag-scrub, lock | ⏳ **not started — do this next** |
 
-Plans live in [plans/](./plans/) ([roadmap](./plans/README.md)). Tests: **55 passing**, `npx tsc --noEmit` clean.
+Plans live in [plans/](./plans/) ([roadmap](./plans/README.md)); the 3a spec+plan are under [superpowers/](./superpowers/). Tests: **68 passing**, `npx tsc --noEmit` clean.
 
-## Plan 3 — the player (what it must do)
-Replace the placeholder route `src/app/player.tsx` (currently receives `videoId`/`uri`/`title` params) with the real player:
-- `expo-video` (ExoPlayer) surface, native controls hidden, **custom gesture overlay** (Reanimated + gesture-handler, both installed).
-- **Long-press → 2× while held**, **double-tap left/right → seek ∓N s**, **vertical swipe** = brightness (left, `expo-brightness`, installed) / volume (right, needs a volume approach — likely a new dep → part of the rebuild), horizontal drag = scrub, single tap = toggle controls.
-- Controls: play/pause, seekbar, speed, lock, rotate, **next/prev within the group**, basic subtitle/audio track.
-- **Writes `watch_progress`** (position_ms, percent via `computeProgressPercent`, last_played_at) → this lights up the resume progress bars already wired into the library.
-- **Needs a native rebuild** (first real `expo-video` playback + brightness/volume). Bundle **FlashList** into this rebuild IF the user wants thumbnails to keep pace during a continuous fling (optional).
-- Start with a brainstorm: control layout, gesture thresholds (long-press delay, double-tap zones, seek seconds), volume approach, lock behavior.
+## Plan 3a — the core player (DONE, merged, device-verified)
+`src/app/player.tsx` is now the real player: `expo-video` surface (native controls hidden), a custom Reanimated/gesture-handler **control overlay** (top bar with back/title/tracks/rotate, center play-pause + prev/next, bottom seekbar + time + speed chip), **auto-resume + "Resumed at …" snackbar**, throttled `watch_progress` writes (+ flush on pause/background/unmount via cached refs), **auto-rotate + manual rotate**, keep-awake, **next/prev within the group**, embedded **subtitle/audio track** selection, and **pitch-preserved** speed (`preservesPitch`). Pure logic lives in `src/player/` (format-time, resume, playlist `neighbors`, progress-writer) and is Jest-tested; UI/native is device-verified. Spec + plan: [superpowers/specs/2026-06-18-player-core-3a-design.md](./superpowers/specs/2026-06-18-player-core-3a-design.md), [superpowers/plans/2026-06-18-player-core-3a.md](./superpowers/plans/2026-06-18-player-core-3a.md).
+
+### Key 3a gotchas (learned on-device)
+- **`useVideoPlayer({ uri })` recreates the player whenever `uri` changes** (keyed on `JSON.stringify(source)` in `useReleasingSharedObject`). Switch videos by changing the `uri` route param (`router.setParams`), NOT `player.replace`; key the subscription + resume effects on `[player]` so they re-bind to the new instance.
+- **Flush progress from cached position/duration refs, never `player.currentTime`** — expo-video releases the player before unmount cleanup runs (else: "Cannot use shared object that was already released").
+- **Player chrome must be fixed white**, not theme `onSurface` (near-black on dark video under a light theme); wrap controls in safe-area insets.
+- **Library lists refetch progress via `useFocusEffect`**, so resume bars update on return from the player.
+
+## Plan 3b — the gesture layer (what it must do, NOT started)
+Layer the signature gestures onto the existing overlay (replace the overlay's plain tap `Pressable` with a gesture detector):
+- **Long-press → 2× while held**, **double-tap left/right → seek ∓N s**, **vertical swipe** = brightness (left, `expo-brightness`, installed) / volume (right, **needs a volume approach — likely a new dep + native rebuild**), full-screen horizontal drag = scrub.
+- **Lock** control (hide chrome + ignore gesture touches) — deferred from 3a to pair with gestures.
+- Optional: bundle **FlashList** if thumbnails should keep pace during a continuous fling.
+- Start with a brainstorm: gesture thresholds (long-press delay, double-tap zones, seek seconds), volume dependency, lock behavior. Also a known 3a follow-up: gate the resume seek on the player's ready/status event instead of seeking immediately after creation.
 
 ## How we work (process — keep doing this)
 1. **brainstorm** (superpowers:brainstorming) → get design approval → 2. **writing-plans** → bite-sized TDD plan in `docs/plans/` → 3. **subagent-driven-development**: fresh implementer subagent per task + review, then a final whole-branch review (opus) → 4. user does the **native build / device verify** → 5. **finishing-a-development-branch**: merge to `master`, delete branch.
