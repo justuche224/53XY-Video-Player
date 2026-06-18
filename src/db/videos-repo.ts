@@ -33,6 +33,12 @@ export async function getAllVideos(db: SQLiteDatabase): Promise<LibraryVideo[]> 
   return rows.map(fromVideoRow);
 }
 
+export async function deleteVideosByIds(db: SQLiteDatabase, ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const placeholders = ids.map(() => '?').join(',');
+  await db.runAsync(`DELETE FROM videos WHERE id IN (${placeholders})`, ids);
+}
+
 export async function setThumbUri(db: SQLiteDatabase, id: string, uri: string): Promise<void> {
   await db.runAsync('UPDATE videos SET thumb_uri = ? WHERE id = ?', [uri, id]);
 }

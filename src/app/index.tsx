@@ -2,7 +2,7 @@
 import { Link, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { GroupCard } from '@/components/group-card';
 import { GroupRow } from '@/components/group-row';
@@ -42,7 +42,7 @@ export default function LibraryScreen() {
   const [layout, setLayout] = useState<Layout>('grid');
   const [query, setQuery] = useState('');
   const [progress, setProgress] = useState<ProgressMap>(new Map());
-  const { status, groups } = useLibrary(mode);
+  const { status, refreshing, groups } = useLibrary(mode);
 
   useEffect(() => {
     getSetting(db, 'mode').then((v) => v === 'folder' && setMode('folder'));
@@ -80,7 +80,10 @@ export default function LibraryScreen() {
   return (
     <Screen style={{ padding: spacing.lg }}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.onSurface }]}>53XY</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+          <Text style={[styles.title, { color: colors.onSurface }]}>53XY</Text>
+          {refreshing ? <ActivityIndicator size="small" color={colors.primary} /> : null}
+        </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
           <LayoutToggle value={layout} onChange={onLayout} />
           <Link href="/settings" style={{ color: colors.primary, fontWeight: '600' }}>Settings</Link>
@@ -111,7 +114,7 @@ export default function LibraryScreen() {
           }
           ListEmptyComponent={
             <Text style={{ color: colors.onSurfaceVariant ?? colors.onSurface }}>
-              {status === 'ready' ? 'No videos found.' : 'Loading…'}
+              {refreshing ? 'Scanning…' : status === 'ready' ? 'No videos found.' : 'Loading…'}
             </Text>
           }
           contentContainerStyle={{ paddingBottom: spacing.xl }}
