@@ -30,7 +30,7 @@ export function BottomBar({
   onSeek,
   onCycleRate,
 }: BottomBarProps) {
-  const { colors, spacing, radius } = useTheme();
+  const { spacing, radius } = useTheme();
 
   const rateLabel = `${rate}×`;
 
@@ -42,10 +42,10 @@ export function BottomBar({
         onSeek={onSeek}
       />
       <View style={styles.row}>
-        <Text style={[styles.timeText, { color: colors.onSurface }]}>
+        <Text style={styles.timeText}>
           {formatTime(positionSec)}
         </Text>
-        <Text style={[styles.timeText, { color: colors.onSurface, opacity: 0.6 }]}>
+        <Text style={[styles.timeText, { opacity: 0.6 }]}>
           {formatTime(durationSec)}
         </Text>
         <PressableScale
@@ -54,7 +54,7 @@ export function BottomBar({
             styles.speedChip,
             { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: radius.pill },
           ]}>
-          <Text style={[styles.speedText, { color: colors.onSurface }]}>{rateLabel}</Text>
+          <Text style={styles.speedText}>{rateLabel}</Text>
         </PressableScale>
       </View>
     </View>
@@ -73,6 +73,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     marginRight: 6,
+    color: '#fff',
   },
   speedChip: {
     marginLeft: 'auto',
@@ -82,5 +83,6 @@ const styles = StyleSheet.create({
   speedText: {
     fontSize: 13,
     fontWeight: '700',
+    color: '#fff',
   },
 });

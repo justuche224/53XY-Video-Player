@@ -13,21 +13,21 @@ interface TopBarProps {
 }
 
 export function TopBar({ title, onBack, right }: TopBarProps) {
-  const { colors, spacing } = useTheme();
+  const { spacing } = useTheme();
 
   return (
     <View style={[styles.row, { paddingHorizontal: spacing.md, paddingVertical: spacing.sm }]}>
       <PressableScale onPress={onBack} style={styles.backButton}>
-        <Text style={[styles.backIcon, { color: colors.onSurface }]}>{'‹'}</Text>
+        <Text style={styles.backIcon}>{'‹'}</Text>
       </PressableScale>
 
       <Text
         numberOfLines={1}
-        style={[styles.title, { color: colors.onSurface, marginHorizontal: spacing.md }]}>
+        style={[styles.title, { marginHorizontal: spacing.md }]}>
         {title}
       </Text>
 
-      {/* right slot — empty placeholder keeps title centred */}
+      {/* right slot — sizes to its buttons so they never clip off-screen */}
       <View style={styles.rightSlot}>{right ?? null}</View>
     </View>
   );
@@ -48,17 +48,20 @@ const styles = StyleSheet.create({
     fontSize: 30,
     lineHeight: 36,
     fontWeight: '300',
+    color: '#fff',
   },
   title: {
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
+    color: '#fff',
   },
   rightSlot: {
-    width: 36,
+    minWidth: 36,
     height: 36,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
   },
 });

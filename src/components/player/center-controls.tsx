@@ -2,7 +2,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { PressableScale } from '@/components/pressable-scale';
-import { useTheme } from '@/theme/theme-provider';
 
 interface CenterControlsProps {
   playing: boolean;
@@ -22,8 +21,6 @@ export function CenterControls({
   hasPrev,
   hasNext,
 }: CenterControlsProps) {
-  const { colors } = useTheme();
-
   return (
     <View style={styles.row}>
       {/* Prev button — hidden when slot not filled */}
@@ -31,7 +28,7 @@ export function CenterControls({
         <PressableScale
           onPress={onPrev}
           style={[styles.sideButton, !hasPrev && styles.disabled]}>
-          <Text style={[styles.sideIcon, { color: colors.onSurface }]}>{'⏮'}</Text>
+          <Text style={styles.sideIcon}>{'⏮'}</Text>
         </PressableScale>
       ) : (
         <View style={styles.sideButton} />
@@ -39,7 +36,7 @@ export function CenterControls({
 
       {/* Play / Pause */}
       <PressableScale onPress={onToggle} style={styles.playButton}>
-        <Text style={[styles.playIcon, { color: colors.onSurface }]}>
+        <Text style={styles.playIcon}>
           {playing ? '⏸' : '▶'}
         </Text>
       </PressableScale>
@@ -49,7 +46,7 @@ export function CenterControls({
         <PressableScale
           onPress={onNext}
           style={[styles.sideButton, !hasNext && styles.disabled]}>
-          <Text style={[styles.sideIcon, { color: colors.onSurface }]}>{'⏭'}</Text>
+          <Text style={styles.sideIcon}>{'⏭'}</Text>
         </PressableScale>
       ) : (
         <View style={styles.sideButton} />
@@ -75,6 +72,7 @@ const styles = StyleSheet.create({
   },
   playIcon: {
     fontSize: 28,
+    color: '#fff',
   },
   sideButton: {
     width: 44,
@@ -84,6 +82,7 @@ const styles = StyleSheet.create({
   },
   sideIcon: {
     fontSize: 22,
+    color: '#fff',
   },
   disabled: {
     opacity: 0.3,

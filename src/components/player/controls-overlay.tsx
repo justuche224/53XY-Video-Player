@@ -6,6 +6,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const HIDE_DELAY_MS = 3000;
 const ANIM_DURATION_MS = 250;
@@ -16,6 +17,7 @@ interface ControlsOverlayProps {
 }
 
 export function ControlsOverlay({ playing, children }: ControlsOverlayProps) {
+  const insets = useSafeAreaInsets();
   const opacity = useSharedValue(1);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -69,7 +71,18 @@ export function ControlsOverlay({ playing, children }: ControlsOverlayProps) {
 
   return (
     <Pressable style={StyleSheet.absoluteFill} onPress={handleTap}>
-      <Animated.View style={[StyleSheet.absoluteFill, styles.overlay, animatedStyle]}>
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFill,
+          styles.overlay,
+          {
+            paddingTop: insets.top,
+            paddingBottom: insets.bottom,
+            paddingLeft: insets.left,
+            paddingRight: insets.right,
+          },
+          animatedStyle,
+        ]}>
         {children}
       </Animated.View>
     </Pressable>
