@@ -44,3 +44,4 @@ example
 
 # local Expo module build artifacts
 modules/*/android/build/
+build-*.apk
