@@ -54,6 +54,9 @@ export function NamePatternList({
           <Text style={{ color: colors.onPrimary ?? '#fff', fontWeight: '700' }}>Add</Text>
         </Pressable>
       </View>
+      <Text style={[styles.hint, { color: colors.onSurfaceVariant ?? '#888' }]}>
+        Matches part of a name, or use * and ? wildcards — e.g. trailer, VID_*, *.gif
+      </Text>
     </View>
   );
 }
@@ -66,4 +69,5 @@ const styles = StyleSheet.create({
   addRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   input: { flex: 1, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8, fontSize: 15 },
   addBtn: { paddingHorizontal: 16, paddingVertical: 10 },
+  hint: { fontSize: 12, marginTop: 2 },
 });
