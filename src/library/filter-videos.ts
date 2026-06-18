@@ -26,3 +26,23 @@ export function applyLengthFilter(videos: LibraryVideo[], filter: LengthFilter):
     return true;
   });
 }
+
+export type LengthUnit = 'sec' | 'min' | 'hr';
+
+const UNIT_MS: Record<LengthUnit, number> = { sec: 1_000, min: 60_000, hr: 3_600_000 };
+const UNIT_SUFFIX: Record<LengthUnit, string> = { sec: 's', min: 'm', hr: 'h' };
+
+export function partsToMs(value: number, unit: LengthUnit): number {
+  return Math.round(value * UNIT_MS[unit]);
+}
+
+export function msToParts(ms: number): { value: number; unit: LengthUnit } {
+  if (ms % UNIT_MS.hr === 0) return { value: ms / UNIT_MS.hr, unit: 'hr' };
+  if (ms % UNIT_MS.min === 0) return { value: ms / UNIT_MS.min, unit: 'min' };
+  return { value: Math.round(ms / UNIT_MS.sec), unit: 'sec' };
+}
+
+export function formatLengthShort(ms: number): string {
+  const { value, unit } = msToParts(ms);
+  return `${value}${UNIT_SUFFIX[unit]}`;
+}
