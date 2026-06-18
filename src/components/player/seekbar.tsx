@@ -1,5 +1,4 @@
 // src/components/player/seekbar.tsx
-import { useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -55,6 +54,10 @@ export function Seekbar({ positionSec, durationSec, onSeek }: SeekbarProps) {
     .onEnd(() => {
       'worklet';
       const fraction = dragProgress.value;
+      // Pin the live shared value to the dragged position so the thumb stays
+      // put until the next real timeUpdate arrives (up to ~1 s away), preventing
+      // a backward snap when isDragging is cleared.
+      liveProgressSV.value = fraction;
       isDragging.value = false;
       runOnJS(commitSeek)(fraction);
     })
