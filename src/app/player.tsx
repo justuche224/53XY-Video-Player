@@ -22,7 +22,6 @@ import { BottomBar } from '@/components/player/bottom-bar';
 import { ResumeSnackbar } from '@/components/player/resume-snackbar';
 import { TracksSheet } from '@/components/player/tracks-sheet';
 import { PressableScale } from '@/components/pressable-scale';
-import { useTheme } from '@/theme/theme-provider';
 
 export default function PlayerScreen() {
   const { videoId, uri, title, groupKey, mode } = useLocalSearchParams<{
@@ -33,7 +32,6 @@ export default function PlayerScreen() {
     mode?: string;
   }>();
   const router = useRouter();
-  const { colors } = useTheme();
 
   const db = useSQLiteContext();
   useKeepAwake();
@@ -79,18 +77,24 @@ export default function PlayerScreen() {
   // Tracks the active video id so progress always writes under the current
   // video. Kept in sync by the resume effect below.
   const currentVideoIdRef = useRef<string>(videoId);
+  // Latest position/duration (seconds), cached from timeUpdate/seek so a flush
+  // never has to read the player — which may already be released on unmount.
+  const lastPositionSecRef = useRef<number>(0);
+  const lastDurationSecRef = useRef<number>(0);
 
   // ── Flush progress for the currently active video id ────────────────────
+  // Reads cached values (not the player) so it is safe to call from unmount
+  // cleanup after expo-video has released the shared player object.
   const flushProgress = useCallback(() => {
-    const positionMs = player.currentTime * 1000;
-    const durationMs = player.duration ? player.duration * 1000 : null;
+    const positionMs = lastPositionSecRef.current * 1000;
+    const durationMs = lastDurationSecRef.current > 0 ? lastDurationSecRef.current * 1000 : null;
     upsertProgress(
       db,
       currentVideoIdRef.current,
       buildProgress(positionMs, durationMs, Date.now()),
     ).catch(() => {});
     lastWriteRef.current = Date.now();
-  }, [player, db]);
+  }, [db]);
 
   // ── Resume + start playback whenever the player is (re)created ──────────
   // expo-video recreates the player whenever `uri` changes (i.e. on every
@@ -98,6 +102,10 @@ export default function PlayerScreen() {
   // the new player; the subscription effects below likewise re-bind to it.
   useEffect(() => {
     currentVideoIdRef.current = videoId;
+    // Reset cached position/duration for the new player so a quick exit before
+    // the first timeUpdate doesn't flush stale values under the new video id.
+    lastPositionSecRef.current = 0;
+    lastDurationSecRef.current = 0;
     let cancelled = false;
     (async () => {
       try {
@@ -106,6 +114,7 @@ export default function PlayerScreen() {
         const saved = map.get(videoId);
         if (saved && shouldResume(saved.positionMs, saved.percent)) {
           player.currentTime = saved.positionMs / 1000;
+          lastPositionSecRef.current = saved.positionMs / 1000;
           setResumePositionSec(saved.positionMs / 1000);
           setSnackbarVisible(true);
         }
@@ -125,8 +134,10 @@ export default function PlayerScreen() {
       'timeUpdate',
       (payload: TimeUpdateEventPayload) => {
         setPositionSec(payload.currentTime);
+        lastPositionSecRef.current = payload.currentTime;
         if (player.duration) {
           setDurationSec(player.duration);
+          lastDurationSecRef.current = player.duration;
         }
 
         if (!player.playing) return;
@@ -233,6 +244,7 @@ export default function PlayerScreen() {
   function handleSeek(sec: number) {
     player.currentTime = sec;
     setPositionSec(sec);
+    lastPositionSecRef.current = sec;
   }
 
   function handleCycleRate(newRate: number) {
@@ -274,10 +286,10 @@ export default function PlayerScreen() {
   const topBarRight = (
     <View style={styles.topBarActions}>
       <PressableScale onPress={() => setTracksSheetVisible(true)} style={styles.iconButton}>
-        <Text style={[styles.iconText, { color: colors.onSurface }]}>{'⊕'}</Text>
+        <Text style={styles.iconText}>{'⊕'}</Text>
       </PressableScale>
       <PressableScale onPress={handleRotate} style={styles.iconButton}>
-        <Text style={[styles.iconText, { color: colors.onSurface }]}>
+        <Text style={styles.iconText}>
           {isLandscape ? '⬛' : '⬜'}
         </Text>
       </PressableScale>
@@ -335,6 +347,7 @@ export default function PlayerScreen() {
               onRestart={() => {
                 player.currentTime = 0;
                 setPositionSec(0);
+                lastPositionSecRef.current = 0;
               }}
             />
           </View>
@@ -373,6 +386,7 @@ const styles = StyleSheet.create({
   },
   iconText: {
     fontSize: 18,
+    color: '#fff',
   },
   snackbarContainer: {
     position: 'absolute',

@@ -1,4 +1,5 @@
 // src/components/player/seekbar.tsx
+import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -28,9 +29,12 @@ export function Seekbar({ positionSec, durationSec, onSeek }: SeekbarProps) {
   // Live progress (0–1), computed on JS thread; re-used in animated style
   const liveProgress =
     durationSec > 0 ? Math.min(1, Math.max(0, positionSec / durationSec)) : 0;
-  // Mirror liveProgress into a shared value so worklets can read it
+  // Mirror liveProgress into a shared value so worklets can read it. Done in an
+  // effect (not during render) to avoid Reanimated's "writing during render".
   const liveProgressSV = useSharedValue(liveProgress);
-  liveProgressSV.value = liveProgress;
+  useEffect(() => {
+    liveProgressSV.value = liveProgress;
+  }, [liveProgress, liveProgressSV]);
 
   const commitSeek = (fraction: number) => {
     onSeek(fraction * (durationSec > 0 ? durationSec : 0));

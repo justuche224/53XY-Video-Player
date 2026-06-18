@@ -1,5 +1,5 @@
 // src/components/player/resume-snackbar.tsx
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { PressableScale } from '@/components/pressable-scale';
@@ -18,10 +18,17 @@ const AUTO_DISMISS_MS = 4000;
 export function ResumeSnackbar({ positionSec, onDismiss, onRestart }: ResumeSnackbarProps) {
   const { colors, spacing, radius } = useTheme();
 
+  // Auto-dismiss once, AUTO_DISMISS_MS after mount. A callback ref keeps the
+  // latest onDismiss without re-arming the timer on every parent re-render
+  // (the player re-renders ~1×/s from timeUpdate, which otherwise reset it).
+  const onDismissRef = useRef(onDismiss);
   useEffect(() => {
-    const timer = setTimeout(onDismiss, AUTO_DISMISS_MS);
+    onDismissRef.current = onDismiss;
+  });
+  useEffect(() => {
+    const timer = setTimeout(() => onDismissRef.current(), AUTO_DISMISS_MS);
     return () => clearTimeout(timer);
-  }, [onDismiss]);
+  }, []);
 
   return (
     <View
