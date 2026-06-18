@@ -2,7 +2,7 @@
 
 **Read this first when resuming.** It's the single entry point to continue the project in a fresh chat.
 
-_Last updated: after Plan 3a (the core player) was built, device-verified on the SM-S901N, and merged to `master`._
+_Last updated: after the full Player (Plan 3a + 3b gestures) was built, device-verified on the SM-S901N, and merged to `master` — v1 is complete._
 
 ---
 
@@ -41,12 +41,20 @@ Plans live in [plans/](./plans/) ([roadmap](./plans/README.md)); the 3a/3b specs
 - **Player chrome must be fixed white**, not theme `onSurface` (near-black on dark video under a light theme); wrap controls in safe-area insets.
 - **Library lists refetch progress via `useFocusEffect`**, so resume bars update on return from the player.
 
-## Plan 3b — the gesture layer (what it must do, NOT started)
-Layer the signature gestures onto the existing overlay (replace the overlay's plain tap `Pressable` with a gesture detector):
-- **Long-press → 2× while held**, **double-tap left/right → seek ∓N s**, **vertical swipe** = brightness (left, `expo-brightness`, installed) / volume (right, **needs a volume approach — likely a new dep + native rebuild**), full-screen horizontal drag = scrub.
-- **Lock** control (hide chrome + ignore gesture touches) — deferred from 3a to pair with gestures.
-- Optional: bundle **FlashList** if thumbnails should keep pace during a continuous fling.
-- Start with a brainstorm: gesture thresholds (long-press delay, double-tap zones, seek seconds), volume dependency, lock behavior. Also a known 3a follow-up: gate the resume seek on the player's ready/status event instead of seeking immediately after creation.
+## Plan 3b — the gesture layer (DONE, merged, device-verified)
+Composed gesture layer (`src/components/player/player-gestures.tsx`) over the overlay, built in three sub-plans (specs/plans under [superpowers/](./superpowers/)):
+- **3b-i (discrete):** long-press → **2× while held**; **3-zone double-tap** (left = −10s, center = play/pause, right = +10s) with indicators. Pure helpers `src/player/seek.ts` (`seekTarget`, `tapZone`) Jest-tested.
+- **3b-ii-a (pan):** vertical-left swipe = **brightness** (`expo-brightness`, restored on exit); vertical-right = **system media volume** via the local Expo module `modules/system-volume`; full-screen horizontal **drag-scrub** (preview + commit on release); HUDs; axis-lock; `VERTICAL_GAIN` sensitivity. Pure helpers `src/player/pan.ts` Jest-tested.
+- **3b-ii-b (lock + edge-fix):** **lock** control (`lock-overlay.tsx`, tap→reveal→tap to unlock); double-tap **gated to controls-hidden** to stop the edge-double-tap-toggles-a-control bug.
+
+### Key 3b gotchas (learned on-device)
+- **Volume must use the system stream, not `player.volume`** — ExoPlayer's per-player volume corrupts audio on-device. The local `modules/system-volume` Kotlin module sets `AudioManager.STREAM_MUSIC`. Worklet→JS hops use `scheduleOnRN` (not deprecated `runOnJS`); pure helpers are called on the JS thread, never inside a worklet.
+- **Chrome buttons (RN `Pressable`) overlap the gesture layer**, so a double-tap could also fire a control. Current fix gates double-tap to controls-hidden; the proper fix (RNGH gesture arena: `GestureButton` + `requireExternalGestureToFail`, via context) is **deferred** — see the 3b-ii-b spec.
+
+### Deferred player refinements (optional, for whenever)
+- RNGH gesture-arena fix so double-tap works *while controls are showing* (see above).
+- Gate the **resume seek** on the player's ready/status event instead of seeking immediately after a fresh/`replace`d player.
+- Optional **FlashList** for thumbnail fling perf.
 
 ## How we work (process — keep doing this)
 1. **brainstorm** (superpowers:brainstorming) → get design approval → 2. **writing-plans** → bite-sized TDD plan in `docs/plans/` → 3. **subagent-driven-development**: fresh implementer subagent per task + review, then a final whole-branch review (opus) → 4. user does the **native build / device verify** → 5. **finishing-a-development-branch**: merge to `master`, delete branch.
