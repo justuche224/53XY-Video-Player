@@ -36,6 +36,30 @@ describe('groupByName', () => {
     expect(groups[0].title).toBe('The Best Man Holiday');
     expect(groups[0].count).toBe(1);
   });
+
+  it('merges numeric-coded variants into a clean anchor group when one exists', () => {
+    const videos = [
+      v({ id: 'a', filename: 'Boston Legal S01E01.mkv' }),
+      v({ id: 'b', filename: 'Boston Legal S01E02.mkv' }),
+      v({ id: 'c', filename: '201 Boston Legal.mkv' }), // leading number
+      v({ id: 'd', filename: 'Boston Legal 301 Cant We All.mkv' }), // infix number + episode title
+      v({ id: 'e', filename: '127 Hours 1080p.mkv' }), // movie: no anchor -> stays
+    ];
+    const groups = groupByName(videos);
+    expect(groups.map((g) => g.title)).toEqual(['127 Hours', 'Boston Legal']);
+    const boston = groups.find((g) => g.title === 'Boston Legal')!;
+    expect(boston.count).toBe(4);
+    expect(boston.items.map((i) => i.id).sort()).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it('does NOT merge number-prefixed siblings when there is no clean anchor (conservative)', () => {
+    const videos = [
+      v({ id: 'x', filename: '201 Mystery.mkv' }),
+      v({ id: 'y', filename: '202 Mystery.mkv' }),
+    ];
+    const groups = groupByName(videos);
+    expect(groups).toHaveLength(2);
+  });
 });
 
 describe('groupByFolder', () => {

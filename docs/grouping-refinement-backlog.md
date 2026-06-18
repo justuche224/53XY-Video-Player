@@ -38,3 +38,10 @@ land as new fixtures in `normalize-title.test.ts` / `parse-episode.test.ts` firs
 - The pure engine means this can be tuned independently any time; 2B (UI) renders whatever
   groups exist and is unblocked.
 - Also pending from 2A final review: drop overly-aggressive `english`/`hq` from QUALITY_TAGS.
+
+## Resolved (grouping refinement pass)
+- ✅ Dropped over-eager `english`/`hq` from QUALITY_TAGS.
+- ✅ Trailing/leading separator trim ("Boston Legal -" → "Boston Legal").
+- ✅ Dash-delimited episode numbers cut ("Boston Legal - 216 - Live Big" → "Boston Legal").
+- ✅ Conservative corroborated merge: numbered titles ("201 Boston Legal", "Boston Legal 301 …") fold into a clean anchor group when one exists; movies like "127 Hours"/"Apollo 13" are never mangled (guard tests added).
+- Still by-design-split (no anchor): number-prefixed siblings with no clean anchor (e.g. "201 Mystery"/"202 Mystery"). Screen-recording bucketing still low-priority/open.

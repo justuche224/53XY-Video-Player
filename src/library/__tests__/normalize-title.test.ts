@@ -28,4 +28,22 @@ describe('normalizeTitle', () => {
   it('collapses whitespace and trims', () => {
     expect(normalizeTitle('  Weird___Name...mkv')).toBe('Weird Name');
   });
+
+  it.each([
+    ['Boston Legal - 216 - Live Big.mkv', 'Boston Legal'],
+    ['Boston Legal - 302 - New Kids on the Block.mkv', 'Boston Legal'],
+    ['Boston Legal - 1x05.mkv', 'Boston Legal'],
+    ['Boston Legal -.mkv', 'Boston Legal'],
+  ])('cuts dash-delimited episode numbers and trims trailing dashes: %s -> %s', (input, expected) => {
+    expect(normalizeTitle(input)).toBe(expected);
+  });
+
+  it.each([
+    ['127 Hours 1080p.mkv', '127 Hours'],
+    ['Apollo 13.mkv', 'Apollo 13'],
+    ['Spider-Man.mkv', 'Spider-Man'],
+    ['The English Patient 1996 1080p.mkv', 'The English Patient'],
+  ])('does not mangle numbers/words that belong to the title: %s -> %s', (input, expected) => {
+    expect(normalizeTitle(input)).toBe(expected);
+  });
 });
