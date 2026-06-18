@@ -8,9 +8,11 @@ _Last updated: after Plan 3a (the core player) was built, device-verified on the
 
 ## TL;DR — where we are, what's next
 - **53XY** is an Android-first, "best of all worlds" local video player built with **Expo SDK 56 / React Native 0.85**.
-- **Done & merged to `master` (all device-verified on the user's SM-S901N):** Foundation, the full Library (data + grouping engine + adaptive UI + polish), **Plan 3a — the core player**, and **Plan 3b-i — discrete gestures** (long-press→2×-while-held, 3-zone double-tap: left/center/right = back-10s / play-pause / forward-10s, with indicators).
-- **Next: Plan 3b-ii — the drag gestures + lock** (not started): vertical swipe = brightness (left, `expo-brightness`) / volume (right, `player.volume` — no new dep), full-screen horizontal drag-scrub, and lock. **Pure JS like 3b-i — no native rebuild.**
-- **Immediate next action:** brainstorm Plan 3b-ii, then spec → plan → subagent-driven build → device verify → merge.
+- **Done & merged to `master` (all device-verified on the user's SM-S901N):** Foundation, the full Library (data + grouping engine + adaptive UI + polish), **Plan 3a — the core player**, **Plan 3b-i — discrete gestures** (long-press→2×, 3-zone double-tap), and **Plan 3b-ii-a — pan gestures** (vertical-left swipe = brightness via `expo-brightness`; vertical-right = **system media volume via a local Expo native module** `modules/system-volume`; full-screen horizontal drag-scrub with preview+commit; HUDs).
+- **Next: Plan 3b-ii-b — lock + the edge-tap fix** (not started): a lock control (hide chrome + ignore gestures), plus the deferred edge-double-tap-while-controls-showing fix (compose chrome buttons into the gesture system).
+- **Immediate next action:** brainstorm Plan 3b-ii-b, then spec → plan → subagent-driven build → device verify → merge.
+- **NATIVE NOTE:** the player now uses a **local Expo module** (`modules/system-volume`, Kotlin AudioManager `STREAM_MUSIC`) for volume — `player.volume` (ExoPlayer) corrupts audio on-device, so volume goes through the system stream. Any change touching it needs `npx expo run:android` (rebuild), not Fast Refresh. Local modules autolink from `modules/`.
+- **Known issue to revisit in 3b-ii-b:** while controls are *showing*, an edge double-tap can also toggle a control on top of skipping. Partially hardened (bar containers `box-none`, chrome `pointerEvents="none"` when hidden); full fix likely needs the chrome buttons composed into the gesture system (RNGH cross-gesture relations).
 - **Known issue to revisit in 3b-ii:** while controls are *showing*, an edge double-tap can also toggle a control (perceived play/pause) on top of skipping. Partially hardened (bar containers `box-none`, chrome `pointerEvents="none"` when hidden) but not fully fixed — likely needs the chrome buttons composed into the gesture system (RNGH cross-gesture relations) rather than overlapping RN Pressables.
 
 ## What this app is (vision)
@@ -25,9 +27,10 @@ The full vision is in [00-vision-and-context.md](./00-vision-and-context.md) (th
 | Library polish | Scroll perf (FlatList tuning, idle-callback thumbnails), cache-first background rescan, grouping refinement (conservative numeric merge), multi-thumbnail collages | ✅ merged, device-verified |
 | Plan 3a — Core player | `expo-video` playback, custom overlay, resume+snackbar, progress writes, orientation, keep-awake, next/prev, track select, pitch-preserved speed | ✅ merged, device-verified |
 | Plan 3b-i — Discrete gestures | Long-press→2× while held; 3-zone double-tap (left/center/right = back / play-pause / forward) + indicators | ✅ merged, device-verified (one deferred edge-tap issue) |
-| **Plan 3b-ii — Drag gestures + lock** | Vertical swipe brightness/volume, full-screen drag-scrub, lock | ⏳ **not started — do this next** |
+| Plan 3b-ii-a — Pan gestures | Swipe brightness (left) / system volume (right, local Expo module) / horizontal drag-scrub + HUDs | ✅ merged, device-verified |
+| **Plan 3b-ii-b — Lock + edge-tap fix** | Lock control; fix edge-double-tap-while-controls-showing | ⏳ **not started — do this next** |
 
-Plans live in [plans/](./plans/) ([roadmap](./plans/README.md)); the 3a/3b-i specs+plans are under [superpowers/](./superpowers/). Tests: **75 passing**, `npx tsc --noEmit` clean.
+Plans live in [plans/](./plans/) ([roadmap](./plans/README.md)); the 3a/3b specs+plans are under [superpowers/](./superpowers/). Tests: **82 passing**, `npx tsc --noEmit` clean.
 
 ## Plan 3a — the core player (DONE, merged, device-verified)
 `src/app/player.tsx` is now the real player: `expo-video` surface (native controls hidden), a custom Reanimated/gesture-handler **control overlay** (top bar with back/title/tracks/rotate, center play-pause + prev/next, bottom seekbar + time + speed chip), **auto-resume + "Resumed at …" snackbar**, throttled `watch_progress` writes (+ flush on pause/background/unmount via cached refs), **auto-rotate + manual rotate**, keep-awake, **next/prev within the group**, embedded **subtitle/audio track** selection, and **pitch-preserved** speed (`preservesPitch`). Pure logic lives in `src/player/` (format-time, resume, playlist `neighbors`, progress-writer) and is Jest-tested; UI/native is device-verified. Spec + plan: [superpowers/specs/2026-06-18-player-core-3a-design.md](./superpowers/specs/2026-06-18-player-core-3a-design.md), [superpowers/plans/2026-06-18-player-core-3a.md](./superpowers/plans/2026-06-18-player-core-3a.md).
