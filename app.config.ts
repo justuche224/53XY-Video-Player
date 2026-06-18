@@ -3,9 +3,6 @@ import { ConfigContext, ExpoConfig } from 'expo/config';
 const IS_DEV = process.env.APP_VARIANT === 'development';
 const IS_PREVIEW = process.env.APP_VARIANT === 'preview';
 
-// Android package / iOS bundle id per variant, so dev + preview + prod builds
-// can all be installed side-by-side on one device. Segments must start with a
-// letter (Android rejects digit-leading segments), hence "fiftythreexy".
 const getUniqueIdentifier = () => {
   if (IS_DEV) return 'com.jvstuche.fiftythreexy.dev';
   if (IS_PREVIEW) return 'com.jvstuche.fiftythreexy.preview';
@@ -25,7 +22,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
-  scheme: 'xy53',
+  scheme: 'fiftythreexy',
   userInterfaceStyle: 'automatic',
   owner: 'justuche224',
   ios: {
@@ -85,8 +82,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   extra: {
     router: {},
     eas: {
-      // Filled by `eas init` — paste the printed project ID here. Dynamic
-      // (app.config.ts) configs are NOT auto-edited by the EAS CLI.
       projectId: '',
     },
   },
