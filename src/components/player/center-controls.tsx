@@ -1,5 +1,5 @@
-// src/components/player/center-controls.tsx
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 
 import { PressableScale } from '@/components/pressable-scale';
 
@@ -28,7 +28,7 @@ export function CenterControls({
         <PressableScale
           onPress={onPrev}
           style={[styles.sideButton, !hasPrev && styles.disabled]}>
-          <Text style={styles.sideIcon}>{'⏮'}</Text>
+          <MaterialIcons name="skip-previous" size={36} color="#fff" />
         </PressableScale>
       ) : (
         <View style={styles.sideButton} pointerEvents="none" />
@@ -36,9 +36,7 @@ export function CenterControls({
 
       {/* Play / Pause */}
       <PressableScale onPress={onToggle} style={styles.playButton}>
-        <Text style={styles.playIcon}>
-          {playing ? '⏸' : '▶'}
-        </Text>
+        <MaterialIcons name={playing ? 'pause' : 'play-arrow'} size={48} color="#fff" />
       </PressableScale>
 
       {/* Next button — hidden when slot not filled */}
@@ -46,7 +44,7 @@ export function CenterControls({
         <PressableScale
           onPress={onNext}
           style={[styles.sideButton, !hasNext && styles.disabled]}>
-          <Text style={styles.sideIcon}>{'⏭'}</Text>
+          <MaterialIcons name="skip-next" size={36} color="#fff" />
         </PressableScale>
       ) : (
         <View style={styles.sideButton} pointerEvents="none" />
@@ -66,7 +64,6 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },

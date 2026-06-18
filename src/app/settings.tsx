@@ -62,9 +62,21 @@ export default function SettingsScreen() {
   const hidden = allVideos.length - applyFilters(allVideos, filter).length;
 
   return (
-    <Screen style={{ padding: spacing.lg }}>
-      <Stack.Screen options={{ headerShown: true, title: 'Settings' }} />
-      <ScrollView contentContainerStyle={{ gap: spacing.xl }}>
+    <Screen style={{ paddingHorizontal: spacing.lg }}>
+      <Stack.Screen 
+        options={{ 
+          headerShown: true, 
+          title: 'Settings',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.onSurface,
+          headerShadowVisible: false
+        }} 
+      />
+      <ScrollView 
+        contentContainerStyle={{ gap: spacing.xl, paddingVertical: spacing.lg, paddingBottom: spacing.xl * 2 }}
+        bounces={true}
+        overScrollMode="always"
+      >
         <View style={{ gap: spacing.md }}>
           <Text style={[styles.section, { color: colors.onSurface }]}>Library filters</Text>
 

@@ -4,6 +4,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
+import { Ionicons } from '@expo/vector-icons';
 
 import { GroupCard } from '@/components/group-card';
 import { GroupRow } from '@/components/group-row';
@@ -108,10 +109,12 @@ export default function LibraryScreen() {
           <Text style={[styles.title, { color: colors.onSurface }]}>53XY</Text>
           {refreshing ? <ActivityIndicator size="small" color={colors.primary} /> : null}
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceVariant ?? '#222', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 24, gap: 16 }}>
           <SortButton sortKey={sortKey} sortDir={sortDir} onPress={() => setSortOpen(true)} />
           <LayoutToggle value={layout} onChange={onLayout} />
-          <Link href="/settings" style={{ color: colors.primary, fontWeight: '600' }}>Settings</Link>
+          <Link href="/settings" style={{ padding: 4 }}>
+            <Ionicons name="settings-outline" size={20} color={colors.onSurface} />
+          </Link>
         </View>
       </View>
       <View style={{ gap: spacing.sm, marginBottom: spacing.sm }}>
@@ -133,6 +136,8 @@ export default function LibraryScreen() {
             </Text>
           }
           contentContainerStyle={{ paddingBottom: spacing.xl }}
+          bounces={true}
+          overScrollMode="always"
         />
       )}
       <SortSheet

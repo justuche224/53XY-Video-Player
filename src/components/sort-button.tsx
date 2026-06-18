@@ -1,6 +1,7 @@
-import { Pressable, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable } from 'react-native';
 
-import { SORT_LABELS, type SortDir, type SortKey } from '@/library/sort-groups';
+import { type SortDir, type SortKey } from '@/library/sort-groups';
 import { useTheme } from '@/theme/theme-provider';
 
 export function SortButton({
@@ -14,10 +15,8 @@ export function SortButton({
 }) {
   const { colors } = useTheme();
   return (
-    <Pressable onPress={onPress} hitSlop={10}>
-      <Text style={{ color: colors.onSurface, fontSize: 14, fontWeight: '600' }}>
-        {SORT_LABELS[sortKey]} {sortDir === 'asc' ? '↑' : '↓'}
-      </Text>
+    <Pressable onPress={onPress} hitSlop={10} style={{ padding: 4 }}>
+      <Ionicons name="swap-vertical" size={20} color={colors.onSurface} />
     </Pressable>
   );
 }

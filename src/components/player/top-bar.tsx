@@ -1,6 +1,7 @@
 // src/components/player/top-bar.tsx
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 
 import { PressableScale } from '@/components/pressable-scale';
 import { useTheme } from '@/theme/theme-provider';
@@ -20,7 +21,7 @@ export function TopBar({ title, onBack, right }: TopBarProps) {
       pointerEvents="box-none"
       style={[styles.row, { paddingHorizontal: spacing.md, paddingVertical: spacing.sm }]}>
       <PressableScale onPress={onBack} style={styles.backButton}>
-        <Text style={styles.backIcon}>{'‹'}</Text>
+        <MaterialIcons name="arrow-back" size={28} color="#fff" />
       </PressableScale>
 
       <Text

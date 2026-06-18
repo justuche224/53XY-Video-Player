@@ -1,4 +1,5 @@
 // src/app/player.tsx
+import { MaterialIcons } from '@expo/vector-icons';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useKeepAwake } from 'expo-keep-awake';
 import * as Brightness from 'expo-brightness';
@@ -463,15 +464,13 @@ export default function PlayerScreen() {
   const topBarRight = (
     <View style={styles.topBarActions}>
       <PressableScale onPress={() => setLocked(true)} style={styles.iconButton}>
-        <Text style={styles.iconText}>{'🔓'}</Text>
+        <MaterialIcons name="lock-open" size={24} color="#fff" />
       </PressableScale>
       <PressableScale onPress={() => setTracksSheetVisible(true)} style={styles.iconButton}>
-        <Text style={styles.iconText}>{'⊕'}</Text>
+        <MaterialIcons name="subtitles" size={24} color="#fff" />
       </PressableScale>
       <PressableScale onPress={handleRotate} style={styles.iconButton}>
-        <Text style={styles.iconText}>
-          {isLandscape ? '⬛' : '⬜'}
-        </Text>
+        <MaterialIcons name="screen-rotation" size={24} color={isLandscape ? '#aaa' : '#fff'} />
       </PressableScale>
     </View>
   );

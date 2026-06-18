@@ -29,8 +29,16 @@ export default function GroupDetailScreen() {
   const group = useMemo(() => groups.find((g) => g.key === key), [groups, key]);
 
   return (
-    <Screen style={{ padding: spacing.lg }}>
-      <Stack.Screen options={{ headerShown: true, title: group?.title ?? 'Group' }} />
+    <Screen style={{ paddingHorizontal: spacing.lg }}>
+      <Stack.Screen 
+        options={{ 
+          headerShown: true, 
+          title: group?.title ?? 'Group',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.onSurface,
+          headerShadowVisible: false
+        }} 
+      />
       <FlashList
         data={group?.items ?? []}
         keyExtractor={(v) => v.id}
@@ -42,6 +50,9 @@ export default function GroupDetailScreen() {
           />
         )}
         ListEmptyComponent={<Text style={{ color: colors.onSurface }}>Loading…</Text>}
+        contentContainerStyle={{ paddingBottom: spacing.xl }}
+        bounces={true}
+        overScrollMode="always"
       />
     </Screen>
   );

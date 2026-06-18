@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const REVEAL_MS = 3000;
 const FADE_MS = 200;
@@ -41,7 +42,8 @@ export function LockOverlay({ onUnlock }: LockOverlayProps) {
             pill area falls through to the catcher above and just reveals. */}
         <Animated.View style={pillStyle} pointerEvents={visible ? 'auto' : 'none'}>
           <Pressable onPress={onUnlock} style={styles.pill}>
-            <Text style={styles.text}>{'🔒  Tap to unlock'}</Text>
+            <MaterialIcons name="lock" size={18} color="#fff" />
+            <Text style={styles.text}>{' Tap to unlock'}</Text>
           </Pressable>
         </Animated.View>
       </View>
@@ -56,6 +58,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   text: { color: '#fff', fontSize: 15, fontWeight: '600' },
 });
