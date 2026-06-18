@@ -2,13 +2,13 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 import { getSetting, setSetting } from '@/db/settings-repo';
-import { EMPTY_FILTER, type LengthFilter } from './filter-videos';
+import { EMPTY_FILTER, type LibraryFilter } from './filter-videos';
 
 const MIN_KEY = 'filter.minDurationMs';
 const MAX_KEY = 'filter.maxDurationMs';
 
 interface FilterSettings {
-  filter: LengthFilter;
+  filter: LibraryFilter;
   setMin: (ms: number | null) => void;
   setMax: (ms: number | null) => void;
 }
@@ -24,14 +24,20 @@ function parseMs(raw: string | null): number | null {
 
 export function FilterSettingsProvider({ children }: { children: ReactNode }) {
   const db = useSQLiteContext();
-  const [filter, setFilter] = useState<LengthFilter>(EMPTY_FILTER);
+  const [filter, setFilter] = useState<LibraryFilter>(EMPTY_FILTER);
 
   // Load persisted thresholds once on mount.
   useEffect(() => {
     let cancelled = false;
     Promise.all([getSetting(db, MIN_KEY), getSetting(db, MAX_KEY)])
       .then(([min, max]) => {
-        if (!cancelled) setFilter({ minDurationMs: parseMs(min), maxDurationMs: parseMs(max) });
+        if (!cancelled)
+          setFilter({
+            minDurationMs: parseMs(min),
+            maxDurationMs: parseMs(max),
+            namePatterns: [],
+            ignoredFolders: [],
+          });
       })
       .catch(() => {
         // Leave EMPTY_FILTER on read failure — a broken setting must not blank the library.

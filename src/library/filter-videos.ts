@@ -1,13 +1,22 @@
 import type { LibraryVideo } from './types';
 
-export interface LengthFilter {
+export interface LibraryFilter {
   /** Hide videos strictly shorter than this many ms. null = no minimum. */
   minDurationMs: number | null;
   /** Hide videos strictly longer than this many ms. null = no maximum. */
   maxDurationMs: number | null;
+  /** Case-insensitive substring-or-glob patterns; a video matching ANY is hidden. */
+  namePatterns: string[];
+  /** Folder paths (LibraryVideo.folder) whose videos are hidden. */
+  ignoredFolders: string[];
 }
 
-export const EMPTY_FILTER: LengthFilter = { minDurationMs: null, maxDurationMs: null };
+export const EMPTY_FILTER: LibraryFilter = {
+  minDurationMs: null,
+  maxDurationMs: null,
+  namePatterns: [],
+  ignoredFolders: [],
+};
 
 /**
  * Keep videos whose duration is within [min, max]. Videos with unknown
@@ -15,7 +24,7 @@ export const EMPTY_FILTER: LengthFilter = { minDurationMs: null, maxDurationMs: 
  * Comparison is strict, so a video exactly at a threshold stays visible.
  * An empty filter is a pass-through (returns the same array reference).
  */
-export function applyLengthFilter(videos: LibraryVideo[], filter: LengthFilter): LibraryVideo[] {
+export function applyLengthFilter(videos: LibraryVideo[], filter: LibraryFilter): LibraryVideo[] {
   const { minDurationMs, maxDurationMs } = filter;
   if (minDurationMs == null && maxDurationMs == null) return videos;
   return videos.filter((video) => {

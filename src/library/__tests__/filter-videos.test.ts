@@ -1,4 +1,4 @@
-import { applyLengthFilter, EMPTY_FILTER, type LengthFilter } from '../filter-videos';
+import { applyLengthFilter, EMPTY_FILTER, type LibraryFilter } from '../filter-videos';
 import type { LibraryVideo } from '../types';
 
 const v = (id: string, durationMs: number | null): LibraryVideo => ({
@@ -24,25 +24,25 @@ describe('applyLengthFilter', () => {
   });
 
   it('min only hides videos strictly shorter than min', () => {
-    const f: LengthFilter = { minDurationMs: 30_000, maxDurationMs: null };
+    const f: LibraryFilter = { minDurationMs: 30_000, maxDurationMs: null, namePatterns: [], ignoredFolders: [] };
     // 'a' (5s) hidden; 'b' (exactly 30s) kept; 'c' kept; 'd' (unknown) kept
     expect(ids(applyLengthFilter(vids, f))).toEqual(['b', 'c', 'd']);
   });
 
   it('max only hides videos strictly longer than max', () => {
-    const f: LengthFilter = { minDurationMs: null, maxDurationMs: 3_600_000 };
+    const f: LibraryFilter = { minDurationMs: null, maxDurationMs: 3_600_000, namePatterns: [], ignoredFolders: [] };
     // 'c' (exactly 1h) kept; nothing over 1h here → all kept
     expect(ids(applyLengthFilter(vids, f))).toEqual(['a', 'b', 'c', 'd']);
   });
 
   it('both min and max keep only the in-range, plus unknown', () => {
-    const f: LengthFilter = { minDurationMs: 10_000, maxDurationMs: 60_000 };
+    const f: LibraryFilter = { minDurationMs: 10_000, maxDurationMs: 60_000, namePatterns: [], ignoredFolders: [] };
     // 'a'(5s) hidden, 'b'(30s) kept, 'c'(1h) hidden, 'd'(unknown) kept
     expect(ids(applyLengthFilter(vids, f))).toEqual(['b', 'd']);
   });
 
   it('never hides videos with unknown (null) duration', () => {
-    const f: LengthFilter = { minDurationMs: 1_000_000, maxDurationMs: 2_000_000 };
+    const f: LibraryFilter = { minDurationMs: 1_000_000, maxDurationMs: 2_000_000, namePatterns: [], ignoredFolders: [] };
     expect(ids(applyLengthFilter(vids, f))).toContain('d');
   });
 });
