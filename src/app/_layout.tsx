@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { runMigrations } from '@/db/migrate';
 import { MIGRATIONS } from '@/db/schema';
+import { FilterSettingsProvider } from '@/library/filter-settings';
 import { ThemeProvider, useTheme } from '@/theme/theme-provider';
 
 async function onDbInit(db: SQLiteDatabase) {
@@ -25,10 +26,12 @@ export default function RootLayout() {
     <ErrorBoundary>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SQLiteProvider databaseName="p53xy.db" onInit={onDbInit}>
-          <ThemeProvider>
-            <ThemedStatusBar />
-            <Stack screenOptions={{ headerShown: false }} />
-          </ThemeProvider>
+          <FilterSettingsProvider>
+            <ThemeProvider>
+              <ThemedStatusBar />
+              <Stack screenOptions={{ headerShown: false }} />
+            </ThemeProvider>
+          </FilterSettingsProvider>
         </SQLiteProvider>
       </GestureHandlerRootView>
     </ErrorBoundary>
