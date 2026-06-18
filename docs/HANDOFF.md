@@ -2,7 +2,7 @@
 
 **Read this first when resuming.** It's the single entry point to continue the project in a fresh chat.
 
-_Last updated: after v2 **advanced filters** (length + name-pattern + folder ignore), **library sort options**, the **FlashList migration**, and **UI Polish** were built, reviewed, merged to `master`, and device-verified on the SM-S901N. (libVLC fallback is parked — too big/native to do blind.)_
+_Last updated: after the **shared library cache + un-gated playback** perf fix — opening a group and starting a video were re-reading the whole videos table per-navigation, and `player.play()` was gated behind a DB read (3–5s black screen). Now a root `LibraryProvider` owns one cached `videos` array that `useLibrary`/`useGroups` consume; the player plays immediately and applies the resume seek async. Merged to `master`. Prior work: v2 **advanced filters** (length + name-pattern + folder ignore), **library sort options**, the **FlashList migration**, **UI Polish**, **QOL Polish** — all device-verified on the SM-S901N. (libVLC fallback is parked — too big/native to do blind.)_
 
 ---
 
@@ -41,6 +41,7 @@ The full vision is in [00-vision-and-context.md](./00-vision-and-context.md) (th
 | v2 — FlashList | Library (grid+list) + group-detail lists on @shopify/flash-list v2 for fling perf; native dep (rebuild to verify) | ✅ merged, device-verified |
 | v2 — UI Polish | Unified Ionicons/MaterialIcons across the app, themed headers for Settings/Group, scroll overscroll/bounces for all lists, duration badges on thumbnails | ✅ merged, device-verified |
 | v2 — QOL Polish | Search clear button, premium empty states, native android ripples, Settings screen icons, Player 2x haptics | ✅ merged, device-verified |
+| Perf — Shared library cache | Root `LibraryProvider` owns one cached `videos` array; `useLibrary`/`useGroups` are thin consumers (no per-nav `SELECT * FROM videos`); player plays immediately + resume seek async (kills 3–5s black screen); group empty-state gated on loading | ✅ merged |
 
 Plans live in [plans/](./plans/) ([roadmap](./plans/README.md)); the 3a/3b specs+plans are under [superpowers/](./superpowers/). Tests: **82 passing**, `npx tsc --noEmit` clean.
 
