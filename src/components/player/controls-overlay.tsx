@@ -1,6 +1,6 @@
 // src/components/player/controls-overlay.tsx
 import { useCallback, useEffect, useRef, type ReactNode } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -13,10 +13,12 @@ const ANIM_DURATION_MS = 250;
 
 interface ControlsOverlayProps {
   playing: boolean;
+  /** Visibility driven by parent; toggled via gesture layer's single-tap. */
+  visible: boolean;
   children: ReactNode;
 }
 
-export function ControlsOverlay({ playing, children }: ControlsOverlayProps) {
+export function ControlsOverlay({ playing, visible, children }: ControlsOverlayProps) {
   const insets = useSafeAreaInsets();
   const opacity = useSharedValue(1);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -41,36 +43,32 @@ export function ControlsOverlay({ playing, children }: ControlsOverlayProps) {
     }
   }, []);
 
-  // Auto-hide while playing; stay visible while paused
+  // Respond to parent visibility changes (driven by gesture layer's single-tap).
+  // Also handles auto-hide-while-playing: when shown while playing, schedule a
+  // hide; when paused, cancel any pending hide and stay visible.
   useEffect(() => {
-    if (playing) {
-      scheduleHide();
-    } else {
-      cancelHide();
-      show();
-    }
-    return () => {
-      cancelHide();
-    };
-  }, [playing, show, scheduleHide, cancelHide]);
-
-  function handleTap() {
-    // Toggle: if fading or hidden, show and (re)schedule; if visible, hide immediately
-    if (opacity.value < 0.5) {
+    if (visible) {
       show();
       if (playing) {
         scheduleHide();
+      } else {
+        cancelHide();
       }
     } else {
       cancelHide();
       opacity.value = withTiming(0, { duration: ANIM_DURATION_MS });
     }
-  }
+    return () => {
+      cancelHide();
+    };
+  }, [visible, playing, show, scheduleHide, cancelHide, opacity]);
 
   const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
   return (
-    <Pressable style={StyleSheet.absoluteFill} onPress={handleTap}>
+    // box-none: touch events pass through empty space to the gesture layer beneath;
+    // child buttons still receive touches normally.
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       <Animated.View
         style={[
           StyleSheet.absoluteFill,
@@ -82,10 +80,11 @@ export function ControlsOverlay({ playing, children }: ControlsOverlayProps) {
             paddingRight: insets.right,
           },
           animatedStyle,
-        ]}>
+        ]}
+        pointerEvents="box-none">
         {children}
       </Animated.View>
-    </Pressable>
+    </View>
   );
 }
 

@@ -14,8 +14,11 @@ import { getProgressMap, upsertProgress } from '@/db/progress-repo';
 import { buildProgress, shouldWrite } from '@/player/progress-writer';
 import { shouldResume } from '@/player/resume';
 import { neighbors } from '@/player/playlist';
+import { seekTarget } from '@/player/seek';
 import { useGroups } from '@/library/use-groups';
 import { ControlsOverlay } from '@/components/player/controls-overlay';
+import { PlayerGestures } from '@/components/player/player-gestures';
+import { GestureIndicators } from '@/components/player/gesture-indicators';
 import { TopBar } from '@/components/player/top-bar';
 import { CenterControls } from '@/components/player/center-controls';
 import { BottomBar } from '@/components/player/bottom-bar';
@@ -67,6 +70,17 @@ export default function PlayerScreen() {
   const [activeSubtitle, setActiveSubtitle] = useState<SubtitleTrack | null>(null);
   const [activeAudio, setActiveAudio] = useState<AudioTrack | null>(null);
   const [tracksSheetVisible, setTracksSheetVisible] = useState(false);
+
+  // ── Controls visibility (lifted from ControlsOverlay) ───────────────────
+  const [controlsVisible, setControlsVisible] = useState(true);
+
+  // ── Gesture indicator state ──────────────────────────────────────────────
+  const [boostActive, setBoostActive] = useState(false);
+  const [seekFlash, setSeekFlash] = useState<{ side: 'left' | 'right'; nonce: number } | null>(null);
+  const seekNonceRef = useRef(0);
+
+  // Saved playback rate before a boost, so we can restore it on release
+  const boostPrevRateRef = useRef<number>(1);
 
   // ── Orientation state ────────────────────────────────────────────────────
   const [isLandscape, setIsLandscape] = useState(false);
@@ -254,6 +268,32 @@ export default function PlayerScreen() {
     setRate(newRate);
   }
 
+  // ── Gesture handlers ─────────────────────────────────────────────────────
+  function handleToggleControls() {
+    setControlsVisible((v) => !v);
+  }
+
+  function handleSeekSide(side: 'left' | 'right') {
+    const delta = side === 'left' ? -10 : 10;
+    const target = seekTarget(lastPositionSecRef.current, delta, lastDurationSecRef.current);
+    player.currentTime = target;
+    setPositionSec(target);
+    lastPositionSecRef.current = target;
+    seekNonceRef.current += 1;
+    setSeekFlash({ side, nonce: seekNonceRef.current });
+  }
+
+  function handleBoostStart() {
+    boostPrevRateRef.current = player.playbackRate;
+    player.playbackRate = 2;
+    setBoostActive(true);
+  }
+
+  function handleBoostEnd() {
+    player.playbackRate = boostPrevRateRef.current;
+    setBoostActive(false);
+  }
+
   // ── Rotate handler ───────────────────────────────────────────────────────
   async function handleRotate() {
     if (isLandscape) {
@@ -302,13 +342,28 @@ export default function PlayerScreen() {
     <View style={styles.root}>
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar hidden />
+
+      {/* Layer 1: Video */}
       <VideoView
         style={StyleSheet.absoluteFill}
         player={player}
         nativeControls={false}
         contentFit="contain"
       />
-      <ControlsOverlay playing={playing}>
+
+      {/* Layer 2: Full-screen gesture catcher (below chrome so buttons still work) */}
+      <PlayerGestures
+        onToggleControls={handleToggleControls}
+        onSeekSide={handleSeekSide}
+        onBoostStart={handleBoostStart}
+        onBoostEnd={handleBoostEnd}
+      />
+
+      {/* Layer 3: Chrome overlay — box-none so empty space falls through to gesture layer */}
+      <ControlsOverlay
+        playing={playing}
+        visible={controlsVisible}
+      >
         <TopBar
           title={title ?? ''}
           onBack={() => router.back()}
@@ -355,6 +410,9 @@ export default function PlayerScreen() {
           </View>
         )}
       </ControlsOverlay>
+
+      {/* Layer 4: Gesture indicators (pointer-events none, always on top) */}
+      <GestureIndicators boostActive={boostActive} seekFlash={seekFlash} />
 
       {tracksSheetVisible && (
         <TracksSheet
