@@ -32,7 +32,7 @@ export default function GroupDetailScreen() {
           <EpisodeRow
             video={item}
             percent={progress.get(item.id)?.percent ?? 0}
-            onPress={() => router.push({ pathname: '/player', params: { videoId: item.id, uri: item.uri, title: item.filename } })}
+            onPress={() => router.push({ pathname: '/player', params: { videoId: item.id, uri: item.uri, title: item.filename, groupKey: key, mode } })}
           />
         )}
         ListEmptyComponent={<Text style={{ color: colors.onSurface }}>Loading…</Text>}
