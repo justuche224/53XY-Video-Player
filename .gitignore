@@ -45,3 +45,6 @@ example
 # local Expo module build artifacts
 modules/*/android/build/
 build-*.apk
+build-*.aab
+
+bundletool-all-1.18.3.jar
