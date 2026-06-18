@@ -1,24 +1,29 @@
 // src/app/player.tsx
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useKeepAwake } from 'expo-keep-awake';
 import { StatusBar } from 'expo-status-bar';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import type { TimeUpdateEventPayload } from 'expo-video';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import type { AppStateStatus } from 'react-native';
 
 import { getProgressMap, upsertProgress } from '@/db/progress-repo';
 import { buildProgress, shouldWrite } from '@/player/progress-writer';
 import { shouldResume } from '@/player/resume';
+import { ControlsOverlay } from '@/components/player/controls-overlay';
+import { TopBar } from '@/components/player/top-bar';
+import { CenterControls } from '@/components/player/center-controls';
+import { BottomBar } from '@/components/player/bottom-bar';
 
 export default function PlayerScreen() {
-  const { videoId, uri } = useLocalSearchParams<{
+  const { videoId, uri, title } = useLocalSearchParams<{
     videoId: string;
     uri: string;
     title: string;
   }>();
+  const router = useRouter();
 
   const db = useSQLiteContext();
   useKeepAwake();
@@ -26,6 +31,12 @@ export default function PlayerScreen() {
   const player = useVideoPlayer({ uri }, (p) => {
     p.timeUpdateEventInterval = 1;
   });
+
+  // ── UI state reflected from player ──────────────────────────────────────
+  const [playing, setPlaying] = useState(false);
+  const [positionSec, setPositionSec] = useState(0);
+  const [durationSec, setDurationSec] = useState(0);
+  const [rate, setRate] = useState(1);
 
   const lastWriteRef = useRef<number>(0);
 
@@ -71,11 +82,16 @@ export default function PlayerScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // timeUpdate subscription: throttled progress writes during playback
+  // timeUpdate subscription: throttled progress writes + position sync
   useEffect(() => {
     const subscription = player.addListener(
       'timeUpdate',
       (payload: TimeUpdateEventPayload) => {
+        setPositionSec(payload.currentTime);
+        if (player.duration) {
+          setDurationSec(player.duration);
+        }
+
         if (!player.playing) return;
         const nowMs = Date.now();
         if (shouldWrite(lastWriteRef.current, nowMs)) {
@@ -97,9 +113,10 @@ export default function PlayerScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Flush on pause
+  // playingChange: flush on pause + sync playing state
   useEffect(() => {
     const subscription = player.addListener('playingChange', (payload) => {
+      setPlaying(payload.isPlaying);
       if (!payload.isPlaying) {
         flushProgress();
       }
@@ -134,6 +151,25 @@ export default function PlayerScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Overlay handlers ────────────────────────────────────────────────────
+  function handleTogglePlay() {
+    if (player.playing) {
+      player.pause();
+    } else {
+      player.play();
+    }
+  }
+
+  function handleSeek(sec: number) {
+    player.currentTime = sec;
+    setPositionSec(sec);
+  }
+
+  function handleCycleRate(newRate: number) {
+    player.playbackRate = newRate;
+    setRate(newRate);
+  }
+
   return (
     <View style={styles.root}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -141,9 +177,26 @@ export default function PlayerScreen() {
       <VideoView
         style={StyleSheet.absoluteFill}
         player={player}
-        nativeControls
+        nativeControls={false}
         contentFit="contain"
       />
+      <ControlsOverlay playing={playing}>
+        <TopBar
+          title={title ?? ''}
+          onBack={() => router.back()}
+        />
+        <CenterControls
+          playing={playing}
+          onToggle={handleTogglePlay}
+        />
+        <BottomBar
+          positionSec={positionSec}
+          durationSec={durationSec}
+          rate={rate}
+          onSeek={handleSeek}
+          onCycleRate={handleCycleRate}
+        />
+      </ControlsOverlay>
     </View>
   );
 }
