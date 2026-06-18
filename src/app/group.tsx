@@ -1,7 +1,7 @@
 // src/app/group.tsx
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Text } from 'react-native';
 
 import { EpisodeRow } from '@/components/episode-row';
@@ -18,7 +18,12 @@ export default function GroupDetailScreen() {
   const { groups } = useGroups(mode === 'folder' ? 'folder' : 'name');
   const [progress, setProgress] = useState<ProgressMap>(new Map());
 
-  useEffect(() => { getProgressMap(db).then(setProgress); }, [db]);
+  // Refetch on focus so progress updates after returning from the player.
+  useFocusEffect(
+    useCallback(() => {
+      getProgressMap(db).then(setProgress);
+    }, [db]),
+  );
 
   const group = useMemo(() => groups.find((g) => g.key === key), [groups, key]);
 
@@ -32,7 +37,7 @@ export default function GroupDetailScreen() {
           <EpisodeRow
             video={item}
             percent={progress.get(item.id)?.percent ?? 0}
-            onPress={() => router.push({ pathname: '/player', params: { videoId: item.id, uri: item.uri, title: item.filename } })}
+            onPress={() => router.push({ pathname: '/player', params: { videoId: item.id, uri: item.uri, title: item.filename, groupKey: key, mode } })}
           />
         )}
         ListEmptyComponent={<Text style={{ color: colors.onSurface }}>Loading…</Text>}

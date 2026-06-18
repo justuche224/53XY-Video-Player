@@ -1,5 +1,5 @@
 // src/app/index.tsx
-import { Link, useRouter } from 'expo-router';
+import { Link, useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
@@ -49,9 +49,13 @@ export default function LibraryScreen() {
     getSetting(db, 'layout').then((v) => v === 'list' && setLayout('list'));
   }, [db]);
 
-  useEffect(() => {
-    if (status === 'ready') getProgressMap(db).then(setProgress);
-  }, [db, status]);
+  // Refetch progress every time the screen regains focus (e.g. returning from
+  // the player), so resume bars update without an app reload.
+  useFocusEffect(
+    useCallback(() => {
+      if (status === 'ready') getProgressMap(db).then(setProgress);
+    }, [db, status]),
+  );
 
   const onMode = useCallback((v: Mode) => { setMode(v); setSetting(db, 'mode', v); }, [db]);
   const onLayout = useCallback((v: Layout) => { setLayout(v); setSetting(db, 'layout', v); }, [db]);
