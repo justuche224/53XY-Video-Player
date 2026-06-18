@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { scanVideos } from '@/media/media-scanner';
 import { deleteVideosByIds, getAllVideos, upsertVideos } from '@/db/videos-repo';
 import { useFilterSettings } from './filter-settings';
-import { applyLengthFilter } from './filter-videos';
+import { applyFilters } from './filter-videos';
 import { groupByFolder, groupByName } from './group-videos';
 import type { Group, LibraryVideo } from './types';
 
@@ -88,7 +88,7 @@ export function useLibrary(mode: 'name' | 'folder'): LibraryState {
   }, [permission, requestPermission, db]);
 
   const groups = useMemo(() => {
-    const visible = applyLengthFilter(videos, filter);
+    const visible = applyFilters(videos, filter);
     return mode === 'name' ? groupByName(visible) : groupByFolder(visible);
   }, [videos, mode, filter]);
 
