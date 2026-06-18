@@ -10,9 +10,12 @@ import { LayoutToggle } from '@/components/layout-toggle';
 import { Screen } from '@/components/screen';
 import { SearchBar } from '@/components/search-bar';
 import { SegmentedTabs } from '@/components/segmented-tabs';
+import { SortButton } from '@/components/sort-button';
+import { SortSheet } from '@/components/sort-sheet';
 import { getProgressMap, type ProgressMap } from '@/db/progress-repo';
 import { getSetting, setSetting } from '@/db/settings-repo';
 import { filterGroups } from '@/library/filter-groups';
+import { sortGroups, SORT_KEYS, type SortDir, type SortKey } from '@/library/sort-groups';
 import { useLibrary } from '@/library/use-library';
 import type { Group } from '@/library/types';
 import { useTheme } from '@/theme/theme-provider';
@@ -41,12 +44,19 @@ export default function LibraryScreen() {
   const [mode, setMode] = useState<Mode>('name');
   const [layout, setLayout] = useState<Layout>('grid');
   const [query, setQuery] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [sortOpen, setSortOpen] = useState(false);
   const [progress, setProgress] = useState<ProgressMap>(new Map());
   const { status, refreshing, groups } = useLibrary(mode);
 
   useEffect(() => {
     getSetting(db, 'mode').then((v) => v === 'folder' && setMode('folder'));
     getSetting(db, 'layout').then((v) => v === 'list' && setLayout('list'));
+    getSetting(db, 'sort.key').then((v) => {
+      if (v && (SORT_KEYS as string[]).includes(v)) setSortKey(v as SortKey);
+    });
+    getSetting(db, 'sort.dir').then((v) => v === 'desc' && setSortDir('desc'));
   }, [db]);
 
   // Refetch progress every time the screen regains focus (e.g. returning from
@@ -60,7 +70,20 @@ export default function LibraryScreen() {
   const onMode = useCallback((v: Mode) => { setMode(v); setSetting(db, 'mode', v); }, [db]);
   const onLayout = useCallback((v: Layout) => { setLayout(v); setSetting(db, 'layout', v); }, [db]);
 
-  const visible = useMemo(() => filterGroups(groups, query), [groups, query]);
+  const onSort = useCallback(
+    (key: SortKey, dir: SortDir) => {
+      setSortKey(key);
+      setSortDir(dir);
+      setSetting(db, 'sort.key', key);
+      setSetting(db, 'sort.dir', dir);
+    },
+    [db],
+  );
+
+  const visible = useMemo(
+    () => sortGroups(filterGroups(groups, query), { key: sortKey, dir: sortDir }),
+    [groups, query, sortKey, sortDir],
+  );
 
   const openGroup = useCallback((group: Group) => {
     if (group.count === 1) {
@@ -89,6 +112,7 @@ export default function LibraryScreen() {
           {refreshing ? <ActivityIndicator size="small" color={colors.primary} /> : null}
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+          <SortButton sortKey={sortKey} sortDir={sortDir} onPress={() => setSortOpen(true)} />
           <LayoutToggle value={layout} onChange={onLayout} />
           <Link href="/settings" style={{ color: colors.primary, fontWeight: '600' }}>Settings</Link>
         </View>
@@ -124,6 +148,13 @@ export default function LibraryScreen() {
           contentContainerStyle={{ paddingBottom: spacing.xl }}
         />
       )}
+      <SortSheet
+        visible={sortOpen}
+        sortKey={sortKey}
+        sortDir={sortDir}
+        onSelect={onSort}
+        onClose={() => setSortOpen(false)}
+      />
     </Screen>
   );
 }
