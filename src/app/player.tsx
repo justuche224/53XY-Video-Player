@@ -28,6 +28,7 @@ import { BottomBar } from '@/components/player/bottom-bar';
 import { ResumeSnackbar } from '@/components/player/resume-snackbar';
 import { TracksSheet } from '@/components/player/tracks-sheet';
 import { PressableScale } from '@/components/pressable-scale';
+import { SystemVolume } from '@/native/system-volume';
 
 // Vertical-swipe sensitivity: a drag of ~(screen height / VERTICAL_GAIN) spans
 // the full 0→1 brightness/volume range.
@@ -63,9 +64,6 @@ export default function PlayerScreen() {
     p.timeUpdateEventInterval = 1;
     // Keep voices natural at >1× speed instead of chipmunk pitch.
     p.preservesPitch = true;
-    // Start at full volume so the swipe range is predictable (the getter
-    // default is unreliable across devices).
-    p.volume = 1;
   });
 
   // ── UI state reflected from player ──────────────────────────────────────
@@ -99,8 +97,6 @@ export default function PlayerScreen() {
   // Saved screen brightness (restored on unmount) and current brightness tracking
   const originalBrightnessRef = useRef<number>(1);
   const brightnessRef = useRef<number>(1);
-  // Current player volume (JS source of truth; player.volume getter is unreliable)
-  const volumeRef = useRef<number>(1);
   // Per-drag axis lock and starting values
   const panRef = useRef<{
     axis: 'horizontal' | 'vertical' | null;
@@ -157,8 +153,6 @@ export default function PlayerScreen() {
     // the first timeUpdate doesn't flush stale values under the new video id.
     lastPositionSecRef.current = 0;
     lastDurationSecRef.current = 0;
-    // New player starts at full volume (set in the player factory above).
-    volumeRef.current = 1;
     let cancelled = false;
     (async () => {
       try {
@@ -365,7 +359,7 @@ export default function PlayerScreen() {
       axis: null,
       half: 'left',
       brightnessStart: brightnessRef.current,
-      volumeStart: volumeRef.current,
+      volumeStart: SystemVolume.getVolume(),
       scrubBaseSec: lastPositionSecRef.current,
     };
   }, [player]);
@@ -398,9 +392,10 @@ export default function PlayerScreen() {
           Brightness.setBrightnessAsync(level).catch(() => {});
           setLevelHud({ kind: 'brightness', level });
         } else {
-          volumeRef.current = level;
-          player.volume = level;
-          setLevelHud({ kind: 'volume', level });
+          // System media volume (Android AudioManager) — returns the actual
+          // step-quantized level so the HUD reflects the true value.
+          const actual = SystemVolume.setVolume(level);
+          setLevelHud({ kind: 'volume', level: actual });
         }
       }
     },
