@@ -1,6 +1,6 @@
 // src/components/player/controls-overlay.tsx
-import { useCallback, useEffect, useRef, type ReactNode } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { useEffect, useRef, type ReactNode } from 'react';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -13,64 +13,53 @@ const ANIM_DURATION_MS = 250;
 
 interface ControlsOverlayProps {
   playing: boolean;
+  /** Single source of truth for visibility, driven by parent. */
+  visible: boolean;
+  /** Called by the auto-hide timer so the parent can update its state. */
+  onAutoHide: () => void;
   children: ReactNode;
 }
 
-export function ControlsOverlay({ playing, children }: ControlsOverlayProps) {
+export function ControlsOverlay({ playing, visible, onAutoHide, children }: ControlsOverlayProps) {
   const insets = useSafeAreaInsets();
-  const opacity = useSharedValue(1);
+  const opacity = useSharedValue(visible ? 1 : 0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const show = useCallback(() => {
-    opacity.value = withTiming(1, { duration: ANIM_DURATION_MS });
-  }, [opacity]);
+  // Animate opacity whenever visible changes — opacity is derived purely from visible.
+  useEffect(() => {
+    opacity.value = withTiming(visible ? 1 : 0, { duration: ANIM_DURATION_MS });
+  }, [visible, opacity]);
 
-  const scheduleHide = useCallback(() => {
-    if (timerRef.current !== null) {
-      clearTimeout(timerRef.current);
-    }
-    timerRef.current = setTimeout(() => {
-      opacity.value = withTiming(0, { duration: ANIM_DURATION_MS });
-    }, HIDE_DELAY_MS);
-  }, [opacity]);
-
-  const cancelHide = useCallback(() => {
+  // Auto-hide timer: runs only when visible AND playing.
+  // Calls onAutoHide() so the parent updates its state (which then drives opacity via above effect).
+  useEffect(() => {
     if (timerRef.current !== null) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
-  }, []);
-
-  // Auto-hide while playing; stay visible while paused
-  useEffect(() => {
-    if (playing) {
-      scheduleHide();
-    } else {
-      cancelHide();
-      show();
+    if (visible && playing) {
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        onAutoHide();
+      }, HIDE_DELAY_MS);
     }
     return () => {
-      cancelHide();
-    };
-  }, [playing, show, scheduleHide, cancelHide]);
-
-  function handleTap() {
-    // Toggle: if fading or hidden, show and (re)schedule; if visible, hide immediately
-    if (opacity.value < 0.5) {
-      show();
-      if (playing) {
-        scheduleHide();
+      if (timerRef.current !== null) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
       }
-    } else {
-      cancelHide();
-      opacity.value = withTiming(0, { duration: ANIM_DURATION_MS });
-    }
-  }
+    };
+  }, [visible, playing, onAutoHide]);
 
   const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
+  // When visible: box-none so only the actual buttons capture and empty space
+  // falls through to the gesture layer. When hidden: none, so the (invisible)
+  // buttons can't swallow taps meant for the gesture layer beneath.
+  const mode = visible ? 'box-none' : 'none';
+
   return (
-    <Pressable style={StyleSheet.absoluteFill} onPress={handleTap}>
+    <View style={StyleSheet.absoluteFill} pointerEvents={mode}>
       <Animated.View
         style={[
           StyleSheet.absoluteFill,
@@ -82,10 +71,11 @@ export function ControlsOverlay({ playing, children }: ControlsOverlayProps) {
             paddingRight: insets.right,
           },
           animatedStyle,
-        ]}>
+        ]}
+        pointerEvents={mode}>
         {children}
       </Animated.View>
-    </Pressable>
+    </View>
   );
 }
 
