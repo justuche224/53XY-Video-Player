@@ -76,14 +76,12 @@ export default function PlayerScreen() {
   const [resumePositionSec, setResumePositionSec] = useState(0);
 
   const lastWriteRef = useRef<number>(0);
-  // Track current videoId for progress writes (updated on prev/next switch)
+  // Tracks the active video id so progress always writes under the current
+  // video. Kept in sync by the resume effect below.
   const currentVideoIdRef = useRef<string>(videoId);
-  // Guard: set to false on unmount so async continuations no-op
-  const mountedRef = useRef<boolean>(true);
 
-  // ── Flush progress (always for the currently active video id) ───────────
-  function flushProgress() {
-    if (!player) return;
+  // ── Flush progress for the currently active video id ────────────────────
+  const flushProgress = useCallback(() => {
     const positionMs = player.currentTime * 1000;
     const durationMs = player.duration ? player.duration * 1000 : null;
     upsertProgress(
@@ -92,50 +90,34 @@ export default function PlayerScreen() {
       buildProgress(positionMs, durationMs, Date.now()),
     ).catch(() => {});
     lastWriteRef.current = Date.now();
-  }
+  }, [player, db]);
 
-  // Set mountedRef to false on unmount so all async continuations no-op
+  // ── Resume + start playback whenever the player is (re)created ──────────
+  // expo-video recreates the player whenever `uri` changes (i.e. on every
+  // prev/next switch), so keying on [player, videoId] re-runs resume against
+  // the new player; the subscription effects below likewise re-bind to it.
   useEffect(() => {
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-
-  // ── Resume + init playback for a given videoId ──────────────────────────
-  async function initPlayback(id: string) {
-    try {
-      const map = await getProgressMap(db);
-      if (!mountedRef.current) return;
-      const saved = map.get(id);
-      if (saved && shouldResume(saved.positionMs, saved.percent)) {
-        player.currentTime = saved.positionMs / 1000;
-        setResumePositionSec(saved.positionMs / 1000);
-        setSnackbarVisible(true);
-      }
-      player.play();
-    } catch {
-      if (!mountedRef.current) return;
-      player.play();
-    }
-  }
-
-  // Mount: init playback for first video
-  useEffect(() => {
+    currentVideoIdRef.current = videoId;
     let cancelled = false;
-
-    async function run() {
-      if (!cancelled) {
-        await initPlayback(videoId);
+    (async () => {
+      try {
+        const map = await getProgressMap(db);
+        if (cancelled) return;
+        const saved = map.get(videoId);
+        if (saved && shouldResume(saved.positionMs, saved.percent)) {
+          player.currentTime = saved.positionMs / 1000;
+          setResumePositionSec(saved.positionMs / 1000);
+          setSnackbarVisible(true);
+        }
+        player.play();
+      } catch {
+        if (!cancelled) player.play();
       }
-    }
-
-    void run();
-
+    })();
     return () => {
       cancelled = true;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [player, videoId, db]);
 
   // timeUpdate subscription: throttled progress writes + position sync
   useEffect(() => {
@@ -165,8 +147,7 @@ export default function PlayerScreen() {
     return () => {
       subscription.remove();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [player, db]);
 
   // playingChange: flush on pause + sync playing state
   useEffect(() => {
@@ -180,8 +161,7 @@ export default function PlayerScreen() {
     return () => {
       subscription.remove();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [player, flushProgress]);
 
   // Flush on AppState → background
   useEffect(() => {
@@ -195,16 +175,14 @@ export default function PlayerScreen() {
     return () => {
       sub.remove();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [flushProgress]);
 
   // Flush on unmount
   useEffect(() => {
     return () => {
       flushProgress();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [flushProgress]);
 
   // ── Track availability events ────────────────────────────────────────────
   useEffect(() => {
@@ -227,8 +205,7 @@ export default function PlayerScreen() {
       sub3.remove();
       sub4.remove();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [player]);
 
   // ── Orientation lifecycle ─────────────────────────────────────────────────
   useFocusEffect(
@@ -275,14 +252,11 @@ export default function PlayerScreen() {
   }
 
   // ── Next / Prev handlers ─────────────────────────────────────────────────
-  async function handleNavigateTo(target: { id: string; uri: string; filename: string }) {
-    // 1. Flush progress for current video before switching
+  function handleNavigateTo(target: { id: string; uri: string; filename: string }) {
+    // Flush the current video's progress before switching.
     flushProgress();
 
-    // 2. Update the tracked video id
-    currentVideoIdRef.current = target.id;
-
-    // 3. Reset UI state for new video
+    // Reset UI state; the new video's state arrives via the re-bound listeners.
     setPositionSec(0);
     setDurationSec(0);
     setSnackbarVisible(false);
@@ -291,14 +265,9 @@ export default function PlayerScreen() {
     setActiveSubtitle(null);
     setActiveAudio(null);
 
-    // 4. Replace the source
-    player.replace({ uri: target.uri });
-
-    // 5. Update route params so back-navigation/title is correct
+    // Changing `uri` recreates the player (expo-video); the [player, videoId]
+    // effect then runs resume + play and the subscription effects re-bind.
     router.setParams({ videoId: target.id, uri: target.uri, title: target.filename });
-
-    // 6. Run resume logic for the new video
-    await initPlayback(target.id);
   }
 
   // ── Top-bar right slot: rotate + tracks buttons ──────────────────────────
