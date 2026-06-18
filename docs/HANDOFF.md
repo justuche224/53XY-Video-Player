@@ -2,7 +2,7 @@
 
 **Read this first when resuming.** It's the single entry point to continue the project in a fresh chat.
 
-_Last updated: after the first v2 feature — the **library length filter** — was built, reviewed, merged to `master`, and device-verified on the SM-S901N._
+_Last updated: after the v2 **advanced filters** (length + name-pattern + folder ignore) were all built, reviewed, merged to `master`, and device-verified on the SM-S901N._
 
 ---
 
@@ -11,7 +11,8 @@ _Last updated: after the first v2 feature — the **library length filter** — 
 - **v1 is COMPLETE** — Foundation, the full Library (data + grouping + adaptive UI + polish), and the whole custom **Player (Plan 3: 3a core + 3b gestures)** are all built, merged to `master`, and device-verified on the user's SM-S901N. The original v1 vision (Foundation → Library → Player) is done.
 - **Player capabilities:** `expo-video` playback, custom control overlay, auto-resume + snackbar, progress writes, orientation, keep-awake, next/prev in group, subtitle/audio tracks, pitch-preserved speed; gestures — long-press→2×, 3-zone double-tap (back / play-pause / forward), swipe brightness (left) / system volume (right), horizontal drag-scrub, and lock.
 - **v2 in progress — advanced filters:** the **length filter** (first slice) is merged: persistent min/max duration ignore rules, set in Settings (preset chips + custom number/unit dialog + live "Hiding N videos" footer), stored in SQLite settings, exposed via `FilterSettingsProvider`/`useFilterSettings`, applied before grouping in **both** `useLibrary` and `useGroups` (so library, folders, search, group detail, and player prev/next all respect it). Semantics: hide strictly `< min` / `> max`; videos exactly at a threshold or with unknown duration stay. Pure logic (`src/library/filter-videos.ts`) is Jest-tested (10 tests); device-verified. Spec/plan: [superpowers/specs/2026-06-18-library-length-filter-design.md](./superpowers/specs/2026-06-18-library-length-filter-design.md), [superpowers/plans/2026-06-18-library-length-filter.md](./superpowers/plans/2026-06-18-library-length-filter.md).
-- **Next v2 candidates** (nothing in flight): remaining advanced filters (**ignore by name pattern**, **folder ignore** — both explicitly deferred from the length-filter slice), libVLC fallback for exotic codecs, playlists, FlashList for thumbnail fling perf, and the two deferred player refinements below.
+- **Name-pattern + folder ignore filters merged** (second v2 slice): ignore videos by filename pattern (case-insensitive **substring** or anchored **glob** `*`/`?`) and ignore whole **folders**. Filter model extended to `LibraryFilter`; patterns/folders persisted as JSON arrays in SQLite settings; composed `applyFilters` (length+name+folder) used in both `useLibrary`/`useGroups`. Settings UI: removable pattern list + add field (`NamePatternList`), per-folder switches sourced from the library's folders (`FolderIgnoreList`), shared "Hiding N videos" footer. Pure matchers (`matchesNamePattern`/`applyNameFilter`/`applyFolderFilter`/`applyFilters`) Jest-tested. Spec/plan: [superpowers/specs/2026-06-18-library-name-folder-filters-design.md](./superpowers/specs/2026-06-18-library-name-folder-filters-design.md), [superpowers/plans/2026-06-18-library-name-folder-filters.md](./superpowers/plans/2026-06-18-library-name-folder-filters.md).
+- **Next v2 candidates** (nothing in flight): libVLC fallback for exotic codecs, playlists, FlashList for thumbnail fling perf, and the two deferred player refinements below.
 - **NATIVE NOTE:** the player uses a **local Expo module** (`modules/system-volume`, Kotlin AudioManager `STREAM_MUSIC`) for volume — `player.volume` (ExoPlayer) corrupts audio on-device, so volume goes through the system stream. Changes touching it need `npx expo run:android` (rebuild), not Fast Refresh. Local modules autolink from `modules/`.
 - **Deferred player refinements (optional):** (1) double-tap-seek is gated to **controls-hidden** as the simpler fix for the edge-double-tap-toggles-a-control bug; the proper fix is to compose the chrome buttons into one RNGH gesture arena (`GestureButton` + `requireExternalGestureToFail`, via context) so double-tap can work with controls showing — see the 3b-ii-b spec. (2) resume seek currently fires immediately on a fresh/`replace`d player; gate it on the player's ready/status event.
 
@@ -31,6 +32,7 @@ The full vision is in [00-vision-and-context.md](./00-vision-and-context.md) (th
 | Plan 3b-ii-b — Lock + edge-tap fix | Lock control (tap→reveal→tap unlock); double-tap gated to controls-hidden | ✅ merged, device-verified |
 | **v1 complete** | Foundation + Library + Player all shipped | 🎉 |
 | v2 — Length filter | Persistent min/max duration ignore rules; Settings UI (chips + custom dialog + hidden-count footer); applied in useLibrary + useGroups | ✅ merged, device-verified |
+| v2 — Name + folder filters | Ignore by filename pattern (substring/glob) + ignore folders; LibraryFilter model, JSON-array persistence, composed applyFilters; Settings pattern list + folder switches | ✅ merged, device-verified |
 
 Plans live in [plans/](./plans/) ([roadmap](./plans/README.md)); the 3a/3b specs+plans are under [superpowers/](./superpowers/). Tests: **82 passing**, `npx tsc --noEmit` clean.
 
