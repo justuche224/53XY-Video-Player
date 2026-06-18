@@ -239,12 +239,14 @@ export default function PlayerScreen() {
 
   // ── Brightness save on mount / restore on unmount ────────────────────────
   useEffect(() => {
-    Brightness.getBrightnessAsync().then((b) => {
-      if (b >= 0) {
-        originalBrightnessRef.current = b;
-        brightnessRef.current = b;
-      }
-    });
+    Brightness.getBrightnessAsync()
+      .then((b) => {
+        if (b >= 0) {
+          originalBrightnessRef.current = b;
+          brightnessRef.current = b;
+        }
+      })
+      .catch(() => {});
     return () => {
       Brightness.setBrightnessAsync(originalBrightnessRef.current).catch(() => {});
     };
