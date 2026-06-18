@@ -131,9 +131,17 @@ export default function LibraryScreen() {
           numColumns={layout === 'grid' ? 2 : 1}
           renderItem={renderItem}
           ListEmptyComponent={
-            <Text style={{ color: colors.onSurfaceVariant ?? colors.onSurface }}>
-              {refreshing ? 'Scanning…' : status === 'ready' ? 'No videos found.' : 'Loading…'}
-            </Text>
+            <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 2 }}>
+              <Ionicons name={refreshing ? 'sync-outline' : 'folder-open-outline'} size={64} color={colors.surfaceVariant ?? '#444'} />
+              <Text style={{ color: colors.onSurface, fontSize: 18, fontWeight: '600', marginTop: spacing.md }}>
+                {refreshing ? 'Scanning...' : status === 'ready' ? 'No videos found' : 'Loading...'}
+              </Text>
+              {status === 'ready' && !refreshing && (
+                <Text style={{ color: colors.onSurfaceVariant ?? '#888', marginTop: 8 }}>
+                  Try adjusting your filters or search query.
+                </Text>
+              )}
+            </View>
           }
           contentContainerStyle={{ paddingBottom: spacing.xl }}
           bounces={true}

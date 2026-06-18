@@ -3,6 +3,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useKeepAwake } from 'expo-keep-awake';
 import * as Brightness from 'expo-brightness';
+import * as Haptics from 'expo-haptics';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { StatusBar } from 'expo-status-bar';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -359,6 +360,7 @@ export default function PlayerScreen() {
     boostingRef.current = true;
     player.playbackRate = 2;
     setBoostActive(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, [player]);
 
   const handleBoostEnd = useCallback(() => {
@@ -366,6 +368,7 @@ export default function PlayerScreen() {
     boostingRef.current = false;
     player.playbackRate = boostPrevRateRef.current;
     setBoostActive(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [player]);
 
   const handleAutoHide = useCallback(() => setControlsVisible(false), []);

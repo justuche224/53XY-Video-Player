@@ -2,8 +2,9 @@
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo, useState } from 'react';
-import { Text } from 'react-native';
+import { Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
+import { Ionicons } from '@expo/vector-icons';
 
 import { EpisodeRow } from '@/components/episode-row';
 import { Screen } from '@/components/screen';
@@ -49,7 +50,14 @@ export default function GroupDetailScreen() {
             onPress={() => router.push({ pathname: '/player', params: { videoId: item.id, uri: item.uri, title: item.filename, groupKey: key, mode } })}
           />
         )}
-        ListEmptyComponent={<Text style={{ color: colors.onSurface }}>Loading…</Text>}
+        ListEmptyComponent={
+          <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 2 }}>
+            <Ionicons name="film-outline" size={64} color={colors.surfaceVariant ?? '#444'} />
+            <Text style={{ color: colors.onSurface, fontSize: 18, fontWeight: '600', marginTop: spacing.md }}>
+              No videos in this group
+            </Text>
+          </View>
+        }
         contentContainerStyle={{ paddingBottom: spacing.xl }}
         bounces={true}
         overScrollMode="always"

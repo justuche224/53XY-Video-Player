@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { CustomLengthDialog } from '@/components/custom-length-dialog';
 import { FilterChips, type LengthPreset } from '@/components/filter-chips';
@@ -80,16 +81,28 @@ export default function SettingsScreen() {
         <View style={{ gap: spacing.md }}>
           <Text style={[styles.section, { color: colors.onSurface }]}>Library filters</Text>
 
-          <Text style={[styles.label, { color: colors.onSurfaceVariant ?? '#aaa' }]}>Hide videos shorter than</Text>
+          <View style={styles.labelRow}>
+            <Ionicons name="time-outline" size={18} color={colors.onSurfaceVariant ?? '#aaa'} />
+            <Text style={[styles.label, { color: colors.onSurfaceVariant ?? '#aaa' }]}>Hide videos shorter than</Text>
+          </View>
           <FilterChips presets={MIN_PRESETS} value={filter.minDurationMs} onSelect={setMin} onCustom={() => setDialog('min')} />
 
-          <Text style={[styles.label, { color: colors.onSurfaceVariant ?? '#aaa' }]}>Hide videos longer than</Text>
+          <View style={styles.labelRow}>
+            <Ionicons name="hourglass-outline" size={18} color={colors.onSurfaceVariant ?? '#aaa'} />
+            <Text style={[styles.label, { color: colors.onSurfaceVariant ?? '#aaa' }]}>Hide videos longer than</Text>
+          </View>
           <FilterChips presets={MAX_PRESETS} value={filter.maxDurationMs} onSelect={setMax} onCustom={() => setDialog('max')} />
 
-          <Text style={[styles.label, { color: colors.onSurfaceVariant ?? '#aaa' }]}>Ignore videos named</Text>
+          <View style={styles.labelRow}>
+            <Ionicons name="text-outline" size={18} color={colors.onSurfaceVariant ?? '#aaa'} />
+            <Text style={[styles.label, { color: colors.onSurfaceVariant ?? '#aaa' }]}>Ignore videos named</Text>
+          </View>
           <NamePatternList patterns={filter.namePatterns} onAdd={addNamePattern} onRemove={removeNamePattern} />
 
-          <Text style={[styles.label, { color: colors.onSurfaceVariant ?? '#aaa' }]}>Hidden folders</Text>
+          <View style={styles.labelRow}>
+            <Ionicons name="folder-outline" size={18} color={colors.onSurfaceVariant ?? '#aaa'} />
+            <Text style={[styles.label, { color: colors.onSurfaceVariant ?? '#aaa' }]}>Hidden folders</Text>
+          </View>
           <FolderIgnoreList folders={folderEntries} ignoredFolders={filter.ignoredFolders} onToggle={toggleFolder} />
 
           <Text style={[styles.footer, { color: colors.onSurfaceVariant ?? '#888' }]}>
@@ -114,6 +127,7 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   section: { fontSize: 20, fontWeight: '700' },
-  label: { fontSize: 14, fontWeight: '600', marginTop: 8 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 8 },
+  label: { fontSize: 14, fontWeight: '600' },
   footer: { fontSize: 13, marginTop: 8 },
 });

@@ -1,5 +1,5 @@
 // src/components/search-bar.tsx
-import { StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/theme-provider';
 
@@ -15,6 +15,11 @@ export function SearchBar({ value, onChangeText }: { value: string; onChangeText
         placeholderTextColor={colors.onSurfaceVariant ?? '#888'}
         style={[styles.input, { color: colors.onSurface }]}
       />
+      {value.length > 0 ? (
+        <Pressable onPress={() => onChangeText('')} hitSlop={10}>
+          <Ionicons name="close-circle" size={18} color={colors.onSurfaceVariant ?? '#888'} />
+        </Pressable>
+      ) : null}
     </View>
   );
 }

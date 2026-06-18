@@ -9,10 +9,10 @@ import type { Group } from '@/library/types';
 import { useTheme } from '@/theme/theme-provider';
 
 export const GroupCard = memo(function GroupCard({ group, percent, onPress }: { group: Group; percent: number; onPress: () => void }) {
-  const { colors, spacing } = useTheme();
+  const { colors, spacing, radius } = useTheme();
   const totalMs = group.items.reduce((acc, v) => acc + (v.durationMs ?? 0), 0);
   return (
-    <PressableScale onPress={onPress} style={{ flex: 1, margin: spacing.sm }}>
+    <PressableScale onPress={onPress} style={{ flex: 1, margin: spacing.sm, borderRadius: radius.md, overflow: 'hidden' }}>
       <View>
         <ThumbnailCollage videos={group.items} style={styles.thumb} />
         <DurationBadge ms={totalMs} />

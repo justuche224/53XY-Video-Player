@@ -10,11 +10,11 @@ import type { LibraryVideo } from '@/library/types';
 import { useTheme } from '@/theme/theme-provider';
 
 export function EpisodeRow({ video, percent, onPress }: { video: LibraryVideo; percent: number; onPress: () => void }) {
-  const { colors, spacing } = useTheme();
+  const { colors, spacing, radius } = useTheme();
   const { season, episode } = parseEpisode(video.filename);
   const label = formatEpisodeLabel(season, episode);
   return (
-    <PressableScale onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, gap: spacing.md }}>
+    <PressableScale onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, gap: spacing.md, borderRadius: radius.md, overflow: 'hidden' }}>
       <View>
         <VideoThumbnail video={video} style={styles.thumb} />
         <DurationBadge ms={video.durationMs} />
