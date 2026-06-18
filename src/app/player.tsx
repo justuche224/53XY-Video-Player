@@ -82,6 +82,9 @@ export default function PlayerScreen() {
 
   // ── Controls visibility (lifted from ControlsOverlay) ───────────────────
   const [controlsVisible, setControlsVisible] = useState(true);
+  // Ref mirror so gesture callbacks (closed over at creation) always read the
+  // latest value without needing to be recreated on every visibility change.
+  const controlsVisibleRef = useRef(false);
 
   // ── Lock state ───────────────────────────────────────────────────────────
   const [locked, setLocked] = useState(false);
@@ -298,6 +301,12 @@ export default function PlayerScreen() {
     }, []),
   );
 
+  // Keep the ref in sync so gesture callbacks read current visibility without
+  // needing to be recreated on every toggle.
+  useEffect(() => {
+    controlsVisibleRef.current = controlsVisible;
+  }, [controlsVisible]);
+
   // ── Overlay handlers ────────────────────────────────────────────────────
   function handleTogglePlay() {
     if (player.playing) {
@@ -324,6 +333,9 @@ export default function PlayerScreen() {
   }, []);
 
   const handleDoubleTap = useCallback((x: number, w: number) => {
+    // Gate: if controls are visible the user is interacting with the chrome,
+    // so ignore double-taps to prevent edge taps from accidentally toggling a control.
+    if (controlsVisibleRef.current) return;
     const zone = tapZone(x, w);
     if (zone === 'center') {
       // Center third toggles play/pause; flash the action just taken.
