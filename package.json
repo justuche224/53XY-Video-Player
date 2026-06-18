@@ -5,6 +5,7 @@
   "dependencies": {
     "@expo/ui": "~56.0.18",
     "@pchmn/expo-material3-theme": "^1.4.0",
+    "@shopify/flash-list": "2.0.2",
     "expo": "~56.0.12",
     "expo-brightness": "~56.0.5",
     "expo-constants": "~56.0.18",
