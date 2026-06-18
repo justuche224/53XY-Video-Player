@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { InteractionManager, View, type StyleProp, type ViewStyle } from 'react-native';
+import { View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { getOrCreateThumbnail } from '@/media/thumbnails';
 import type { LibraryVideo } from '@/library/types';
@@ -15,16 +15,18 @@ export function VideoThumbnail({ video, style }: { video: LibraryVideo; style?: 
   useEffect(() => {
     if (uri) return;
     let cancelled = false;
-    // Defer native frame extraction until scrolling/animations settle so it
-    // never competes with the scroll thread.
-    const task = InteractionManager.runAfterInteractions(() => {
+    // Schedule native frame extraction only when the JS thread is idle, so it
+    // never competes with active scrolling. If the row scrolls out of the
+    // window and unmounts before idle fires, cancelIdleCallback drops the work
+    // entirely — so a fast flick never piles up generations for passed rows.
+    const handle = requestIdleCallback(() => {
       getOrCreateThumbnail(db, video).then((u) => {
         if (!cancelled && u) setUri(u);
       });
     });
     return () => {
       cancelled = true;
-      task.cancel();
+      cancelIdleCallback(handle);
     };
   }, [db, video, uri]);
 
