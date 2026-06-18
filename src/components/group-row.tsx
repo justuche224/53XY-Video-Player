@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { PressableScale } from './pressable-scale';
 import { ProgressBar } from './progress-bar';
-import { VideoThumbnail } from './video-thumbnail';
+import { ThumbnailCollage } from './thumbnail-collage';
 import type { Group } from '@/library/types';
 import { useTheme } from '@/theme/theme-provider';
 
@@ -11,7 +11,7 @@ export const GroupRow = memo(function GroupRow({ group, percent, onPress }: { gr
   const { colors, spacing } = useTheme();
   return (
     <PressableScale onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, gap: spacing.md }}>
-      <VideoThumbnail video={group.items[0]} style={styles.thumb} />
+      <ThumbnailCollage videos={group.items} style={styles.thumb} />
       <View style={{ flex: 1 }}>
         <Text numberOfLines={1} style={[styles.title, { color: colors.onSurface }]}>{group.title}</Text>
         <Text style={{ color: colors.onSurfaceVariant ?? colors.onSurface, fontSize: 12, marginBottom: 4 }}>

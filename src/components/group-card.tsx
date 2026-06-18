@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { PressableScale } from './pressable-scale';
 import { ProgressBar } from './progress-bar';
-import { VideoThumbnail } from './video-thumbnail';
+import { ThumbnailCollage } from './thumbnail-collage';
 import type { Group } from '@/library/types';
 import { useTheme } from '@/theme/theme-provider';
 
@@ -11,7 +11,7 @@ export const GroupCard = memo(function GroupCard({ group, percent, onPress }: { 
   const { colors, spacing } = useTheme();
   return (
     <PressableScale onPress={onPress} style={{ flex: 1, margin: spacing.sm }}>
-      <VideoThumbnail video={group.items[0]} style={styles.thumb} />
+      <ThumbnailCollage videos={group.items} style={styles.thumb} />
       <View style={{ marginTop: spacing.sm }}>
         <ProgressBar percent={percent} />
         <Text numberOfLines={1} style={[styles.title, { color: colors.onSurface, marginTop: spacing.xs }]}>
