@@ -51,6 +51,8 @@ export default function PlayerScreen() {
   // ── Video player ─────────────────────────────────────────────────────────
   const player = useVideoPlayer({ uri }, (p) => {
     p.timeUpdateEventInterval = 1;
+    // Keep voices natural at >1× speed instead of chipmunk pitch.
+    p.preservesPitch = true;
   });
 
   // ── UI state reflected from player ──────────────────────────────────────
