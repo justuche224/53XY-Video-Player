@@ -84,7 +84,7 @@ export default function PlayerScreen() {
   const [controlsVisible, setControlsVisible] = useState(true);
   // Ref mirror so gesture callbacks (closed over at creation) always read the
   // latest value without needing to be recreated on every visibility change.
-  const controlsVisibleRef = useRef(false);
+  const controlsVisibleRef = useRef(true);
 
   // ── Lock state ───────────────────────────────────────────────────────────
   const [locked, setLocked] = useState(false);
