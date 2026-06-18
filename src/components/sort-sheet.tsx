@@ -1,4 +1,4 @@
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text } from 'react-native';
 
 import { DEFAULT_DIR, SORT_KEYS, SORT_LABELS, type SortDir, type SortKey } from '@/library/sort-groups';
 import { useTheme } from '@/theme/theme-provider';
