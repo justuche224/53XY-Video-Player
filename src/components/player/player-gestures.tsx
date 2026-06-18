@@ -12,6 +12,9 @@ interface PlayerGesturesProps {
   onDoubleTap: (x: number, width: number) => void;
   onBoostStart: () => void;
   onBoostEnd: () => void;
+  onPanStart: () => void;
+  onPanMove: (x: number, translationX: number, translationY: number, width: number, height: number) => void;
+  onPanEnd: () => void;
   children?: ReactNode;
 }
 
@@ -20,10 +23,14 @@ export function PlayerGestures({
   onDoubleTap,
   onBoostStart,
   onBoostEnd,
+  onPanStart,
+  onPanMove,
+  onPanEnd,
   children,
 }: PlayerGesturesProps) {
-  // Full-screen width, worklet-accessible, for left/center/right zone decisions.
+  // Full-screen dimensions, worklet-accessible.
   const width = useSharedValue(0);
+  const height = useSharedValue(0);
 
   const composed = useMemo(() => {
     // No maxDuration cap — a slightly-long press should still count as a tap
@@ -53,8 +60,22 @@ export function PlayerGestures({
         scheduleOnRN(onBoostEnd);
       });
 
-    return Gesture.Race(longPress, Gesture.Exclusive(doubleTap, singleTap));
-  }, [onToggleControls, onDoubleTap, onBoostStart, onBoostEnd]);
+    const pan = Gesture.Pan()
+      .onStart(() => {
+        'worklet';
+        scheduleOnRN(onPanStart);
+      })
+      .onUpdate((e) => {
+        'worklet';
+        scheduleOnRN(onPanMove, e.x, e.translationX, e.translationY, width.value, height.value);
+      })
+      .onEnd(() => {
+        'worklet';
+        scheduleOnRN(onPanEnd);
+      });
+
+    return Gesture.Race(pan, longPress, Gesture.Exclusive(doubleTap, singleTap));
+  }, [onToggleControls, onDoubleTap, onBoostStart, onBoostEnd, onPanStart, onPanMove, onPanEnd]);
 
   return (
     <GestureDetector gesture={composed}>
@@ -62,6 +83,7 @@ export function PlayerGestures({
         style={StyleSheet.absoluteFill}
         onLayout={(ev) => {
           width.value = ev.nativeEvent.layout.width;
+          height.value = ev.nativeEvent.layout.height;
         }}>
         {children}
       </View>
