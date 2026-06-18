@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
+import { InteractionManager, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { getOrCreateThumbnail } from '@/media/thumbnails';
 import type { LibraryVideo } from '@/library/types';
@@ -13,14 +13,18 @@ export function VideoThumbnail({ video, style }: { video: LibraryVideo; style?: 
   const db = useSQLiteContext();
 
   useEffect(() => {
+    if (uri) return;
     let cancelled = false;
-    if (!uri) {
+    // Defer native frame extraction until scrolling/animations settle so it
+    // never competes with the scroll thread.
+    const task = InteractionManager.runAfterInteractions(() => {
       getOrCreateThumbnail(db, video).then((u) => {
         if (!cancelled && u) setUri(u);
       });
-    }
+    });
     return () => {
       cancelled = true;
+      task.cancel();
     };
   }, [db, video, uri]);
 

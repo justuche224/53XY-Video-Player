@@ -14,7 +14,7 @@ export async function getOrCreateThumbnail(
   if (video.thumbUri) return video.thumbUri;
   return limit(async () => {
     try {
-      const { uri } = await getThumbnailAsync(video.uri, { time: 3000, quality: 0.7 });
+      const { uri } = await getThumbnailAsync(video.uri, { time: 1000, quality: 0.5 });
       await setThumbUri(db, video.id, uri);
       return uri;
     } catch {

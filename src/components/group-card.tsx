@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { PressableScale } from './pressable-scale';
@@ -6,7 +7,7 @@ import { VideoThumbnail } from './video-thumbnail';
 import type { Group } from '@/library/types';
 import { useTheme } from '@/theme/theme-provider';
 
-export function GroupCard({ group, percent, onPress }: { group: Group; percent: number; onPress: () => void }) {
+export const GroupCard = memo(function GroupCard({ group, percent, onPress }: { group: Group; percent: number; onPress: () => void }) {
   const { colors, spacing } = useTheme();
   return (
     <PressableScale onPress={onPress} style={{ flex: 1, margin: spacing.sm }}>
@@ -22,7 +23,7 @@ export function GroupCard({ group, percent, onPress }: { group: Group; percent: 
       </View>
     </PressableScale>
   );
-}
+});
 
 const styles = StyleSheet.create({
   thumb: { width: '100%', aspectRatio: 16 / 10 },

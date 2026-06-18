@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { PressableScale } from './pressable-scale';
@@ -6,7 +7,7 @@ import { VideoThumbnail } from './video-thumbnail';
 import type { Group } from '@/library/types';
 import { useTheme } from '@/theme/theme-provider';
 
-export function GroupRow({ group, percent, onPress }: { group: Group; percent: number; onPress: () => void }) {
+export const GroupRow = memo(function GroupRow({ group, percent, onPress }: { group: Group; percent: number; onPress: () => void }) {
   const { colors, spacing } = useTheme();
   return (
     <PressableScale onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, gap: spacing.md }}>
@@ -20,7 +21,7 @@ export function GroupRow({ group, percent, onPress }: { group: Group; percent: n
       </View>
     </PressableScale>
   );
-}
+});
 
 const styles = StyleSheet.create({
   thumb: { width: 96, height: 60 },

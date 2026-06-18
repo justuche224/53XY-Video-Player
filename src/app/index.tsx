@@ -20,6 +20,10 @@ import { useTheme } from '@/theme/theme-provider';
 type Mode = 'name' | 'folder';
 type Layout = 'grid' | 'list';
 
+// List rows are fixed height (60px thumb + 8px vertical padding each side),
+// so getItemLayout can skip measurement — the biggest list-scroll win.
+const LIST_ROW_HEIGHT = 76;
+
 function groupPercent(group: Group, progress: ProgressMap): number {
   // Show the most-recently-watched item's progress on the group.
   let best = 0;
@@ -63,6 +67,16 @@ export default function LibraryScreen() {
     }
   }, [router, mode]);
 
+  const renderItem = useCallback(
+    ({ item }: { item: Group }) =>
+      layout === 'grid' ? (
+        <GroupCard group={item} percent={groupPercent(item, progress)} onPress={() => openGroup(item)} />
+      ) : (
+        <GroupRow group={item} percent={groupPercent(item, progress)} onPress={() => openGroup(item)} />
+      ),
+    [layout, progress, openGroup],
+  );
+
   return (
     <Screen style={{ padding: spacing.lg }}>
       <View style={styles.header}>
@@ -84,12 +98,16 @@ export default function LibraryScreen() {
           data={visible}
           keyExtractor={(g) => g.key}
           numColumns={layout === 'grid' ? 2 : 1}
-          renderItem={({ item }) =>
-            layout === 'grid' ? (
-              <GroupCard group={item} percent={groupPercent(item, progress)} onPress={() => openGroup(item)} />
-            ) : (
-              <GroupRow group={item} percent={groupPercent(item, progress)} onPress={() => openGroup(item)} />
-            )
+          renderItem={renderItem}
+          initialNumToRender={layout === 'grid' ? 8 : 10}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+          updateCellsBatchingPeriod={50}
+          removeClippedSubviews
+          getItemLayout={
+            layout === 'list'
+              ? (_, index) => ({ length: LIST_ROW_HEIGHT, offset: LIST_ROW_HEIGHT * index, index })
+              : undefined
           }
           ListEmptyComponent={
             <Text style={{ color: colors.onSurfaceVariant ?? colors.onSurface }}>
