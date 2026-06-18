@@ -2,7 +2,8 @@
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, Text } from 'react-native';
+import { Text } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 
 import { EpisodeRow } from '@/components/episode-row';
 import { Screen } from '@/components/screen';
@@ -30,7 +31,7 @@ export default function GroupDetailScreen() {
   return (
     <Screen style={{ padding: spacing.lg }}>
       <Stack.Screen options={{ headerShown: true, title: group?.title ?? 'Group' }} />
-      <FlatList
+      <FlashList
         data={group?.items ?? []}
         keyExtractor={(v) => v.id}
         renderItem={({ item }) => (

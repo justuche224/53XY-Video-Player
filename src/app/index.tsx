@@ -2,7 +2,8 @@
 import { Link, useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 
 import { GroupCard } from '@/components/group-card';
 import { GroupRow } from '@/components/group-row';
@@ -22,10 +23,6 @@ import { useTheme } from '@/theme/theme-provider';
 
 type Mode = 'name' | 'folder';
 type Layout = 'grid' | 'list';
-
-// List rows are fixed height (60px thumb + 8px vertical padding each side),
-// so getItemLayout can skip measurement — the biggest list-scroll win.
-const LIST_ROW_HEIGHT = 76;
 
 function groupPercent(group: Group, progress: ProgressMap): number {
   // Show the most-recently-watched item's progress on the group.
@@ -124,22 +121,12 @@ export default function LibraryScreen() {
       {status === 'denied' ? (
         <Text style={{ color: colors.onSurface }}>Media permission denied. Enable it in system settings.</Text>
       ) : (
-        <FlatList
+        <FlashList
           key={layout}
           data={visible}
           keyExtractor={(g) => g.key}
           numColumns={layout === 'grid' ? 2 : 1}
           renderItem={renderItem}
-          initialNumToRender={layout === 'grid' ? 8 : 10}
-          maxToRenderPerBatch={8}
-          windowSize={5}
-          updateCellsBatchingPeriod={50}
-          removeClippedSubviews
-          getItemLayout={
-            layout === 'list'
-              ? (_, index) => ({ length: LIST_ROW_HEIGHT, offset: LIST_ROW_HEIGHT * index, index })
-              : undefined
-          }
           ListEmptyComponent={
             <Text style={{ color: colors.onSurfaceVariant ?? colors.onSurface }}>
               {refreshing ? 'Scanning…' : status === 'ready' ? 'No videos found.' : 'Loading…'}
