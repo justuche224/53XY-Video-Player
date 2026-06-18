@@ -5,6 +5,11 @@ export function seekTarget(currentSec: number, deltaSec: number, durationSec: nu
   return Math.min(durationSec, lower);
 }
 
-export function tapSide(x: number, width: number): 'left' | 'right' {
-  return x < width / 2 ? 'left' : 'right';
+export type TapZone = 'left' | 'center' | 'right';
+
+/** Splits the width into equal thirds: left | center | right. */
+export function tapZone(x: number, width: number): TapZone {
+  if (x < width / 3) return 'left';
+  if (x >= (2 * width) / 3) return 'right';
+  return 'center';
 }

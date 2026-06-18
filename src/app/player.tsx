@@ -14,7 +14,7 @@ import { getProgressMap, upsertProgress } from '@/db/progress-repo';
 import { buildProgress, shouldWrite } from '@/player/progress-writer';
 import { shouldResume } from '@/player/resume';
 import { neighbors } from '@/player/playlist';
-import { seekTarget, tapSide } from '@/player/seek';
+import { seekTarget, tapZone } from '@/player/seek';
 import { useGroups } from '@/library/use-groups';
 import { ControlsOverlay } from '@/components/player/controls-overlay';
 import { PlayerGestures } from '@/components/player/player-gestures';
@@ -76,7 +76,11 @@ export default function PlayerScreen() {
 
   // ── Gesture indicator state ──────────────────────────────────────────────
   const [boostActive, setBoostActive] = useState(false);
-  const [seekFlash, setSeekFlash] = useState<{ side: 'left' | 'right'; nonce: number } | null>(null);
+  const [seekFlash, setSeekFlash] = useState<
+    | { kind: 'left' | 'right'; nonce: number }
+    | { kind: 'center'; glyph: '▶' | '⏸'; nonce: number }
+    | null
+  >(null);
 
 
   // Saved playback rate before a boost, so we can restore it on release
@@ -275,14 +279,22 @@ export default function PlayerScreen() {
     setControlsVisible((v) => !v);
   }, []);
 
-  const handleSeekTap = useCallback((x: number, w: number) => {
-    const side = tapSide(x, w);
-    const delta = side === 'left' ? -10 : 10;
+  const handleDoubleTap = useCallback((x: number, w: number) => {
+    const zone = tapZone(x, w);
+    if (zone === 'center') {
+      // Center third toggles play/pause; flash the action just taken.
+      const glyph = player.playing ? '⏸' : '▶';
+      if (player.playing) player.pause();
+      else player.play();
+      setSeekFlash((prev) => ({ kind: 'center', glyph, nonce: (prev?.nonce ?? 0) + 1 }));
+      return;
+    }
+    const delta = zone === 'left' ? -10 : 10;
     const target = seekTarget(lastPositionSecRef.current, delta, lastDurationSecRef.current);
     player.currentTime = target;
     setPositionSec(target);
     lastPositionSecRef.current = target;
-    setSeekFlash((prev) => ({ side, nonce: (prev?.nonce ?? 0) + 1 }));
+    setSeekFlash((prev) => ({ kind: zone, nonce: (prev?.nonce ?? 0) + 1 }));
   }, [player]);
 
   const handleBoostStart = useCallback(() => {
@@ -361,7 +373,7 @@ export default function PlayerScreen() {
       {/* Layer 2: Full-screen gesture catcher (below chrome so buttons still work) */}
       <PlayerGestures
         onToggleControls={handleToggleControls}
-        onSeekTap={handleSeekTap}
+        onDoubleTap={handleDoubleTap}
         onBoostStart={handleBoostStart}
         onBoostEnd={handleBoostEnd}
       />

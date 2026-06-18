@@ -8,7 +8,8 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 interface PlayerGesturesProps {
   onToggleControls: () => void;
-  onSeekTap: (x: number, width: number) => void;
+  /** Fires on a confirmed double-tap with the tap x and the full layer width. */
+  onDoubleTap: (x: number, width: number) => void;
   onBoostStart: () => void;
   onBoostEnd: () => void;
   children?: ReactNode;
@@ -16,18 +17,19 @@ interface PlayerGesturesProps {
 
 export function PlayerGestures({
   onToggleControls,
-  onSeekTap,
+  onDoubleTap,
   onBoostStart,
   onBoostEnd,
   children,
 }: PlayerGesturesProps) {
-  // Full-screen width, worklet-accessible, for left/right tap-side decisions.
+  // Full-screen width, worklet-accessible, for left/center/right zone decisions.
   const width = useSharedValue(0);
 
   const composed = useMemo(() => {
+    // No maxDuration cap — a slightly-long press should still count as a tap
+    // (so double-tap detection isn't flaky); the 350ms long-press handles holds.
     const singleTap = Gesture.Tap()
       .numberOfTaps(1)
-      .maxDuration(250)
       .onEnd((_e, success) => {
         'worklet';
         if (success) scheduleOnRN(onToggleControls);
@@ -35,10 +37,9 @@ export function PlayerGestures({
 
     const doubleTap = Gesture.Tap()
       .numberOfTaps(2)
-      .maxDuration(250)
       .onEnd((e, success) => {
         'worklet';
-        if (success) scheduleOnRN(onSeekTap, e.x, width.value);
+        if (success) scheduleOnRN(onDoubleTap, e.x, width.value);
       });
 
     const longPress = Gesture.LongPress()
@@ -53,7 +54,7 @@ export function PlayerGestures({
       });
 
     return Gesture.Race(longPress, Gesture.Exclusive(doubleTap, singleTap));
-  }, [onToggleControls, onSeekTap, onBoostStart, onBoostEnd]);
+  }, [onToggleControls, onDoubleTap, onBoostStart, onBoostEnd]);
 
   return (
     <GestureDetector gesture={composed}>
