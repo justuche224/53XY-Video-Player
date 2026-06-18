@@ -4,14 +4,19 @@ import { StyleSheet, Text, View } from 'react-native';
 import { PressableScale } from './pressable-scale';
 import { ProgressBar } from './progress-bar';
 import { ThumbnailCollage } from './thumbnail-collage';
+import { DurationBadge } from './duration-badge';
 import type { Group } from '@/library/types';
 import { useTheme } from '@/theme/theme-provider';
 
 export const GroupRow = memo(function GroupRow({ group, percent, onPress }: { group: Group; percent: number; onPress: () => void }) {
   const { colors, spacing } = useTheme();
+  const totalMs = group.items.reduce((acc, v) => acc + (v.durationMs ?? 0), 0);
   return (
     <PressableScale onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, gap: spacing.md }}>
-      <ThumbnailCollage videos={group.items} style={styles.thumb} />
+      <View>
+        <ThumbnailCollage videos={group.items} style={styles.thumb} />
+        <DurationBadge ms={totalMs} />
+      </View>
       <View style={{ flex: 1 }}>
         <Text numberOfLines={1} style={[styles.title, { color: colors.onSurface }]}>{group.title}</Text>
         <Text style={{ color: colors.onSurfaceVariant ?? colors.onSurface, fontSize: 12, marginBottom: 4 }}>

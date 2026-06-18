@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { PressableScale } from './pressable-scale';
 import { ProgressBar } from './progress-bar';
 import { VideoThumbnail } from './video-thumbnail';
+import { DurationBadge } from './duration-badge';
 import { formatEpisodeLabel } from '@/library/episode-label';
 import { parseEpisode } from '@/library/parse-episode';
 import type { LibraryVideo } from '@/library/types';
@@ -14,7 +15,10 @@ export function EpisodeRow({ video, percent, onPress }: { video: LibraryVideo; p
   const label = formatEpisodeLabel(season, episode);
   return (
     <PressableScale onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, gap: spacing.md }}>
-      <VideoThumbnail video={video} style={styles.thumb} />
+      <View>
+        <VideoThumbnail video={video} style={styles.thumb} />
+        <DurationBadge ms={video.durationMs} />
+      </View>
       <View style={{ flex: 1 }}>
         {label ? <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700' }}>{label}</Text> : null}
         <Text numberOfLines={2} style={[styles.title, { color: colors.onSurface }]}>{video.filename}</Text>
