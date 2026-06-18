@@ -27,6 +27,7 @@ import { CenterControls } from '@/components/player/center-controls';
 import { BottomBar } from '@/components/player/bottom-bar';
 import { ResumeSnackbar } from '@/components/player/resume-snackbar';
 import { TracksSheet } from '@/components/player/tracks-sheet';
+import { LockOverlay } from '@/components/player/lock-overlay';
 import { PressableScale } from '@/components/pressable-scale';
 import { SystemVolume } from '@/native/system-volume';
 
@@ -81,6 +82,12 @@ export default function PlayerScreen() {
 
   // ── Controls visibility (lifted from ControlsOverlay) ───────────────────
   const [controlsVisible, setControlsVisible] = useState(true);
+  // Ref mirror so gesture callbacks (closed over at creation) always read the
+  // latest value without needing to be recreated on every visibility change.
+  const controlsVisibleRef = useRef(true);
+
+  // ── Lock state ───────────────────────────────────────────────────────────
+  const [locked, setLocked] = useState(false);
 
   // ── Gesture indicator state ──────────────────────────────────────────────
   const [boostActive, setBoostActive] = useState(false);
@@ -294,6 +301,12 @@ export default function PlayerScreen() {
     }, []),
   );
 
+  // Keep the ref in sync so gesture callbacks read current visibility without
+  // needing to be recreated on every toggle.
+  useEffect(() => {
+    controlsVisibleRef.current = controlsVisible;
+  }, [controlsVisible]);
+
   // ── Overlay handlers ────────────────────────────────────────────────────
   function handleTogglePlay() {
     if (player.playing) {
@@ -320,6 +333,9 @@ export default function PlayerScreen() {
   }, []);
 
   const handleDoubleTap = useCallback((x: number, w: number) => {
+    // Gate: if controls are visible the user is interacting with the chrome,
+    // so ignore double-taps to prevent edge taps from accidentally toggling a control.
+    if (controlsVisibleRef.current) return;
     const zone = tapZone(x, w);
     if (zone === 'center') {
       // Center third toggles play/pause; flash the action just taken.
@@ -443,9 +459,12 @@ export default function PlayerScreen() {
     router.setParams({ videoId: target.id, uri: target.uri, title: target.filename });
   }
 
-  // ── Top-bar right slot: rotate + tracks buttons ──────────────────────────
+  // ── Top-bar right slot: lock + rotate + tracks buttons ───────────────────
   const topBarRight = (
     <View style={styles.topBarActions}>
+      <PressableScale onPress={() => setLocked(true)} style={styles.iconButton}>
+        <Text style={styles.iconText}>{'🔓'}</Text>
+      </PressableScale>
       <PressableScale onPress={() => setTracksSheetVisible(true)} style={styles.iconButton}>
         <Text style={styles.iconText}>{'⊕'}</Text>
       </PressableScale>
@@ -462,7 +481,7 @@ export default function PlayerScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar hidden />
 
-      {/* Layer 1: Video */}
+      {/* Layer 1: Video — always mounted so playback/progress are never broken */}
       <VideoView
         style={StyleSheet.absoluteFill}
         player={player}
@@ -470,83 +489,90 @@ export default function PlayerScreen() {
         contentFit="contain"
       />
 
-      {/* Layer 2: Full-screen gesture catcher (below chrome so buttons still work) */}
-      <PlayerGestures
-        onToggleControls={handleToggleControls}
-        onDoubleTap={handleDoubleTap}
-        onBoostStart={handleBoostStart}
-        onBoostEnd={handleBoostEnd}
-        onPanStart={handlePanStart}
-        onPanMove={handlePanMove}
-        onPanEnd={handlePanEnd}
-      />
+      {locked ? (
+        /* Locked: hide all chrome and gestures; only show the unlock overlay */
+        <LockOverlay onUnlock={() => setLocked(false)} />
+      ) : (
+        <>
+          {/* Layer 2: Full-screen gesture catcher (below chrome so buttons still work) */}
+          <PlayerGestures
+            onToggleControls={handleToggleControls}
+            onDoubleTap={handleDoubleTap}
+            onBoostStart={handleBoostStart}
+            onBoostEnd={handleBoostEnd}
+            onPanStart={handlePanStart}
+            onPanMove={handlePanMove}
+            onPanEnd={handlePanEnd}
+          />
 
-      {/* Layer 3: Chrome overlay — box-none so empty space falls through to gesture layer */}
-      <ControlsOverlay
-        playing={playing}
-        visible={controlsVisible}
-        onAutoHide={handleAutoHide}
-      >
-        <TopBar
-          title={title ?? ''}
-          onBack={() => router.back()}
-          right={topBarRight}
-        />
-        <CenterControls
-          playing={playing}
-          onToggle={handleTogglePlay}
-          onPrev={
-            group
-              ? () => {
-                  if (prev) void handleNavigateTo(prev);
-                }
-              : undefined
-          }
-          onNext={
-            group
-              ? () => {
-                  if (next) void handleNavigateTo(next);
-                }
-              : undefined
-          }
-          hasPrev={prev !== null}
-          hasNext={next !== null}
-        />
-        <BottomBar
-          positionSec={positionSec}
-          durationSec={durationSec}
-          rate={rate}
-          onSeek={handleSeek}
-          onCycleRate={handleCycleRate}
-        />
-        {snackbarVisible && (
-          <View style={styles.snackbarContainer}>
-            <ResumeSnackbar
-              positionSec={resumePositionSec}
-              onDismiss={() => setSnackbarVisible(false)}
-              onRestart={() => {
-                player.currentTime = 0;
-                setPositionSec(0);
-                lastPositionSecRef.current = 0;
-              }}
+          {/* Layer 3: Chrome overlay — box-none so empty space falls through to gesture layer */}
+          <ControlsOverlay
+            playing={playing}
+            visible={controlsVisible}
+            onAutoHide={handleAutoHide}
+          >
+            <TopBar
+              title={title ?? ''}
+              onBack={() => router.back()}
+              right={topBarRight}
             />
-          </View>
-        )}
-      </ControlsOverlay>
+            <CenterControls
+              playing={playing}
+              onToggle={handleTogglePlay}
+              onPrev={
+                group
+                  ? () => {
+                      if (prev) void handleNavigateTo(prev);
+                    }
+                  : undefined
+              }
+              onNext={
+                group
+                  ? () => {
+                      if (next) void handleNavigateTo(next);
+                    }
+                  : undefined
+              }
+              hasPrev={prev !== null}
+              hasNext={next !== null}
+            />
+            <BottomBar
+              positionSec={positionSec}
+              durationSec={durationSec}
+              rate={rate}
+              onSeek={handleSeek}
+              onCycleRate={handleCycleRate}
+            />
+            {snackbarVisible && (
+              <View style={styles.snackbarContainer}>
+                <ResumeSnackbar
+                  positionSec={resumePositionSec}
+                  onDismiss={() => setSnackbarVisible(false)}
+                  onRestart={() => {
+                    player.currentTime = 0;
+                    setPositionSec(0);
+                    lastPositionSecRef.current = 0;
+                  }}
+                />
+              </View>
+            )}
+          </ControlsOverlay>
 
-      {/* Layer 4: Gesture indicators (pointer-events none, always on top) */}
-      <GestureIndicators boostActive={boostActive} seekFlash={seekFlash} />
-      <PanIndicators levelHud={levelHud} scrubHud={scrubHud} />
+          {/* Layer 4: Gesture indicators (pointer-events none, always on top) */}
+          <GestureIndicators boostActive={boostActive} seekFlash={seekFlash} />
+          <PanIndicators levelHud={levelHud} scrubHud={scrubHud} />
 
-      {tracksSheetVisible && (
-        <TracksSheet
-          player={player}
-          subtitleTracks={subtitleTracks}
-          audioTracks={audioTracks}
-          activeSubtitle={activeSubtitle}
-          activeAudio={activeAudio}
-          onClose={() => setTracksSheetVisible(false)}
-        />
+          {tracksSheetVisible && (
+            <TracksSheet
+              player={player}
+              subtitleTracks={subtitleTracks}
+              audioTracks={audioTracks}
+              activeSubtitle={activeSubtitle}
+              activeAudio={activeAudio}
+              onClose={() => setTracksSheetVisible(false)}
+            />
+          )}
+        </>
       )}
     </View>
   );
