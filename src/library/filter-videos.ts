@@ -74,3 +74,24 @@ export function matchesNamePattern(filename: string, pattern: string): boolean {
   if (p.includes('*') || p.includes('?')) return globToRegExp(p).test(filename);
   return filename.toLowerCase().includes(p.toLowerCase());
 }
+
+/** Hide a video if its filename matches ANY pattern. Empty list = pass-through. */
+export function applyNameFilter(videos: LibraryVideo[], patterns: string[]): LibraryVideo[] {
+  if (patterns.length === 0) return videos;
+  return videos.filter((video) => !patterns.some((p) => matchesNamePattern(video.filename, p)));
+}
+
+/** Hide a video whose folder is in the ignored set. Empty list = pass-through. */
+export function applyFolderFilter(videos: LibraryVideo[], ignoredFolders: string[]): LibraryVideo[] {
+  if (ignoredFolders.length === 0) return videos;
+  const set = new Set(ignoredFolders);
+  return videos.filter((video) => !set.has(video.folder));
+}
+
+/** Compose length + name + folder. The single entry point used by the library hooks. */
+export function applyFilters(videos: LibraryVideo[], filter: LibraryFilter): LibraryVideo[] {
+  let result = applyLengthFilter(videos, filter);
+  result = applyNameFilter(result, filter.namePatterns);
+  result = applyFolderFilter(result, filter.ignoredFolders);
+  return result;
+}
