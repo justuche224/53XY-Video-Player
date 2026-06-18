@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getAllVideos } from '@/db/videos-repo';
 import { groupByFolder, groupByName } from './group-videos';
 import { useFilterSettings } from './filter-settings';
-import { applyLengthFilter } from './filter-videos';
+import { applyFilters } from './filter-videos';
 import type { Group, LibraryVideo } from './types';
 
 export function useGroups(mode: 'name' | 'folder'): {
@@ -34,7 +34,7 @@ export function useGroups(mode: 'name' | 'folder'): {
   }, [db, token]);
 
   const groups = useMemo(() => {
-    const visible = applyLengthFilter(videos, filter);
+    const visible = applyFilters(videos, filter);
     return mode === 'name' ? groupByName(visible) : groupByFolder(visible);
   }, [videos, mode, filter]);
   const reload = useCallback(() => setToken((t) => t + 1), []);

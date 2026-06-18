@@ -1,13 +1,22 @@
 import type { LibraryVideo } from './types';
 
-export interface LengthFilter {
+export interface LibraryFilter {
   /** Hide videos strictly shorter than this many ms. null = no minimum. */
   minDurationMs: number | null;
   /** Hide videos strictly longer than this many ms. null = no maximum. */
   maxDurationMs: number | null;
+  /** Case-insensitive substring-or-glob patterns; a video matching ANY is hidden. */
+  namePatterns: string[];
+  /** Folder paths (LibraryVideo.folder) whose videos are hidden. */
+  ignoredFolders: string[];
 }
 
-export const EMPTY_FILTER: LengthFilter = { minDurationMs: null, maxDurationMs: null };
+export const EMPTY_FILTER: LibraryFilter = {
+  minDurationMs: null,
+  maxDurationMs: null,
+  namePatterns: [],
+  ignoredFolders: [],
+};
 
 /**
  * Keep videos whose duration is within [min, max]. Videos with unknown
@@ -15,7 +24,7 @@ export const EMPTY_FILTER: LengthFilter = { minDurationMs: null, maxDurationMs: 
  * Comparison is strict, so a video exactly at a threshold stays visible.
  * An empty filter is a pass-through (returns the same array reference).
  */
-export function applyLengthFilter(videos: LibraryVideo[], filter: LengthFilter): LibraryVideo[] {
+export function applyLengthFilter(videos: LibraryVideo[], filter: LibraryFilter): LibraryVideo[] {
   const { minDurationMs, maxDurationMs } = filter;
   if (minDurationMs == null && maxDurationMs == null) return videos;
   return videos.filter((video) => {
@@ -45,4 +54,44 @@ export function msToParts(ms: number): { value: number; unit: LengthUnit } {
 export function formatLengthShort(ms: number): string {
   const { value, unit } = msToParts(ms);
   return `${value}${UNIT_SUFFIX[unit]}`;
+}
+
+/** Translate a glob (with * and ?) into an anchored, case-insensitive RegExp. */
+function globToRegExp(glob: string): RegExp {
+  const escaped = glob.replace(/[.+^${}()|[\]\\]/g, '\\$&'); // escape regex metachars (not * or ?)
+  const translated = escaped.replace(/\*/g, '.*').replace(/\?/g, '.');
+  return new RegExp(`^${translated}$`, 'i');
+}
+
+/**
+ * Case-insensitive. If the (trimmed) pattern contains * or ?, it is a glob
+ * matched against the whole filename; otherwise it is a substring "contains".
+ * A blank/whitespace pattern never matches (no-op safety).
+ */
+export function matchesNamePattern(filename: string, pattern: string): boolean {
+  const p = pattern.trim();
+  if (p === '') return false;
+  if (p.includes('*') || p.includes('?')) return globToRegExp(p).test(filename);
+  return filename.toLowerCase().includes(p.toLowerCase());
+}
+
+/** Hide a video if its filename matches ANY pattern. Empty list = pass-through. */
+export function applyNameFilter(videos: LibraryVideo[], patterns: string[]): LibraryVideo[] {
+  if (patterns.length === 0) return videos;
+  return videos.filter((video) => !patterns.some((p) => matchesNamePattern(video.filename, p)));
+}
+
+/** Hide a video whose folder is in the ignored set. Empty list = pass-through. */
+export function applyFolderFilter(videos: LibraryVideo[], ignoredFolders: string[]): LibraryVideo[] {
+  if (ignoredFolders.length === 0) return videos;
+  const set = new Set(ignoredFolders);
+  return videos.filter((video) => !set.has(video.folder));
+}
+
+/** Compose length + name + folder. The single entry point used by the library hooks. */
+export function applyFilters(videos: LibraryVideo[], filter: LibraryFilter): LibraryVideo[] {
+  let result = applyLengthFilter(videos, filter);
+  result = applyNameFilter(result, filter.namePatterns);
+  result = applyFolderFilter(result, filter.ignoredFolders);
+  return result;
 }
