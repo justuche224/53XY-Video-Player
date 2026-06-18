@@ -7,6 +7,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { runMigrations } from '@/db/migrate';
 import { MIGRATIONS } from '@/db/schema';
 import { FilterSettingsProvider } from '@/library/filter-settings';
+import { LibraryProvider } from '@/library/library-provider';
 import { ThemeProvider, useTheme } from '@/theme/theme-provider';
 
 async function onDbInit(db: SQLiteDatabase) {
@@ -27,10 +28,12 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SQLiteProvider databaseName="p53xy.db" onInit={onDbInit}>
           <FilterSettingsProvider>
-            <ThemeProvider>
-              <ThemedStatusBar />
-              <Stack screenOptions={{ headerShown: false }} />
-            </ThemeProvider>
+            <LibraryProvider>
+              <ThemeProvider>
+                <ThemedStatusBar />
+                <Stack screenOptions={{ headerShown: false }} />
+              </ThemeProvider>
+            </LibraryProvider>
           </FilterSettingsProvider>
         </SQLiteProvider>
       </GestureHandlerRootView>

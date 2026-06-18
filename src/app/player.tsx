@@ -162,6 +162,12 @@ export default function PlayerScreen() {
     // the first timeUpdate doesn't flush stale values under the new video id.
     lastPositionSecRef.current = 0;
     lastDurationSecRef.current = 0;
+
+    // Start playback immediately — do NOT wait on the DB. Gating play() behind
+    // getProgressMap (serialized on the SQLite connection) was the main cause of
+    // the multi-second black screen before playback began.
+    player.play();
+
     let cancelled = false;
     (async () => {
       try {
@@ -174,9 +180,8 @@ export default function PlayerScreen() {
           setResumePositionSec(saved.positionMs / 1000);
           setSnackbarVisible(true);
         }
-        player.play();
       } catch {
-        if (!cancelled) player.play();
+        // Progress lookup failed — playback already started; nothing to resume.
       }
     })();
     return () => {
