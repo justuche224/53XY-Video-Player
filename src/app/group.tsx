@@ -17,7 +17,7 @@ export default function GroupDetailScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
   const { key, mode } = useLocalSearchParams<{ key: string; mode: 'name' | 'folder' }>();
-  const { groups } = useGroups(mode === 'folder' ? 'folder' : 'name');
+  const { groups, loading } = useGroups(mode === 'folder' ? 'folder' : 'name');
   const [progress, setProgress] = useState<ProgressMap>(new Map());
 
   // Refetch on focus so progress updates after returning from the player.
@@ -51,12 +51,14 @@ export default function GroupDetailScreen() {
           />
         )}
         ListEmptyComponent={
-          <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 2 }}>
-            <Ionicons name="film-outline" size={64} color={colors.surfaceVariant ?? '#444'} />
-            <Text style={{ color: colors.onSurface, fontSize: 18, fontWeight: '600', marginTop: spacing.md }}>
-              No videos in this group
-            </Text>
-          </View>
+          loading ? null : (
+            <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 2 }}>
+              <Ionicons name="film-outline" size={64} color={colors.surfaceVariant ?? '#444'} />
+              <Text style={{ color: colors.onSurface, fontSize: 18, fontWeight: '600', marginTop: spacing.md }}>
+                No videos in this group
+              </Text>
+            </View>
+          )
         }
         contentContainerStyle={{ paddingBottom: spacing.xl }}
         bounces={true}
