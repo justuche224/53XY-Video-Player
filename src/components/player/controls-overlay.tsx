@@ -53,10 +53,13 @@ export function ControlsOverlay({ playing, visible, onAutoHide, children }: Cont
 
   const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
+  // When visible: box-none so only the actual buttons capture and empty space
+  // falls through to the gesture layer. When hidden: none, so the (invisible)
+  // buttons can't swallow taps meant for the gesture layer beneath.
+  const mode = visible ? 'box-none' : 'none';
+
   return (
-    // box-none: touch events pass through empty space to the gesture layer beneath;
-    // child buttons still receive touches normally.
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <View style={StyleSheet.absoluteFill} pointerEvents={mode}>
       <Animated.View
         style={[
           StyleSheet.absoluteFill,
@@ -69,7 +72,7 @@ export function ControlsOverlay({ playing, visible, onAutoHide, children }: Cont
           },
           animatedStyle,
         ]}
-        pointerEvents="box-none">
+        pointerEvents={mode}>
         {children}
       </Animated.View>
     </View>

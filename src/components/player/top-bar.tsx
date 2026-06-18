@@ -16,7 +16,9 @@ export function TopBar({ title, onBack, right }: TopBarProps) {
   const { spacing } = useTheme();
 
   return (
-    <View style={[styles.row, { paddingHorizontal: spacing.md, paddingVertical: spacing.sm }]}>
+    <View
+      pointerEvents="box-none"
+      style={[styles.row, { paddingHorizontal: spacing.md, paddingVertical: spacing.sm }]}>
       <PressableScale onPress={onBack} style={styles.backButton}>
         <Text style={styles.backIcon}>{'‹'}</Text>
       </PressableScale>

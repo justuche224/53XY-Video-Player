@@ -22,7 +22,7 @@ export function CenterControls({
   hasNext,
 }: CenterControlsProps) {
   return (
-    <View style={styles.row}>
+    <View style={styles.row} pointerEvents="box-none">
       {/* Prev button — hidden when slot not filled */}
       {onPrev !== undefined ? (
         <PressableScale
@@ -31,7 +31,7 @@ export function CenterControls({
           <Text style={styles.sideIcon}>{'⏮'}</Text>
         </PressableScale>
       ) : (
-        <View style={styles.sideButton} />
+        <View style={styles.sideButton} pointerEvents="none" />
       )}
 
       {/* Play / Pause */}
@@ -49,7 +49,7 @@ export function CenterControls({
           <Text style={styles.sideIcon}>{'⏭'}</Text>
         </PressableScale>
       ) : (
-        <View style={styles.sideButton} />
+        <View style={styles.sideButton} pointerEvents="none" />
       )}
     </View>
   );

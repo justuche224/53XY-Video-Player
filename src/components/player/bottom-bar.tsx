@@ -35,7 +35,9 @@ export function BottomBar({
   const rateLabel = `${rate}×`;
 
   return (
-    <View style={[styles.container, { paddingHorizontal: spacing.md, paddingBottom: spacing.lg }]}>
+    <View
+      pointerEvents="box-none"
+      style={[styles.container, { paddingHorizontal: spacing.md, paddingBottom: spacing.lg }]}>
       <Seekbar
         positionSec={positionSec}
         durationSec={durationSec}
