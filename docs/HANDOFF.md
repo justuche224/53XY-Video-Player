@@ -8,9 +8,10 @@ _Last updated: after Plan 3a (the core player) was built, device-verified on the
 
 ## TL;DR — where we are, what's next
 - **53XY** is an Android-first, "best of all worlds" local video player built with **Expo SDK 56 / React Native 0.85**.
-- **Done & merged to `master` (all device-verified on the user's SM-S901N):** Foundation, the full Library (data + grouping engine + adaptive UI + polish), and **Plan 3a — the core player** (`expo-video` playback, custom control overlay, auto-resume + snackbar, progress writing, orientation, keep-awake, next/prev within a group, embedded subtitle/audio track selection, pitch-preserved speed).
-- **Next big piece: Plan 3b — the signature gesture layer** (not started). Starts with a short brainstorm on gesture thresholds + the volume dependency.
-- **Immediate next action:** brainstorm Plan 3b (gestures), then spec → plan → subagent-driven build → device verify → merge.
+- **Done & merged to `master` (all device-verified on the user's SM-S901N):** Foundation, the full Library (data + grouping engine + adaptive UI + polish), **Plan 3a — the core player**, and **Plan 3b-i — discrete gestures** (long-press→2×-while-held, 3-zone double-tap: left/center/right = back-10s / play-pause / forward-10s, with indicators).
+- **Next: Plan 3b-ii — the drag gestures + lock** (not started): vertical swipe = brightness (left, `expo-brightness`) / volume (right, `player.volume` — no new dep), full-screen horizontal drag-scrub, and lock. **Pure JS like 3b-i — no native rebuild.**
+- **Immediate next action:** brainstorm Plan 3b-ii, then spec → plan → subagent-driven build → device verify → merge.
+- **Known issue to revisit in 3b-ii:** while controls are *showing*, an edge double-tap can also toggle a control (perceived play/pause) on top of skipping. Partially hardened (bar containers `box-none`, chrome `pointerEvents="none"` when hidden) but not fully fixed — likely needs the chrome buttons composed into the gesture system (RNGH cross-gesture relations) rather than overlapping RN Pressables.
 
 ## What this app is (vision)
 The full vision is in [00-vision-and-context.md](./00-vision-and-context.md) (the user's original ask verbatim). In short: take the best of VLC + MX Player and fix what they get wrong — smart auto-grouping, folder view, resume + progress, **long-press-to-2×**, double-tap-seek, swipe brightness/volume, advanced filters — with a **beautiful Material You UI** and smooth, satisfying animations. v1 scope = Foundation → Library → Player. Filters/libVLC fallback/playlists are v2.
@@ -23,9 +24,10 @@ The full vision is in [00-vision-and-context.md](./00-vision-and-context.md) (th
 | Library 2B | Adaptive grid/list UI, Videos/Folders tabs, search, group detail, thumbnails, player placeholder | ✅ merged, device-verified |
 | Library polish | Scroll perf (FlatList tuning, idle-callback thumbnails), cache-first background rescan, grouping refinement (conservative numeric merge), multi-thumbnail collages | ✅ merged, device-verified |
 | Plan 3a — Core player | `expo-video` playback, custom overlay, resume+snackbar, progress writes, orientation, keep-awake, next/prev, track select, pitch-preserved speed | ✅ merged, device-verified |
-| **Plan 3b — Gestures** | Long-press 2×, double-tap seek, swipe brightness/volume, full-screen drag-scrub, lock | ⏳ **not started — do this next** |
+| Plan 3b-i — Discrete gestures | Long-press→2× while held; 3-zone double-tap (left/center/right = back / play-pause / forward) + indicators | ✅ merged, device-verified (one deferred edge-tap issue) |
+| **Plan 3b-ii — Drag gestures + lock** | Vertical swipe brightness/volume, full-screen drag-scrub, lock | ⏳ **not started — do this next** |
 
-Plans live in [plans/](./plans/) ([roadmap](./plans/README.md)); the 3a spec+plan are under [superpowers/](./superpowers/). Tests: **68 passing**, `npx tsc --noEmit` clean.
+Plans live in [plans/](./plans/) ([roadmap](./plans/README.md)); the 3a/3b-i specs+plans are under [superpowers/](./superpowers/). Tests: **75 passing**, `npx tsc --noEmit` clean.
 
 ## Plan 3a — the core player (DONE, merged, device-verified)
 `src/app/player.tsx` is now the real player: `expo-video` surface (native controls hidden), a custom Reanimated/gesture-handler **control overlay** (top bar with back/title/tracks/rotate, center play-pause + prev/next, bottom seekbar + time + speed chip), **auto-resume + "Resumed at …" snackbar**, throttled `watch_progress` writes (+ flush on pause/background/unmount via cached refs), **auto-rotate + manual rotate**, keep-awake, **next/prev within the group**, embedded **subtitle/audio track** selection, and **pitch-preserved** speed (`preservesPitch`). Pure logic lives in `src/player/` (format-time, resume, playlist `neighbors`, progress-writer) and is Jest-tested; UI/native is device-verified. Spec + plan: [superpowers/specs/2026-06-18-player-core-3a-design.md](./superpowers/specs/2026-06-18-player-core-3a-design.md), [superpowers/plans/2026-06-18-player-core-3a.md](./superpowers/plans/2026-06-18-player-core-3a.md).
