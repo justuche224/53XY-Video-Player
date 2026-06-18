@@ -4,8 +4,8 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
-  runOnJS,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { useTheme } from '@/theme/theme-provider';
 
@@ -59,7 +59,7 @@ export function Seekbar({ positionSec, durationSec, onSeek }: SeekbarProps) {
       // a backward snap when isDragging is cleared.
       liveProgressSV.value = fraction;
       isDragging.value = false;
-      runOnJS(commitSeek)(fraction);
+      scheduleOnRN(commitSeek, fraction);
     })
     .onFinalize(() => {
       'worklet';
