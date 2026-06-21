@@ -8,11 +8,13 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 export function PressableScale({
   onPress,
   onLongPress,
+  disabled,
   children,
   style,
 }: {
   onPress?: () => void;
   onLongPress?: () => void;
+  disabled?: boolean;
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
@@ -23,6 +25,7 @@ export function PressableScale({
     <AnimatedPressable
       onPress={onPress}
       onLongPress={onLongPress}
+      disabled={disabled}
       onPressIn={() => (scale.value = withSpring(0.96, { damping: 18, stiffness: 240 }))}
       onPressOut={() => (scale.value = withSpring(1, { damping: 18, stiffness: 240 }))}
       android_ripple={{ color: colors.onSurfaceVariant ?? 'rgba(128,128,128,0.2)' }}
