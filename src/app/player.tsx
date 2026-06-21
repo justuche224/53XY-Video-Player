@@ -19,6 +19,10 @@ import { shouldResume } from '@/player/resume';
 import { neighbors } from '@/player/playlist';
 import { seekTarget, tapZone } from '@/player/seek';
 import { panAxis, panHalf, clamp01, scrubDeltaSec } from '@/player/pan';
+import { getPlaylistItems } from '@/db/playlists-repo';
+import { resolvePlaylistItems } from '@/playlists/resolve-items';
+import { useLibraryData } from '@/library/library-provider';
+import type { LibraryVideo } from '@/library/types';
 import { useGroups } from '@/library/use-groups';
 import { ControlsOverlay } from '@/components/player/controls-overlay';
 import { PlayerGestures } from '@/components/player/player-gestures';
@@ -38,12 +42,13 @@ import { SystemVolume } from '@/native/system-volume';
 const VERTICAL_GAIN = 2;
 
 export default function PlayerScreen() {
-  const { videoId, uri, title, groupKey, mode } = useLocalSearchParams<{
+  const { videoId, uri, title, groupKey, mode, playlistId } = useLocalSearchParams<{
     videoId: string;
     uri: string;
     title: string;
     groupKey?: string;
     mode?: string;
+    playlistId?: string;
   }>();
   const router = useRouter();
 
@@ -58,9 +63,26 @@ export default function PlayerScreen() {
     ? groups.find((g) => g.key === groupKey) ?? null
     : null;
 
-  const { prev, next } = group
-    ? neighbors(group.items, videoId)
-    : { prev: null, next: null };
+  const { videos } = useLibraryData();
+  const [playlistItems, setPlaylistItems] = useState<LibraryVideo[]>([]);
+
+  useEffect(() => {
+    if (!playlistId) {
+      setPlaylistItems([]);
+      return;
+    }
+    getPlaylistItems(db, playlistId).then((rows) => {
+      const byId = new Map(videos.map((v) => [v.id, v]));
+      setPlaylistItems(resolvePlaylistItems(rows, byId));
+    });
+  }, [db, playlistId, videos]);
+
+  const playlistNeighbors =
+    playlistId && playlistItems.length > 0 ? neighbors(playlistItems, videoId) : null;
+
+  const { prev, next } =
+    playlistNeighbors ??
+    (group ? neighbors(group.items, videoId) : { prev: null, next: null });
 
   // ── Video player ─────────────────────────────────────────────────────────
   const player = useVideoPlayer({ uri }, (p) => {
@@ -542,14 +564,14 @@ export default function PlayerScreen() {
               isEnded={!playing && durationSec > 0 && positionSec >= durationSec - 0.5}
               onToggle={handleTogglePlay}
               onPrev={
-                group
+                (playlistId || group)
                   ? () => {
                       if (prev) void handleNavigateTo(prev);
                     }
                   : undefined
               }
               onNext={
-                group
+                (playlistId || group)
                   ? () => {
                       if (next) void handleNavigateTo(next);
                     }
