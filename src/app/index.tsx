@@ -16,10 +16,14 @@ import { SortButton } from '@/components/sort-button';
 import { SortSheet } from '@/components/sort-sheet';
 import { getProgressMap, type ProgressMap } from '@/db/progress-repo';
 import { getSetting, setSetting } from '@/db/settings-repo';
+import { getHistory } from '@/db/history-repo';
+import { resolveLastPlayed } from '@/player/resume-last';
+import { ResumeFab } from '@/components/resume-fab';
 import { filterGroups } from '@/library/filter-groups';
 import { sortGroups, SORT_KEYS, type SortDir, type SortKey } from '@/library/sort-groups';
 import { useLibrary } from '@/library/use-library';
-import type { Group } from '@/library/types';
+import { useLibraryData } from '@/library/library-provider';
+import type { Group, LibraryVideo } from '@/library/types';
 import { useTheme } from '@/theme/theme-provider';
 
 type Mode = 'name' | 'folder';
@@ -47,6 +51,8 @@ export default function LibraryScreen() {
   const [sortOpen, setSortOpen] = useState(false);
   const [progress, setProgress] = useState<ProgressMap>(new Map());
   const { status, refreshing, groups } = useLibrary(mode);
+  const { videos } = useLibraryData();
+  const [resumeTarget, setResumeTarget] = useState<LibraryVideo | null>(null);
 
   useEffect(() => {
     getSetting(db, 'mode').then((v) => v === 'folder' && setMode('folder'));
@@ -57,12 +63,17 @@ export default function LibraryScreen() {
     getSetting(db, 'sort.dir').then((v) => v === 'desc' && setSortDir('desc'));
   }, [db]);
 
-  // Refetch progress every time the screen regains focus (e.g. returning from
-  // the player), so resume bars update without an app reload.
+  // On focus (e.g. returning from the player), refetch progress so resume bars
+  // update, and recompute the Resume FAB target from history + the live cache.
   useFocusEffect(
     useCallback(() => {
-      if (status === 'ready') getProgressMap(db).then(setProgress);
-    }, [db, status]),
+      if (status !== 'ready') return;
+      getProgressMap(db).then(setProgress);
+      getHistory(db).then((rows) => {
+        const byId = new Map(videos.map((v) => [v.id, v]));
+        setResumeTarget(resolveLastPlayed(rows, byId));
+      });
+    }, [db, status, videos]),
   );
 
   const onMode = useCallback((v: Mode) => { setMode(v); setSetting(db, 'mode', v); }, [db]);
@@ -82,6 +93,16 @@ export default function LibraryScreen() {
     () => sortGroups(filterGroups(groups, query), { key: sortKey, dir: sortDir }),
     [groups, query, sortKey, sortDir],
   );
+
+  const onResume = useCallback(() => {
+    if (!resumeTarget) return;
+    const group = groups.find((g) => g.items.some((it) => it.id === resumeTarget.id));
+    const params =
+      group && group.count > 1
+        ? { videoId: resumeTarget.id, uri: resumeTarget.uri, title: resumeTarget.filename, groupKey: group.key, mode }
+        : { videoId: resumeTarget.id, uri: resumeTarget.uri, title: resumeTarget.filename };
+    router.push({ pathname: '/player', params });
+  }, [resumeTarget, groups, mode, router]);
 
   const openGroup = useCallback((group: Group) => {
     if (group.count === 1) {
@@ -158,6 +179,7 @@ export default function LibraryScreen() {
         onSelect={onSort}
         onClose={() => setSortOpen(false)}
       />
+      {resumeTarget ? <ResumeFab onPress={onResume} /> : null}
     </Screen>
   );
 }
