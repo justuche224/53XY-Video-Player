@@ -6,11 +6,11 @@ import { PressableScale } from '@/components/pressable-scale';
 interface CenterControlsProps {
   playing: boolean;
   onToggle: () => void;
-  /** Prev/next — optional; absent in Task 4, wired in Task 5 */
   onPrev?: () => void;
   onNext?: () => void;
   hasPrev?: boolean;
   hasNext?: boolean;
+  isEnded?: boolean;
 }
 
 export function CenterControls({
@@ -20,6 +20,7 @@ export function CenterControls({
   onNext,
   hasPrev,
   hasNext,
+  isEnded,
 }: CenterControlsProps) {
   return (
     <View style={styles.row} pointerEvents="box-none">
@@ -36,7 +37,7 @@ export function CenterControls({
 
       {/* Play / Pause */}
       <PressableScale onPress={onToggle} style={styles.playButton}>
-        <MaterialIcons name={playing ? 'pause' : 'play-arrow'} size={48} color="#fff" />
+        <MaterialIcons name={playing ? 'pause' : isEnded ? 'replay' : 'play-arrow'} size={48} color="#fff" />
       </PressableScale>
 
       {/* Next button — hidden when slot not filled */}

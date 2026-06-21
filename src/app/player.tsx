@@ -95,7 +95,7 @@ export default function PlayerScreen() {
   const [boostActive, setBoostActive] = useState(false);
   const [seekFlash, setSeekFlash] = useState<
     | { kind: 'left' | 'right'; nonce: number }
-    | { kind: 'center'; glyph: '▶' | '⏸'; nonce: number }
+    | { kind: 'center'; glyph: '▶' | '⏸' | '↻'; nonce: number }
     | null
   >(null);
 
@@ -319,6 +319,11 @@ export default function PlayerScreen() {
     if (player.playing) {
       player.pause();
     } else {
+      if (lastDurationSecRef.current > 0 && lastPositionSecRef.current >= lastDurationSecRef.current - 0.5) {
+        player.currentTime = 0;
+        setPositionSec(0);
+        lastPositionSecRef.current = 0;
+      }
       player.play();
     }
   }
@@ -346,10 +351,19 @@ export default function PlayerScreen() {
     const zone = tapZone(x, w);
     if (zone === 'center') {
       // Center third toggles play/pause; flash the action just taken.
-      const glyph = player.playing ? '⏸' : '▶';
-      if (player.playing) player.pause();
-      else player.play();
-      setSeekFlash((prev) => ({ kind: 'center', glyph, nonce: (prev?.nonce ?? 0) + 1 }));
+      if (player.playing) {
+        player.pause();
+        setSeekFlash((prev) => ({ kind: 'center', glyph: '⏸', nonce: (prev?.nonce ?? 0) + 1 }));
+      } else {
+        const isEnded = lastDurationSecRef.current > 0 && lastPositionSecRef.current >= lastDurationSecRef.current - 0.5;
+        if (isEnded) {
+          player.currentTime = 0;
+          setPositionSec(0);
+          lastPositionSecRef.current = 0;
+        }
+        player.play();
+        setSeekFlash((prev) => ({ kind: 'center', glyph: isEnded ? '↻' : '▶', nonce: (prev?.nonce ?? 0) + 1 }));
+      }
       return;
     }
     const delta = zone === 'left' ? -10 : 10;
@@ -525,6 +539,7 @@ export default function PlayerScreen() {
             />
             <CenterControls
               playing={playing}
+              isEnded={!playing && durationSec > 0 && positionSec >= durationSec - 0.5}
               onToggle={handleTogglePlay}
               onPrev={
                 group

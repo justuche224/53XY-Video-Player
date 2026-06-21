@@ -13,7 +13,7 @@ const HOLD_DURATION_MS = 600;
 
 type SeekFlash =
   | { kind: 'left' | 'right'; nonce: number }
-  | { kind: 'center'; glyph: '▶' | '⏸'; nonce: number };
+  | { kind: 'center'; glyph: '▶' | '⏸' | '↻'; nonce: number };
 
 interface GestureIndicatorsProps {
   boostActive: boolean;
