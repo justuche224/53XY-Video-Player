@@ -38,3 +38,9 @@ export async function upsertProgress(
     [videoId, w.positionMs, w.percent, w.completed ? 1 : 0, w.lastPlayedAt],
   );
 }
+
+export async function deleteProgressByIds(db: SQLiteDatabase, ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const placeholders = ids.map(() => '?').join(',');
+  await db.runAsync(`DELETE FROM watch_progress WHERE video_id IN (${placeholders})`, ids);
+}
