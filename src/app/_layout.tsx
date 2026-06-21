@@ -31,7 +31,11 @@ export default function RootLayout() {
             <LibraryProvider>
               <ThemeProvider>
                 <ThemedStatusBar />
-                <Stack screenOptions={{ headerShown: false }} />
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="playlists" />
+                  <Stack.Screen name="playlist" />
+                  <Stack.Screen name="add-to-playlist" />
+                </Stack>
               </ThemeProvider>
             </LibraryProvider>
           </FilterSettingsProvider>
