@@ -19,7 +19,23 @@ export function ThumbnailCollage({
   const { colors, radius } = useTheme();
   const items = videos.slice(0, 4);
 
-  if (items.length <= 1) {
+  if (items.length === 0) {
+    return (
+      <View
+        style={[
+          {
+            backgroundColor: colors.surfaceVariant ?? '#222',
+            borderRadius: radius.md,
+            alignItems: 'center',
+            justifyContent: 'center',
+          },
+          style,
+        ]}
+      />
+    );
+  }
+
+  if (items.length === 1) {
     return <VideoThumbnail video={items[0]} style={style} />;
   }
 
