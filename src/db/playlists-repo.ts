@@ -30,11 +30,19 @@ interface DbItemRow {
 
 // ── Playlist CRUD ────────────────────────────────────────────────────────
 
+function uuidv4() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 export async function createPlaylist(
   db: SQLiteDatabase,
   name: string,
 ): Promise<PlaylistRow> {
-  const id = crypto.randomUUID();
+  const id = uuidv4();
   const now = Date.now();
   await db.runAsync(
     `INSERT INTO playlists (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)`,
@@ -111,7 +119,7 @@ export async function addItems(
     await db.runAsync(
       `INSERT OR IGNORE INTO playlist_items (id, playlist_id, video_id, sort_order, added_at)
        VALUES (?, ?, ?, ?, ?)`,
-      [crypto.randomUUID(), playlistId, videoId, nextOrder, now],
+      [uuidv4(), playlistId, videoId, nextOrder, now],
     );
     nextOrder++;
   }
