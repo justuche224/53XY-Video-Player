@@ -38,6 +38,28 @@ export const MIGRATIONS: Migration[] = [
     up: `CREATE INDEX IF NOT EXISTS idx_watch_progress_last_played
          ON watch_progress(last_played_at);`,
   },
+  {
+    version: 4,
+    up: `
+      CREATE TABLE IF NOT EXISTS playlists (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS playlist_items (
+        id TEXT PRIMARY KEY NOT NULL,
+        playlist_id TEXT NOT NULL,
+        video_id TEXT NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        added_at INTEGER NOT NULL,
+        FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE,
+        FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_pi_playlist ON playlist_items(playlist_id, sort_order);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_pi_unique ON playlist_items(playlist_id, video_id);
+    `,
+  },
 ];
 
-export const LATEST_VERSION = 3;
+export const LATEST_VERSION = 4;
