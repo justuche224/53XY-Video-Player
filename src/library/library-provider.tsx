@@ -3,6 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
 import { deleteVideosByIds, getAllVideos, upsertVideos } from '@/db/videos-repo';
+import { deleteProgressByIds } from '@/db/progress-repo';
 import { scanVideos } from '@/media/media-scanner';
 import type { LibraryVideo } from './types';
 
@@ -71,7 +72,10 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         const existing = await getAllVideos(db);
         const removed = existing.filter((v) => !scannedIds.has(v.id)).map((v) => v.id);
         await upsertVideos(db, scanned);
-        if (removed.length) await deleteVideosByIds(db, removed);
+        if (removed.length) {
+          await deleteVideosByIds(db, removed);
+          await deleteProgressByIds(db, removed);
+        }
         const all = await getAllVideos(db);
         if (cancelled) return;
         setVideos(all);

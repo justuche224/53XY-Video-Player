@@ -112,6 +112,9 @@ export default function LibraryScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceVariant ?? '#222', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 24, gap: 16 }}>
           <SortButton sortKey={sortKey} sortDir={sortDir} onPress={() => setSortOpen(true)} />
           <LayoutToggle value={layout} onChange={onLayout} />
+          <Link href="/history" style={{ padding: 4 }}>
+            <Ionicons name="time-outline" size={20} color={colors.onSurface} />
+          </Link>
           <Link href="/settings" style={{ padding: 4 }}>
             <Ionicons name="settings-outline" size={20} color={colors.onSurface} />
           </Link>
