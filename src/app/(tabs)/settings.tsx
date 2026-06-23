@@ -17,6 +17,8 @@ import { useFilterSettings } from '@/library/filter-settings';
 import { groupByFolder } from '@/library/group-videos';
 import type { LibraryVideo } from '@/library/types';
 import { useTheme } from '@/theme/theme-provider';
+import { useBackgroundPlay } from '@/player/use-background-play';
+import { SettingSwitch } from '@/components/setting-switch';
 
 const MIN_PRESETS: LengthPreset[] = [
   { label: '10s', ms: 10_000 },
@@ -35,6 +37,7 @@ export default function SettingsScreen() {
   const { colors, spacing } = useTheme();
   const db = useSQLiteContext();
   const { filter, setMin, setMax, addNamePattern, removeNamePattern, toggleFolder } = useFilterSettings();
+  const { backgroundPlay, setBackgroundPlay } = useBackgroundPlay();
   const [dialog, setDialog] = useState<'min' | 'max' | null>(null);
   const [allVideos, setAllVideos] = useState<LibraryVideo[]>([]);
 
@@ -72,6 +75,9 @@ export default function SettingsScreen() {
         overScrollMode="always"
       >
         <View style={{ gap: spacing.md }}>
+          <Text style={[styles.section, { color: colors.onSurface }]}>Player</Text>
+          <SettingSwitch label="Play video in background" value={backgroundPlay} onValueChange={setBackgroundPlay} />
+
           <Text style={[styles.section, { color: colors.onSurface }]}>Library filters</Text>
 
           <View style={styles.labelRow}>
