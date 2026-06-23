@@ -1,5 +1,4 @@
-// src/app/settings.tsx
-import { Stack } from 'expo-router';
+// src/app/(tabs)/settings.tsx
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -10,6 +9,7 @@ import { FilterChips, type LengthPreset } from '@/components/filter-chips';
 import { FolderIgnoreList, type FolderEntry } from '@/components/folder-ignore-list';
 import { NamePatternList } from '@/components/name-pattern-list';
 import { Screen } from '@/components/screen';
+import { TAB_BAR_CLEARANCE } from '@/components/floating-tab-bar';
 import { getAllVideos } from '@/db/videos-repo';
 import { applyFilters } from '@/library/filter-videos';
 import { useFilterSettings } from '@/library/filter-settings';
@@ -64,17 +64,9 @@ export default function SettingsScreen() {
 
   return (
     <Screen style={{ paddingHorizontal: spacing.lg }}>
-      <Stack.Screen 
-        options={{ 
-          headerShown: true, 
-          title: 'Settings',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.onSurface,
-          headerShadowVisible: false
-        }} 
-      />
-      <ScrollView 
-        contentContainerStyle={{ gap: spacing.xl, paddingVertical: spacing.lg, paddingBottom: spacing.xl * 2 }}
+      <Text style={[styles.title, { color: colors.onSurface }]}>Settings</Text>
+      <ScrollView
+        contentContainerStyle={{ gap: spacing.xl, paddingVertical: spacing.lg, paddingBottom: spacing.xl * 2 + TAB_BAR_CLEARANCE }}
         bounces={true}
         overScrollMode="always"
       >
@@ -126,6 +118,7 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
+  title: { fontSize: 28, fontWeight: '700' },
   section: { fontSize: 20, fontWeight: '700' },
   labelRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 8 },
   label: { fontSize: 14, fontWeight: '600' },

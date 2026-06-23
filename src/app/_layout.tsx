@@ -32,7 +32,9 @@ export default function RootLayout() {
               <ThemeProvider>
                 <ThemedStatusBar />
                 <Stack screenOptions={{ headerShown: false }}>
-                  <Stack.Screen name="playlists" />
+                  <Stack.Screen name="(tabs)" />
+                  <Stack.Screen name="group" />
+                  <Stack.Screen name="player" />
                   <Stack.Screen name="playlist" />
                   <Stack.Screen name="add-to-playlist" />
                 </Stack>

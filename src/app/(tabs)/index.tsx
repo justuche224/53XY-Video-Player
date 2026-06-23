@@ -1,5 +1,5 @@
-// src/app/index.tsx
-import { Link, useFocusEffect, useRouter } from 'expo-router';
+// src/app/(tabs)/index.tsx
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -19,6 +19,7 @@ import { getSetting, setSetting } from '@/db/settings-repo';
 import { getHistory } from '@/db/history-repo';
 import { resolveLastPlayed } from '@/player/resume-last';
 import { ResumeFab } from '@/components/resume-fab';
+import { TAB_BAR_CLEARANCE } from '@/components/floating-tab-bar';
 import { filterGroups } from '@/library/filter-groups';
 import { sortGroups, SORT_KEYS, type SortDir, type SortKey } from '@/library/sort-groups';
 import { useLibrary } from '@/library/use-library';
@@ -133,15 +134,6 @@ export default function LibraryScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceVariant ?? '#222', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 24, gap: 16 }}>
           <SortButton sortKey={sortKey} sortDir={sortDir} onPress={() => setSortOpen(true)} />
           <LayoutToggle value={layout} onChange={onLayout} />
-          <Link href={"/playlists" as any} style={{ padding: 4 }}>
-            <Ionicons name="list-outline" size={20} color={colors.onSurface} />
-          </Link>
-          <Link href="/history" style={{ padding: 4 }}>
-            <Ionicons name="time-outline" size={20} color={colors.onSurface} />
-          </Link>
-          <Link href="/settings" style={{ padding: 4 }}>
-            <Ionicons name="settings-outline" size={20} color={colors.onSurface} />
-          </Link>
         </View>
       </View>
       <View style={{ gap: spacing.sm, marginBottom: spacing.sm }}>
@@ -170,7 +162,7 @@ export default function LibraryScreen() {
               )}
             </View>
           }
-          contentContainerStyle={{ paddingBottom: spacing.xl }}
+          contentContainerStyle={{ paddingBottom: spacing.xl + TAB_BAR_CLEARANCE }}
           bounces={true}
           overScrollMode="always"
         />
@@ -182,7 +174,7 @@ export default function LibraryScreen() {
         onSelect={onSort}
         onClose={() => setSortOpen(false)}
       />
-      {resumeTarget ? <ResumeFab onPress={onResume} /> : null}
+      {resumeTarget ? <ResumeFab onPress={onResume} bottomOffset={TAB_BAR_CLEARANCE} /> : null}
     </Screen>
   );
 }

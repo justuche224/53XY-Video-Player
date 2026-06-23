@@ -5,6 +5,7 @@ import { Alert, Pressable, SectionList, StyleSheet, Text, View } from 'react-nat
 import { Ionicons } from '@expo/vector-icons';
 
 import { HistoryRow } from '@/components/history-row';
+import { TAB_BAR_CLEARANCE } from '@/components/floating-tab-bar';
 import { Screen } from '@/components/screen';
 import { SearchBar } from '@/components/search-bar';
 import { clearHistory, getHistory, removeHistory, type HistoryRow as HistoryRowData } from '@/db/history-repo';
@@ -66,12 +67,7 @@ export default function HistoryScreen() {
   return (
     <Screen style={{ padding: spacing.lg }}>
       <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-          <Pressable onPress={() => router.back()} hitSlop={10}>
-            <Ionicons name="arrow-back" size={24} color={colors.onSurface} />
-          </Pressable>
-          <Text style={[styles.title, { color: colors.onSurface }]}>History</Text>
-        </View>
+        <Text style={[styles.title, { color: colors.onSurface }]}>History</Text>
         <Pressable onPress={onClearAll} hitSlop={10}>
           <Ionicons name="trash-outline" size={22} color={colors.onSurface} />
         </Pressable>
@@ -109,7 +105,7 @@ export default function HistoryScreen() {
             </Text>
           </View>
         }
-        contentContainerStyle={{ paddingBottom: spacing.xl }}
+        contentContainerStyle={{ paddingBottom: spacing.xl + TAB_BAR_CLEARANCE }}
         bounces
         overScrollMode="always"
       />

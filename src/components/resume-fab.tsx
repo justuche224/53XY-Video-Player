@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '@/theme/theme-provider';
 
-export function ResumeFab({ onPress }: { onPress: () => void }) {
+export function ResumeFab({ onPress, bottomOffset = 0 }: { onPress: () => void; bottomOffset?: number }) {
   const { colors, spacing } = useTheme();
   const fg = colors.onPrimaryContainer ?? colors.onPrimary ?? '#fff';
   return (
@@ -14,7 +14,7 @@ export function ResumeFab({ onPress }: { onPress: () => void }) {
         styles.fab,
         {
           backgroundColor: colors.primaryContainer ?? colors.primary,
-          bottom: spacing.lg,
+          bottom: spacing.lg + bottomOffset,
           right: spacing.lg,
         },
       ]}

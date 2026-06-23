@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 
 import { Screen } from '@/components/screen';
+import { TAB_BAR_CLEARANCE } from '@/components/floating-tab-bar';
 import { PlaylistRow } from '@/components/playlist-row';
 import { PressableScale } from '@/components/pressable-scale';
 import {
@@ -88,12 +89,7 @@ export default function PlaylistsScreen() {
   return (
     <Screen style={{ paddingHorizontal: spacing.lg }}>
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <PressableScale onPress={() => router.back()} style={{ padding: 4 }}>
-            <Ionicons name="arrow-back" size={24} color={colors.onSurface} />
-          </PressableScale>
-          <Text style={[styles.title, { color: colors.onSurface }]}>Playlists</Text>
-        </View>
+        <Text style={[styles.title, { color: colors.onSurface }]}>Playlists</Text>
         <PressableScale onPress={() => setPromptVisible(true)} style={{ padding: 4 }}>
           <Ionicons name="add-circle-outline" size={28} color={colors.onSurface} />
         </PressableScale>
@@ -121,6 +117,7 @@ export default function PlaylistsScreen() {
             </Text>
           </View>
         }
+        contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
       />
 
       <Modal transparent visible={promptVisible} animationType="fade">
