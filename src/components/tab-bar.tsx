@@ -2,16 +2,17 @@ import type { BottomTabBarProps } from 'expo-router/build/react-navigation/botto
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { tabIconFor } from '@/navigation/tab-icon';
+import { tabIconFor, tabLabelFor } from '@/navigation/tab-icon';
 import { useTheme } from '@/theme/theme-provider';
 
 const BAR_HEIGHT = 64;
 const PILL_W = 56;
 const PILL_H = 32;
+const PILL_TOP = 8;
 
 // Vertical space a tab screen should leave at the bottom of its scroll content
 // so the last item clears the (flush) bar.
@@ -59,7 +60,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
             pointerEvents="none"
             style={[
               styles.pill,
-              { width: PILL_W, height: PILL_H, borderRadius: PILL_H / 2, top: (BAR_HEIGHT - PILL_H) / 2, backgroundColor: pillBg },
+              { width: PILL_W, height: PILL_H, borderRadius: PILL_H / 2, top: PILL_TOP, backgroundColor: pillBg },
               pillStyle,
             ]}
           />
@@ -81,7 +82,15 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
                 }
               }}
             >
-              <Ionicons name={focused ? icon.active : icon.inactive} size={24} color={focused ? activeFg : inactiveFg} />
+              <View style={[styles.iconBox, { height: PILL_H }]}>
+                <Ionicons name={focused ? icon.active : icon.inactive} size={24} color={focused ? activeFg : inactiveFg} />
+              </View>
+              <Text
+                numberOfLines={1}
+                style={[styles.label, { color: focused ? colors.onSurface : inactiveFg, fontWeight: focused ? '700' : '500' }]}
+              >
+                {tabLabelFor(route.name)}
+              </Text>
             </Pressable>
           );
         })}
@@ -92,7 +101,9 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
 
 const styles = StyleSheet.create({
   bar: { borderTopWidth: StyleSheet.hairlineWidth },
-  row: { flexDirection: 'row', alignItems: 'center' },
+  row: { flexDirection: 'row', alignItems: 'flex-start' },
   pill: { position: 'absolute' },
-  tab: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center' },
+  tab: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'flex-start', paddingTop: PILL_TOP, gap: 3 },
+  iconBox: { alignItems: 'center', justifyContent: 'center' },
+  label: { fontSize: 11 },
 });

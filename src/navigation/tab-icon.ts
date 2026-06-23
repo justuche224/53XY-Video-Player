@@ -6,6 +6,21 @@ type IoniconName = keyof typeof Ionicons.glyphMap;
 
 export type TabIcon = { active: IoniconName; inactive: IoniconName };
 
+export function tabLabelFor(routeName: string): string {
+  switch (routeName) {
+    case 'index':
+      return 'Home';
+    case 'playlists':
+      return 'Playlists';
+    case 'history':
+      return 'History';
+    case 'settings':
+      return 'Settings';
+    default:
+      return routeName;
+  }
+}
+
 export function tabIconFor(routeName: string): TabIcon {
   switch (routeName) {
     case 'index':
