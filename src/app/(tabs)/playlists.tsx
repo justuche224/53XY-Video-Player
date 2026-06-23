@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 
 import { Screen } from '@/components/screen';
+import { ScreenHeader } from '@/components/screen-header';
 import { TAB_BAR_CLEARANCE } from '@/components/tab-bar';
 import { PlaylistRow } from '@/components/playlist-row';
 import { PressableScale } from '@/components/pressable-scale';
@@ -87,13 +88,15 @@ export default function PlaylistsScreen() {
   };
 
   return (
-    <Screen style={{ paddingHorizontal: spacing.lg }}>
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.onSurface }]}>Playlists</Text>
-        <PressableScale onPress={() => setPromptVisible(true)} style={{ padding: 4 }}>
-          <Ionicons name="add-circle-outline" size={28} color={colors.onSurface} />
-        </PressableScale>
-      </View>
+    <Screen style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
+      <ScreenHeader
+        title="Playlists"
+        right={
+          <PressableScale onPress={() => setPromptVisible(true)} style={{ padding: 4 }}>
+            <Ionicons name="add-circle-outline" size={28} color={colors.onSurface} />
+          </PressableScale>
+        }
+      />
 
       <FlashList
         data={playlists}
@@ -160,22 +163,6 @@ export default function PlaylistsScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    marginBottom: 8,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-  },
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',

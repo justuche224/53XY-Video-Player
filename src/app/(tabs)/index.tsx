@@ -2,7 +2,7 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -10,6 +10,7 @@ import { GroupCard } from '@/components/group-card';
 import { GroupRow } from '@/components/group-row';
 import { LayoutToggle } from '@/components/layout-toggle';
 import { Screen } from '@/components/screen';
+import { ScreenHeader } from '@/components/screen-header';
 import { SearchBar } from '@/components/search-bar';
 import { SegmentedTabs } from '@/components/segmented-tabs';
 import { SortButton } from '@/components/sort-button';
@@ -125,17 +126,17 @@ export default function LibraryScreen() {
   );
 
   return (
-    <Screen style={{ padding: spacing.lg }}>
-      <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-          <Text style={[styles.title, { color: colors.onSurface }]}>53XY</Text>
-          {refreshing ? <ActivityIndicator size="small" color={colors.primary} /> : null}
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceVariant ?? '#222', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 24, gap: 16 }}>
-          <SortButton sortKey={sortKey} sortDir={sortDir} onPress={() => setSortOpen(true)} />
-          <LayoutToggle value={layout} onChange={onLayout} />
-        </View>
-      </View>
+    <Screen style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
+      <ScreenHeader
+        title="53XY"
+        accessory={refreshing ? <ActivityIndicator size="small" color={colors.primary} /> : null}
+        right={
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceVariant ?? '#222', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 24, gap: 16 }}>
+            <SortButton sortKey={sortKey} sortDir={sortDir} onPress={() => setSortOpen(true)} />
+            <LayoutToggle value={layout} onChange={onLayout} />
+          </View>
+        }
+      />
       <View style={{ gap: spacing.sm, marginBottom: spacing.sm }}>
         <SearchBar value={query} onChangeText={setQuery} />
         <SegmentedTabs value={mode} onChange={onMode} />
@@ -178,8 +179,3 @@ export default function LibraryScreen() {
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  title: { fontSize: 28, fontWeight: '700' },
-});

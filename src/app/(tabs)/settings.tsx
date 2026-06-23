@@ -9,6 +9,7 @@ import { FilterChips, type LengthPreset } from '@/components/filter-chips';
 import { FolderIgnoreList, type FolderEntry } from '@/components/folder-ignore-list';
 import { NamePatternList } from '@/components/name-pattern-list';
 import { Screen } from '@/components/screen';
+import { ScreenHeader } from '@/components/screen-header';
 import { TAB_BAR_CLEARANCE } from '@/components/tab-bar';
 import { getAllVideos } from '@/db/videos-repo';
 import { applyFilters } from '@/library/filter-videos';
@@ -63,8 +64,8 @@ export default function SettingsScreen() {
   const hidden = allVideos.length - applyFilters(allVideos, filter).length;
 
   return (
-    <Screen style={{ paddingHorizontal: spacing.lg }}>
-      <Text style={[styles.title, { color: colors.onSurface }]}>Settings</Text>
+    <Screen style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
+      <ScreenHeader title="Settings" />
       <ScrollView
         contentContainerStyle={{ gap: spacing.xl, paddingVertical: spacing.lg, paddingBottom: spacing.xl * 2 + TAB_BAR_CLEARANCE }}
         bounces={true}
@@ -118,7 +119,6 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 28, fontWeight: '700' },
   section: { fontSize: 20, fontWeight: '700' },
   labelRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 8 },
   label: { fontSize: 14, fontWeight: '600' },

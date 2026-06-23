@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { HistoryRow } from '@/components/history-row';
 import { TAB_BAR_CLEARANCE } from '@/components/tab-bar';
 import { Screen } from '@/components/screen';
+import { ScreenHeader } from '@/components/screen-header';
 import { SearchBar } from '@/components/search-bar';
 import { clearHistory, getHistory, removeHistory, type HistoryRow as HistoryRowData } from '@/db/history-repo';
 import { assembleHistory, filterHistory } from '@/history/assemble-history';
@@ -65,13 +66,15 @@ export default function HistoryScreen() {
   );
 
   return (
-    <Screen style={{ padding: spacing.lg }}>
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.onSurface }]}>History</Text>
-        <Pressable onPress={onClearAll} hitSlop={10}>
-          <Ionicons name="trash-outline" size={22} color={colors.onSurface} />
-        </Pressable>
-      </View>
+    <Screen style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
+      <ScreenHeader
+        title="History"
+        right={
+          <Pressable onPress={onClearAll} hitSlop={10}>
+            <Ionicons name="trash-outline" size={22} color={colors.onSurface} />
+          </Pressable>
+        }
+      />
 
       <View style={{ marginBottom: spacing.sm }}>
         <SearchBar value={query} onChangeText={setQuery} />
@@ -114,7 +117,5 @@ export default function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  title: { fontSize: 28, fontWeight: '700' },
   section: { fontSize: 14, fontWeight: '700', paddingVertical: 8 },
 });
