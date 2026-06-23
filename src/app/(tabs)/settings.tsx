@@ -18,6 +18,7 @@ import { groupByFolder } from '@/library/group-videos';
 import type { LibraryVideo } from '@/library/types';
 import { useTheme } from '@/theme/theme-provider';
 import { useBackgroundPlay } from '@/player/use-background-play';
+import { usePictureInPicture } from '@/player/use-pip';
 import { SettingSwitch } from '@/components/setting-switch';
 
 const MIN_PRESETS: LengthPreset[] = [
@@ -38,6 +39,7 @@ export default function SettingsScreen() {
   const db = useSQLiteContext();
   const { filter, setMin, setMax, addNamePattern, removeNamePattern, toggleFolder } = useFilterSettings();
   const { backgroundPlay, setBackgroundPlay } = useBackgroundPlay();
+  const { pictureInPicture, setPictureInPicture } = usePictureInPicture();
   const [dialog, setDialog] = useState<'min' | 'max' | null>(null);
   const [allVideos, setAllVideos] = useState<LibraryVideo[]>([]);
 
@@ -77,6 +79,7 @@ export default function SettingsScreen() {
         <View style={{ gap: spacing.md }}>
           <Text style={[styles.section, { color: colors.onSurface }]}>Player</Text>
           <SettingSwitch label="Play video in background" value={backgroundPlay} onValueChange={setBackgroundPlay} />
+          <SettingSwitch label="Picture in Picture" value={pictureInPicture} onValueChange={setPictureInPicture} />
 
           <Text style={[styles.section, { color: colors.onSurface }]}>Library filters</Text>
 

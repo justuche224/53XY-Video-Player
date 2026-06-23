@@ -1,0 +1,11 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- concentric ring outlines echo the OG's radiating discs; thinner outward mimics the opacity falloff -->
+  <circle cx="512" cy="513" r="197" stroke="white" stroke-width="8" fill="none"/>
+  <circle cx="512" cy="513" r="135" stroke="white" stroke-width="11" fill="none"/>
+  <circle cx="512" cy="513" r="75" stroke="white" stroke-width="15" fill="none"/>
+  <!-- play triangle -->
+  <path d="M487 470V556L565 513L487 470Z" fill="white"/>
+  <!-- wave lines crossing the lower rings, as in the original -->
+  <path d="M264.961 637.719C364.896 613.734 447.242 609.737 512 625.727C576.758 641.716 659.104 641.716 759.039 625.727" stroke="white" stroke-width="14" stroke-linecap="round" fill="none"/>
+  <path d="M264.961 661.703C364.896 639.318 447.242 635.32 512 649.711C576.758 664.102 659.104 664.102 759.039 649.711" stroke="white" stroke-width="10" stroke-linecap="round" fill="none"/>
+</svg>

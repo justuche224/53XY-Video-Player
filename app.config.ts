@@ -21,7 +21,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: '53XY',
   version: '1.0.0',
   orientation: 'portrait',
-  icon: './assets/images/icon.png',
+  icon: './assets/images/android/adaptive-icon.png',
   scheme: 'fiftythreexy',
   userInterfaceStyle: 'automatic',
   owner: 'justuche224',
@@ -31,10 +31,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     adaptiveIcon: {
-      backgroundColor: '#E6F4FE',
-      foregroundImage: './assets/images/android-icon-foreground.png',
-      backgroundImage: './assets/images/android-icon-background.png',
-      monochromeImage: './assets/images/android-icon-monochrome.png',
+      backgroundColor: '#1C1033',
+      foregroundImage: './assets/images/android/adaptive-icon.png',
+      monochromeImage: './assets/images/android/monochrome.png',
     },
     predictiveBackGestureEnabled: false,
     permissions: [
@@ -67,10 +66,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-splash-screen',
       {
-        backgroundColor: '#208AEF',
-        android: {
-          image: './assets/images/splash-icon.png',
-          imageWidth: 76,
+        backgroundColor: '#FFFFFF',
+        image: './assets/images/splash-icon.png',
+        imageWidth: 200,
+        resizeMode: 'contain',
+        dark: {
+          backgroundColor: '#1C1033',
+          image: './assets/images/splash-icon-dark.png',
         },
       },
     ],

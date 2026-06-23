@@ -20,6 +20,7 @@ import { neighbors } from '@/player/playlist';
 import { seekTarget, tapZone } from '@/player/seek';
 import { panAxis, panHalf, clamp01, scrubDeltaSec } from '@/player/pan';
 import { useBackgroundPlay } from '@/player/use-background-play';
+import { usePictureInPicture } from '@/player/use-pip';
 import { getPlaylistItems } from '@/db/playlists-repo';
 import { resolvePlaylistItems } from '@/playlists/resolve-items';
 import { useLibraryData } from '@/library/library-provider';
@@ -93,6 +94,7 @@ export default function PlayerScreen() {
   });
 
   const { backgroundPlay } = useBackgroundPlay();
+  const { pictureInPicture } = usePictureInPicture();
 
   useEffect(() => {
     player.staysActiveInBackground = backgroundPlay;
@@ -537,7 +539,8 @@ export default function PlayerScreen() {
         player={player}
         nativeControls={false}
         contentFit="contain"
-        allowsPictureInPicture={true}
+        allowsPictureInPicture={pictureInPicture}
+        startsPictureInPictureAutomatically={pictureInPicture}
       />
 
       {locked ? (
