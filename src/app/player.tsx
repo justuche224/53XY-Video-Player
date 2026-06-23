@@ -19,6 +19,7 @@ import { shouldResume } from '@/player/resume';
 import { neighbors } from '@/player/playlist';
 import { seekTarget, tapZone } from '@/player/seek';
 import { panAxis, panHalf, clamp01, scrubDeltaSec } from '@/player/pan';
+import { useBackgroundPlay } from '@/player/use-background-play';
 import { getPlaylistItems } from '@/db/playlists-repo';
 import { resolvePlaylistItems } from '@/playlists/resolve-items';
 import { useLibraryData } from '@/library/library-provider';
@@ -90,6 +91,12 @@ export default function PlayerScreen() {
     // Keep voices natural at >1× speed instead of chipmunk pitch.
     p.preservesPitch = true;
   });
+
+  const { backgroundPlay } = useBackgroundPlay();
+
+  useEffect(() => {
+    player.staysActiveInBackground = backgroundPlay;
+  }, [player, backgroundPlay]);
 
   // ── UI state reflected from player ──────────────────────────────────────
   const [playing, setPlaying] = useState(false);
@@ -530,6 +537,7 @@ export default function PlayerScreen() {
         player={player}
         nativeControls={false}
         contentFit="contain"
+        allowsPictureInPicture={true}
       />
 
       {locked ? (
