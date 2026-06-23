@@ -2,6 +2,7 @@
 
 > Append-only, newest first. One bullet per shipped feature. The most recent entries live in [HANDOFF.md §7](./HANDOFF.md#7-changelog); older ones are archived here. The status table in [HANDOFF.md §2](./HANDOFF.md#2-status-table--single-source-of-truth) is the canonical feature list.
 
+- **Shared library cache + un-gated playback** — root `LibraryProvider` owns one cached `videos` array; player plays immediately + async resume seek (killed 3–5s black screen).
 - **Player replay fix** — finished video now seeks to 0 and replays on play; dynamic replay icon (↻).
 - **QOL Polish** — search clear button, premium empty states, android ripples, Settings icons, player 2x haptics.
 - **UI Polish** — unified Ionicons/MaterialIcons, themed headers, scroll overscroll/bounces, duration badges on thumbnails. Spec/plan: [ui-polish-design](./superpowers/specs/2026-06-18-ui-polish-design.md), [ui-polish-plan](./superpowers/plans/2026-06-18-ui-polish.md).
