@@ -19,7 +19,7 @@ import { getSetting, setSetting } from '@/db/settings-repo';
 import { getHistory } from '@/db/history-repo';
 import { resolveLastPlayed } from '@/player/resume-last';
 import { ResumeFab } from '@/components/resume-fab';
-import { TAB_BAR_CLEARANCE } from '@/components/floating-tab-bar';
+import { TAB_BAR_CLEARANCE } from '@/components/tab-bar';
 import { filterGroups } from '@/library/filter-groups';
 import { sortGroups, SORT_KEYS, type SortDir, type SortKey } from '@/library/sort-groups';
 import { useLibrary } from '@/library/use-library';

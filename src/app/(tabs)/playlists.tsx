@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 
 import { Screen } from '@/components/screen';
-import { TAB_BAR_CLEARANCE } from '@/components/floating-tab-bar';
+import { TAB_BAR_CLEARANCE } from '@/components/tab-bar';
 import { PlaylistRow } from '@/components/playlist-row';
 import { PressableScale } from '@/components/pressable-scale';
 import {

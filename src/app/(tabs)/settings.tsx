@@ -9,7 +9,7 @@ import { FilterChips, type LengthPreset } from '@/components/filter-chips';
 import { FolderIgnoreList, type FolderEntry } from '@/components/folder-ignore-list';
 import { NamePatternList } from '@/components/name-pattern-list';
 import { Screen } from '@/components/screen';
-import { TAB_BAR_CLEARANCE } from '@/components/floating-tab-bar';
+import { TAB_BAR_CLEARANCE } from '@/components/tab-bar';
 import { getAllVideos } from '@/db/videos-repo';
 import { applyFilters } from '@/library/filter-videos';
 import { useFilterSettings } from '@/library/filter-settings';

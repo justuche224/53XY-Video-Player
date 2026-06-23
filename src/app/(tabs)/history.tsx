@@ -5,7 +5,7 @@ import { Alert, Pressable, SectionList, StyleSheet, Text, View } from 'react-nat
 import { Ionicons } from '@expo/vector-icons';
 
 import { HistoryRow } from '@/components/history-row';
-import { TAB_BAR_CLEARANCE } from '@/components/floating-tab-bar';
+import { TAB_BAR_CLEARANCE } from '@/components/tab-bar';
 import { Screen } from '@/components/screen';
 import { SearchBar } from '@/components/search-bar';
 import { clearHistory, getHistory, removeHistory, type HistoryRow as HistoryRowData } from '@/db/history-repo';
