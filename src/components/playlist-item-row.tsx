@@ -1,10 +1,9 @@
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, View, Pressable } from 'react-native';
 
-import { PressableScale } from './pressable-scale';
-import { ProgressBar } from './progress-bar';
+import { MediaRow } from './media-row';
 import { VideoThumbnail } from './video-thumbnail';
-import { DurationBadge } from './duration-badge';
 import type { LibraryVideo } from '@/library/types';
 import { useTheme } from '@/theme/theme-provider';
 
@@ -27,60 +26,40 @@ export function PlaylistItemRow({
   canMoveUp?: boolean;
   canMoveDown?: boolean;
 }) {
-  const { colors, spacing, radius } = useTheme();
-
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.sm }}>
-      <PressableScale
-        onPress={onPress}
-        style={{
-          flex: 1,
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingVertical: spacing.sm,
-          gap: spacing.md,
-          borderRadius: radius.md,
-          overflow: 'hidden',
-        }}>
-        <View>
-          <VideoThumbnail video={video} style={styles.thumb} />
-          <DurationBadge ms={video.durationMs} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text numberOfLines={2} style={[styles.title, { color: colors.onSurface }]}>
-            {video.filename}
-          </Text>
-          <View style={{ marginTop: 4 }}>
-            <ProgressBar percent={percent} />
-          </View>
-        </View>
-      </PressableScale>
-
-      {/* Manual Controls */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 8 }}>
-        <View style={{ alignItems: 'center' }}>
-          <Pressable
-            onPress={onMoveUp}
-            disabled={!canMoveUp}
-            style={{ padding: 4, opacity: canMoveUp ? 1 : 0.3 }}>
-            <Ionicons name="chevron-up" size={24} color={colors.onSurfaceVariant ?? '#888'} />
-          </Pressable>
-          <Pressable
-            onPress={onMoveDown}
-            disabled={!canMoveDown}
-            style={{ padding: 4, opacity: canMoveDown ? 1 : 0.3 }}>
-            <Ionicons name="chevron-down" size={24} color={colors.onSurfaceVariant ?? '#888'} />
-          </Pressable>
-        </View>
-        <Pressable onPress={onRemove} style={{ padding: 12 }}>
-          <Ionicons name="trash-outline" size={20} color={colors.error ?? '#ef4444'} />
-        </Pressable>
-      </View>
+  const { colors, icon } = useTheme();
+  const handle = (
+    <View style={styles.reorder}>
+      <Pressable onPress={onMoveUp} disabled={!canMoveUp} hitSlop={6} style={{ opacity: canMoveUp ? 1 : 0.25 }}>
+        <Ionicons name="chevron-up" size={icon.md} color={colors.onSurfaceVariant ?? colors.onSurface} />
+      </Pressable>
+      <Pressable onPress={onMoveDown} disabled={!canMoveDown} hitSlop={6} style={{ opacity: canMoveDown ? 1 : 0.25 }}>
+        <Ionicons name="chevron-down" size={icon.md} color={colors.onSurfaceVariant ?? colors.onSurface} />
+      </Pressable>
     </View>
+  );
+  return (
+    <Swipeable
+      overshootRight={false}
+      renderRightActions={() => (
+        <Pressable onPress={onRemove} style={[styles.remove, { backgroundColor: colors.error ?? '#B00020' }]}>
+          <Ionicons name="trash-outline" size={icon.md} color={colors.onError ?? '#fff'} />
+        </Pressable>
+      )}
+    >
+      <MediaRow
+        thumbnail={<VideoThumbnail video={video} style={styles.fill} />}
+        title={video.filename}
+        percent={percent}
+        durationMs={video.durationMs}
+        onPress={onPress}
+        trailing={handle}
+      />
+    </Swipeable>
   );
 }
 
 const styles = StyleSheet.create({
-  thumb: { width: 110, height: 64 },
-  title: { fontSize: 14, fontWeight: '500' },
+  fill: { width: '100%', height: '100%' },
+  reorder: { alignItems: 'center', justifyContent: 'center' },
+  remove: { width: 72, alignItems: 'center', justifyContent: 'center' },
 });

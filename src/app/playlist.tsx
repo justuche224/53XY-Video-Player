@@ -108,19 +108,10 @@ export default function PlaylistScreen() {
     ]);
   };
 
-  const handleRemoveItem = (videoId: string) => {
-    Alert.alert('Remove Video', 'Remove this video from the playlist?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          if (!id) return;
-          await removeItem(db, id, videoId);
-          loadData();
-        },
-      },
-    ]);
+  const handleRemoveItem = async (videoId: string) => {
+    if (!id) return;
+    await removeItem(db, id, videoId);
+    loadData();
   };
 
   const moveItem = async (index: number, direction: -1 | 1) => {
