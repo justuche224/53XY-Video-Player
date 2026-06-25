@@ -40,7 +40,7 @@ export function MediaRow({
       onLongPress={onLongPress}
       style={[styles.row, { paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, gap: spacing.md, borderRadius: radius.md }]}
     >
-      <View style={[styles.thumb, { width: ROW_THUMB.width, height: ROW_THUMB.height, borderRadius: radius.sm, backgroundColor: colors.surfaceVariant ?? '#222' }]}>
+      <View style={[styles.thumb, { width: ROW_THUMB.width, height: ROW_THUMB.height, borderRadius: radius.md, backgroundColor: colors.surfaceVariant ?? '#222' }]}>
         {thumbnail}
         <DurationBadge ms={durationMs} />
         {percent > 0 ? (
