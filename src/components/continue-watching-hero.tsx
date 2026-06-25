@@ -1,5 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated';
 
 import { AppText } from './app-text';
 import { PressableScale } from './pressable-scale';
@@ -25,9 +26,11 @@ export function ContinueWatchingHero({
   const label = formatEpisodeLabel(season, episode);
   const remainingMs = video.durationMs ? video.durationMs * (1 - Math.min(percent, 1)) : 0;
   const remaining = remainingMs > 0 ? `${formatTime(remainingMs / 1000)} left` : 'Resume';
+  const reducedMotion = useReducedMotion();
 
   return (
-    <PressableScale
+    <Animated.View entering={reducedMotion ? undefined : FadeInDown.duration(280)}>
+      <PressableScale
       onPress={onPress}
       style={[styles.card, { backgroundColor: elevation(2), borderRadius: radius.xl, padding: spacing.sm, marginBottom: spacing.md, gap: spacing.md }]}
     >
@@ -47,7 +50,8 @@ export function ContinueWatchingHero({
           <ProgressBar percent={percent > 0 ? percent : 0.001} />
         </View>
       </View>
-    </PressableScale>
+      </PressableScale>
+    </Animated.View>
   );
 }
 
