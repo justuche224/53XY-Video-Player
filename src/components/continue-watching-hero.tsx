@@ -55,6 +55,6 @@ const styles = StyleSheet.create({
   card: { flexDirection: 'row', alignItems: 'center' },
   poster: { width: 140, height: 80, overflow: 'hidden' },
   fill: { width: '100%', height: '100%' },
-  playOverlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.25)' },
+  playOverlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.25)' },
   body: { flex: 1, gap: 4 },
 });
