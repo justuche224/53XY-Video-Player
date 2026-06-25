@@ -87,10 +87,20 @@ export default function PlayerScreen() {
     (group ? neighbors(group.items, videoId) : { prev: null, next: null });
 
   // ── Video player ─────────────────────────────────────────────────────────
-  const player = useVideoPlayer({ uri }, (p) => {
+  // Metadata feeds the system now-playing notification / MediaSession (lock
+  // screen + quick-settings media controls). Only title + a constant artist are
+  // included — both are available immediately and change only together with the
+  // uri, so the source string stays stable and the player isn't recreated
+  // mid-playback (artwork is intentionally omitted for that reason).
+  const player = useVideoPlayer({ uri, metadata: { title: title ?? 'Video', artist: '53XY' } }, (p) => {
     p.timeUpdateEventInterval = 1;
     // Keep voices natural at >1× speed instead of chipmunk pitch.
     p.preservesPitch = true;
+    // Show the now-playing notification + MediaSession controls (foreground,
+    // background, and PiP) instead of an anonymous, bugged-looking session.
+    // Requires the expo-video config plugin's supportsBackgroundPlayback, which
+    // is already enabled in app.config.ts.
+    p.showNowPlayingNotification = true;
   });
 
   const { backgroundPlay } = useBackgroundPlay();
