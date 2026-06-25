@@ -20,7 +20,7 @@ export function PressableScale({
 }) {
   const scale = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  const { colors } = useTheme();
+  const { isDark } = useTheme();
   return (
     <AnimatedPressable
       onPress={onPress}
@@ -28,7 +28,7 @@ export function PressableScale({
       disabled={disabled}
       onPressIn={() => (scale.value = withSpring(0.96, { damping: 18, stiffness: 240 }))}
       onPressOut={() => (scale.value = withSpring(1, { damping: 18, stiffness: 240 }))}
-      android_ripple={{ color: colors.onSurfaceVariant ?? 'rgba(128,128,128,0.2)' }}
+      android_ripple={{ color: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }}
       style={[style, animatedStyle]}>
       {children}
     </AnimatedPressable>

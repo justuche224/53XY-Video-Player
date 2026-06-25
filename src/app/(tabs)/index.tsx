@@ -137,6 +137,10 @@ export default function LibraryScreen() {
           </View>
         }
       />
+      <View style={{ gap: spacing.sm, marginBottom: spacing.sm }}>
+        <SearchBar value={query} onChangeText={setQuery} />
+        <SegmentedTabs value={mode} onChange={onMode} />
+      </View>
       {resumeTarget ? (
         <ContinueWatchingHero
           video={resumeTarget}
@@ -144,10 +148,6 @@ export default function LibraryScreen() {
           onPress={onResume}
         />
       ) : null}
-      <View style={{ gap: spacing.sm, marginBottom: spacing.sm }}>
-        <SearchBar value={query} onChangeText={setQuery} />
-        <SegmentedTabs value={mode} onChange={onMode} />
-      </View>
       {status === 'denied' ? (
         <Text style={{ color: colors.onSurface }}>Media permission denied. Enable it in system settings.</Text>
       ) : (
