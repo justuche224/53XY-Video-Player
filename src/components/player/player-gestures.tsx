@@ -51,6 +51,10 @@ export function PlayerGestures({
 
     const longPress = Gesture.LongPress()
       .minDuration(350)
+      // Large travel tolerance so finger drift/shake doesn't cancel the 2× boost
+      // once it's held — only lifting ends it (onFinalize). RNGH's default
+      // maxDistance (~10px) would otherwise drop the boost on the slightest move.
+      .maxDistance(100000)
       .onStart(() => {
         'worklet';
         scheduleOnRN(onBoostStart);

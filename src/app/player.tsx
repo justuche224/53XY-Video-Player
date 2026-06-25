@@ -328,8 +328,10 @@ export default function PlayerScreen() {
   // ── Orientation lifecycle ─────────────────────────────────────────────────
   useFocusEffect(
     useCallback(() => {
-      // Follow sensor while player is focused
-      void ScreenOrientation.unlockAsync();
+      // Follow the device sensor (auto-rotate) while the player is focused.
+      // unlockAsync() reverts to the app's manifest default (portrait), which
+      // kills auto-rotate — so explicitly allow all orientations instead.
+      void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.ALL);
 
       return () => {
         // Restore portrait on blur/unmount
@@ -484,9 +486,11 @@ export default function PlayerScreen() {
   }, [player]);
 
   // ── Rotate handler ───────────────────────────────────────────────────────
+  // Manual override on top of auto-rotate: force landscape, or release back to
+  // sensor auto-rotate. `isLandscape` tracks the forced-landscape lock state.
   async function handleRotate() {
     if (isLandscape) {
-      await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+      await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.ALL);
       setIsLandscape(false);
     } else {
       await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
