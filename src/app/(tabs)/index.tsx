@@ -141,13 +141,6 @@ export default function LibraryScreen() {
         <SearchBar value={query} onChangeText={setQuery} />
         <SegmentedTabs value={mode} onChange={onMode} />
       </View>
-      {resumeTarget ? (
-        <ContinueWatchingHero
-          video={resumeTarget}
-          percent={progress.get(resumeTarget.id)?.percent ?? 0}
-          onPress={onResume}
-        />
-      ) : null}
       {status === 'denied' ? (
         <Text style={{ color: colors.onSurface }}>Media permission denied. Enable it in system settings.</Text>
       ) : (
@@ -157,6 +150,15 @@ export default function LibraryScreen() {
           keyExtractor={(g) => g.key}
           numColumns={layout === 'grid' ? 2 : 1}
           renderItem={renderItem}
+          ListHeaderComponent={
+            resumeTarget ? (
+              <ContinueWatchingHero
+                video={resumeTarget}
+                percent={progress.get(resumeTarget.id)?.percent ?? 0}
+                onPress={onResume}
+              />
+            ) : null
+          }
           ListEmptyComponent={
             <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 2 }}>
               <Ionicons name={refreshing ? 'sync-outline' : 'folder-open-outline'} size={64} color={colors.surfaceVariant ?? '#444'} />
