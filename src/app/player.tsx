@@ -154,7 +154,9 @@ export default function PlayerScreen() {
   const boostingRef = useRef<boolean>(false);
 
   // ── Orientation state ────────────────────────────────────────────────────
-  const [isLandscape, setIsLandscape] = useState(false);
+  // True when the user has manually locked orientation (to whatever it was);
+  // false means auto-rotate (follow the sensor).
+  const [orientationLocked, setOrientationLocked] = useState(false);
 
   // ── Resume snackbar state ────────────────────────────────────────────────
   const [snackbarVisible, setSnackbarVisible] = useState(false);
@@ -328,13 +330,15 @@ export default function PlayerScreen() {
   // ── Orientation lifecycle ─────────────────────────────────────────────────
   useFocusEffect(
     useCallback(() => {
-      // Follow sensor while player is focused
-      void ScreenOrientation.unlockAsync();
+      // Follow the device sensor (auto-rotate) while the player is focused.
+      // unlockAsync() reverts to the app's manifest default (portrait), which
+      // kills auto-rotate — so explicitly allow all orientations instead.
+      void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.ALL);
 
       return () => {
         // Restore portrait on blur/unmount
         void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-        setIsLandscape(false);
+        setOrientationLocked(false);
       };
     }, []),
   );
@@ -484,14 +488,27 @@ export default function PlayerScreen() {
   }, [player]);
 
   // ── Rotate handler ───────────────────────────────────────────────────────
+  // Toggle between auto-rotate and locking to the CURRENT orientation (whatever
+  // the device is showing right now — portrait or either landscape).
   async function handleRotate() {
-    if (isLandscape) {
-      await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-      setIsLandscape(false);
-    } else {
-      await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
-      setIsLandscape(true);
+    if (orientationLocked) {
+      await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.ALL);
+      setOrientationLocked(false);
+      return;
     }
+    const current = await ScreenOrientation.getOrientationAsync();
+    const O = ScreenOrientation.Orientation;
+    const L = ScreenOrientation.OrientationLock;
+    const lock =
+      current === O.LANDSCAPE_LEFT
+        ? L.LANDSCAPE_LEFT
+        : current === O.LANDSCAPE_RIGHT
+          ? L.LANDSCAPE_RIGHT
+          : current === O.PORTRAIT_DOWN
+            ? L.PORTRAIT_DOWN
+            : L.PORTRAIT_UP;
+    await ScreenOrientation.lockAsync(lock);
+    setOrientationLocked(true);
   }
 
   // ── Next / Prev handlers ─────────────────────────────────────────────────
@@ -523,7 +540,11 @@ export default function PlayerScreen() {
         <MaterialIcons name="subtitles" size={24} color="#fff" />
       </PressableScale>
       <PressableScale onPress={handleRotate} style={styles.iconButton}>
-        <MaterialIcons name="screen-rotation" size={24} color={isLandscape ? '#aaa' : '#fff'} />
+        <MaterialIcons
+          name={orientationLocked ? 'screen-lock-rotation' : 'screen-rotation'}
+          size={24}
+          color={orientationLocked ? '#9C8CFF' : '#fff'}
+        />
       </PressableScale>
     </View>
   );
