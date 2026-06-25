@@ -50,6 +50,10 @@ export default function RootLayout() {
                   <Stack.Screen name="player" />
                   <Stack.Screen name="playlist" />
                   <Stack.Screen name="add-to-playlist" />
+                  <Stack.Screen name="settings/player" />
+                  <Stack.Screen name="settings/library-filters" />
+                  <Stack.Screen name="settings/hidden-folders" />
+                  <Stack.Screen name="settings/about" />
                 </Stack>
               </ThemeProvider>
             </LibraryProvider>
