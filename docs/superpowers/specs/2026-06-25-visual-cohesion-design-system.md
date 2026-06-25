@@ -1,7 +1,7 @@
 # 53XY — Visual Cohesion & Design System (spec)
 
 **Date:** 2026-06-25
-**Status:** Approved design — ready for plan.
+**Status:** ✅ Implemented (Phases 1–5) and merged to `master`. Plans: [phases 1–3](../plans/2026-06-25-visual-cohesion-phases-1-3.md), [phases 4–5](../plans/2026-06-25-visual-cohesion-phases-4-5.md).
 **Topic:** A design-system-first visual overhaul. Functionality is v2-complete; this pass addresses *looks and cohesion*, not features.
 
 ---
