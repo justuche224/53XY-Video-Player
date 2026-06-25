@@ -67,7 +67,15 @@ A `typography` token map + an `<AppText variant=…>` wrapper component (`src/co
 - The font family is a **single token** (`FONTS.display`) — swapping to Sora/Outfit/etc. later is a one-line change.
 - Only `display`/`headline` variants use the display face; everything else stays system for legibility.
 
-### 3.3 Elevation
+### 3.3 Brand seed / fallback palette
+
+When Material You dynamic color is unavailable (Android < 12, dynamic color off, or system can't supply it), the app currently falls back to `FALLBACK_SOURCE_COLOR = '#FF6B00'` (orange) in `theme-provider.tsx` — off-brand vs. the deep-violet app icon.
+
+- **Reseed the fallback from the icon's violet accent:** `FALLBACK_SOURCE_COLOR = '#5E4FA6'` (the play-circle/wave purple), so the generated M3 palette is in the brand hue rather than orange. Exact value tunable on-device.
+- `#1C1033` (icon base / dark splash `backgroundColor` in `app.config.ts`) stays as-is — it's the dark base, too dark to seed a palette from.
+- This affects only the *fallback*; when Material You is active, the system source color still wins (unchanged behavior).
+
+### 3.4 Elevation
 
 `elevation(level: 0|1|2|3)` → background color from the tonal ramp:
 
@@ -80,7 +88,7 @@ A `typography` token map + an `<AppText variant=…>` wrapper component (`src/co
 
 No `shadowColor`/`elevation` (Android shadow) usage except where a floating element genuinely needs separation; default is tonal.
 
-### 3.4 Icon, radius, spacing
+### 3.5 Icon, radius, spacing
 
 - `ICON = { sm: 18, md: 24, lg: 28, hero: 64 }` — replaces scattered 11→64 values.
 - `RADIUS` gains `xl: 28` (hero/large cards). FAB and tab pill routed through `RADIUS` tokens.
