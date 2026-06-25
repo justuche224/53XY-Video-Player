@@ -44,10 +44,10 @@ export default function RootLayout() {
             <LibraryProvider>
               <ThemeProvider>
                 <ThemedStatusBar />
-                <Stack screenOptions={{ headerShown: false }}>
+                <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
                   <Stack.Screen name="(tabs)" />
                   <Stack.Screen name="group" />
-                  <Stack.Screen name="player" />
+                  <Stack.Screen name="player" options={{ animation: 'default' }} />
                   <Stack.Screen name="playlist" />
                   <Stack.Screen name="add-to-playlist" />
                   <Stack.Screen name="settings/player" />
