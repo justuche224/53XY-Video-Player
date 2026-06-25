@@ -8,8 +8,8 @@ import { CustomLengthDialog } from '@/components/custom-length-dialog';
 import { FilterChips, type LengthPreset } from '@/components/filter-chips';
 import { FolderIgnoreList, type FolderEntry } from '@/components/folder-ignore-list';
 import { NamePatternList } from '@/components/name-pattern-list';
+import { AppBar } from '@/components/app-bar';
 import { Screen } from '@/components/screen';
-import { ScreenHeader } from '@/components/screen-header';
 import { TAB_BAR_CLEARANCE } from '@/components/tab-bar';
 import { getAllVideos } from '@/db/videos-repo';
 import { applyFilters } from '@/library/filter-videos';
@@ -70,7 +70,7 @@ export default function SettingsScreen() {
 
   return (
     <Screen style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
-      <ScreenHeader title="Settings" />
+      <AppBar title="Settings" />
       <ScrollView
         contentContainerStyle={{ gap: spacing.xl, paddingVertical: spacing.lg, paddingBottom: spacing.xl * 2 + TAB_BAR_CLEARANCE }}
         bounces={true}

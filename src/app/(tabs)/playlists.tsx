@@ -13,8 +13,8 @@ import {
   Pressable,
 } from 'react-native';
 
+import { AppBar } from '@/components/app-bar';
 import { Screen } from '@/components/screen';
-import { ScreenHeader } from '@/components/screen-header';
 import { TAB_BAR_CLEARANCE } from '@/components/tab-bar';
 import { PlaylistRow } from '@/components/playlist-row';
 import { PressableScale } from '@/components/pressable-scale';
@@ -89,7 +89,7 @@ export default function PlaylistsScreen() {
 
   return (
     <Screen style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
-      <ScreenHeader
+      <AppBar
         title="Playlists"
         right={
           <PressableScale onPress={() => setPromptVisible(true)} style={{ padding: 4 }}>

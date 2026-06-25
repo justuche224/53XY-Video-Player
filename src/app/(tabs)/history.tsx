@@ -1,13 +1,14 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, SectionList, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+import { AppBar } from '@/components/app-bar';
 import { HistoryRow } from '@/components/history-row';
+import { SectionHeader } from '@/components/section-header';
 import { TAB_BAR_CLEARANCE } from '@/components/tab-bar';
 import { Screen } from '@/components/screen';
-import { ScreenHeader } from '@/components/screen-header';
 import { SearchBar } from '@/components/search-bar';
 import { clearHistory, getHistory, removeHistory, type HistoryRow as HistoryRowData } from '@/db/history-repo';
 import { assembleHistory, filterHistory } from '@/history/assemble-history';
@@ -67,7 +68,7 @@ export default function HistoryScreen() {
 
   return (
     <Screen style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
-      <ScreenHeader
+      <AppBar
         title="History"
         right={
           <Pressable onPress={onClearAll} hitSlop={10}>
@@ -91,11 +92,7 @@ export default function HistoryScreen() {
             onRemove={() => onRemove(item.video.id)}
           />
         )}
-        renderSectionHeader={({ section }) => (
-          <Text style={[styles.section, { color: colors.onSurface, backgroundColor: colors.background }]}>
-            {section.title}
-          </Text>
-        )}
+        renderSectionHeader={({ section }) => <SectionHeader title={section.title} />}
         stickySectionHeadersEnabled
         ListEmptyComponent={
           <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 2 }}>
@@ -115,7 +112,3 @@ export default function HistoryScreen() {
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  section: { fontSize: 14, fontWeight: '700', paddingVertical: 8 },
-});
