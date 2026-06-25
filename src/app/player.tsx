@@ -9,7 +9,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import type { SubtitleTrack, AudioTrack, TimeUpdateEventPayload } from 'expo-video';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, StyleSheet, Text, View } from 'react-native';
 import type { AppStateStatus } from 'react-native';
 
@@ -87,10 +87,34 @@ export default function PlayerScreen() {
     (group ? neighbors(group.items, videoId) : { prev: null, next: null });
 
   // ── Video player ─────────────────────────────────────────────────────────
-  const player = useVideoPlayer({ uri }, (p) => {
+  // Source metadata feeds the system now-playing notification / MediaSession
+  // (lock screen + quick-settings media controls). The artwork uses the
+  // library's already-cached thumbnail when one exists, read via a ref and
+  // frozen per uri so the source string never changes mid-playback — changing
+  // it would recreate the player and reset playback (the useVideoPlayer
+  // gotcha). Videos with no cached thumbnail yet fall back to no artwork.
+  const videosRef = useRef(videos);
+  videosRef.current = videos;
+  const source = useMemo(() => {
+    const artwork = videosRef.current.find((v) => v.id === videoId)?.thumbUri ?? undefined;
+    return {
+      uri,
+      metadata: { title: title ?? 'Video', artist: '53XY', ...(artwork ? { artwork } : {}) },
+    };
+    // Keyed on uri only: videoId/title change together with uri, and the cache
+    // is read through a ref so a library refresh can't trigger a recreation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uri]);
+
+  const player = useVideoPlayer(source, (p) => {
     p.timeUpdateEventInterval = 1;
     // Keep voices natural at >1× speed instead of chipmunk pitch.
     p.preservesPitch = true;
+    // Show the now-playing notification + MediaSession controls (foreground,
+    // background, and PiP) instead of an anonymous, bugged-looking session.
+    // Requires the expo-video config plugin's supportsBackgroundPlayback, which
+    // is already enabled in app.config.ts.
+    p.showNowPlayingNotification = true;
   });
 
   const { backgroundPlay } = useBackgroundPlay();
