@@ -1,36 +1,22 @@
 import { memo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 
-import { PressableScale } from './pressable-scale';
-import { ProgressBar } from './progress-bar';
+import { MediaCard } from './media-card';
 import { ThumbnailCollage } from './thumbnail-collage';
-import { DurationBadge } from './duration-badge';
 import type { Group } from '@/library/types';
-import { useTheme } from '@/theme/theme-provider';
 
 export const GroupCard = memo(function GroupCard({ group, percent, onPress }: { group: Group; percent: number; onPress: () => void }) {
-  const { colors, spacing, radius } = useTheme();
   const totalMs = group.items.reduce((acc, v) => acc + (v.durationMs ?? 0), 0);
   return (
-    <PressableScale onPress={onPress} style={{ flex: 1, margin: spacing.sm, borderRadius: radius.md, overflow: 'hidden' }}>
-      <View>
-        <ThumbnailCollage videos={group.items} style={styles.thumb} />
-        <DurationBadge ms={totalMs} />
-      </View>
-      <View style={{ marginTop: spacing.sm }}>
-        <ProgressBar percent={percent} />
-        <Text numberOfLines={1} style={[styles.title, { color: colors.onSurface, marginTop: spacing.xs }]}>
-          {group.title}
-        </Text>
-        <Text style={{ color: colors.onSurfaceVariant ?? colors.onSurface, fontSize: 12 }}>
-          {group.count} video{group.count === 1 ? '' : 's'}
-        </Text>
-      </View>
-    </PressableScale>
+    <MediaCard
+      thumbnail={<ThumbnailCollage videos={group.items} style={styles.fill} />}
+      title={group.title}
+      meta={`${group.count} video${group.count === 1 ? '' : 's'}`}
+      percent={percent}
+      durationMs={totalMs}
+      onPress={onPress}
+    />
   );
 });
 
-const styles = StyleSheet.create({
-  thumb: { width: '100%', aspectRatio: 16 / 10 },
-  title: { fontSize: 15, fontWeight: '600' },
-});
+const styles = StyleSheet.create({ fill: { width: '100%', height: '100%' } });
