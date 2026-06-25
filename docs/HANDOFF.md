@@ -45,6 +45,8 @@
 | v2 — Resume FAB | Home-screen "▶ Resume" FAB → most-recent existing video with group next/prev; `resolveLastPlayed` Jest-tested | ✅ merged |
 | Playlists | User-created playlists, manual reordering, player integration. | **Completed** |
 | Bottom tab bar | Flat Material You tab bar (Home/Playlists/History/Settings); `(tabs)` group | ✅ merged (device-verify pending) |
+| Visual cohesion 1–3 | Design-system foundation (typography ramp + `AppText`, M3 tonal elevation/icon/radius tokens, Space Grotesk display font, brand-violet fallback seed); canonical `MediaRow`/`MediaCard`/`AppBar`/`SectionHeader`; continue-watching hero replacing the Resume FAB; all rows/cards/headers unified | ✅ merged |
+| Visual cohesion 4–5 | Settings split into landing list + Player/Library filters/Hidden folders/About sub-screens (`ListItem`, `useAllVideos`); restrained motion (reduced-motion-aware hero entrance + consistent detail-screen slide) | ✅ merged |
 | Long-press context menu | Add to playlist, mark as read directly from list. | 📋 backlog — parked |
 | libVLC fallback | Custom Expo native module for exotic codecs (large native effort, parked) | 📋 backlog — parked |
 | Player: gesture-arena fix | RNGH `GestureButton` + `requireExternalGestureToFail` so double-tap works with controls showing | 📋 backlog — optional |
@@ -52,7 +54,7 @@
 | Grouping refinements | Number-prefixed siblings, screen-recording bucketing | 📋 backlog — by design |
 | Themed error boundary | `SQLiteProvider` fallback (class component can't use `useTheme`) | 📋 backlog — minor |
 
-Tests: **82 passing**, `npx tsc --noEmit` clean.
+Tests: **260 passing**, `npx tsc --noEmit` clean.
 
 Plans live in [plans/](./plans/) ([roadmap](./plans/README.md)); 3a/3b specs+plans under [superpowers/](./superpowers/).
 
@@ -60,9 +62,11 @@ Plans live in [plans/](./plans/) ([roadmap](./plans/README.md)); 3a/3b specs+pla
 
 ## 3. What's next
 
-Nothing is in flight. Next candidates from the backlog rows above:
-- **Playlists** — the main remaining v2 feature.
+Nothing is in flight. The visual-cohesion overhaul (Phases 1–5) is merged. Next candidates from the backlog rows above:
+- **Visual-cohesion follow-ups** (Minor, logged from review): stop `VideoThumbnail`/`ThumbnailCollage` double-rounding inside clipping containers (the radii are currently matched as a workaround); drop the unused `ROW_THUMB` export; route the duration-badge radius through the `RADIUS` scale.
+- **Navigation perf** — tap→transition feels slow in dev; group-detail re-derives grouping over the whole library on mount and the player init is heavy. Verify on a release build first; if real, defer heavy mount work past first paint.
 - **libVLC fallback** — parked. RN 0.85 is new-arch-only so community VLC libs don't drop in; needs a custom Expo native module (libvlc-android + Fabric view + engine abstraction), adds APK weight, can't be agent-built/verified. Revisit only when there's appetite for a large native effort.
+- **Playlist drag-and-drop reorder** — deferred from visual cohesion (needs a draggable-list dep risky on RN 0.85 new-arch + FlashList); swipe-delete + up/down chevrons ship today.
 - Player refinements (gesture-arena fix, gated resume seek) are optional polish.
 
 ---
@@ -123,6 +127,7 @@ Nothing is in flight. Next candidates from the backlog rows above:
 
 > Append-only, newest first. One bullet per shipped feature. Keep only the latest ~5 here; archive older entries to [CHANGELOG.md](./CHANGELOG.md).
 
+- **Visual cohesion (design system, Phases 1–5)** — a Material-You-correct "M3 + a signature" overhaul. Foundation: a shared typography ramp + `<AppText>`, M3 tonal `elevation()`/`ICON`/`RADIUS.xl` tokens, the **Space Grotesk** display font, and a brand-violet (`#5E4FA6`) fallback palette seed. Canonical components — `MediaRow`, `MediaCard`, `AppBar`, `SectionHeader`, `ListItem` — replace the per-screen variants (all rows/cards/headers re-based onto them; pill `DurationBadge`; progress woven into the thumbnail). Signatures: a **continue-watching hero** (list header on Home) that replaced the floating Resume FAB, the typographic wordmark, and the progress-in-poster card. Settings split into a landing list + Player / Library filters / Hidden folders / About sub-screens (`useAllVideos`). Restrained motion: reduced-motion-aware hero entrance + consistent `slide_from_right` detail transitions (player exempted). Playlist gained swipe-to-delete (true drag-reorder deferred). Specs/plans under [superpowers/](./superpowers/) (`2026-06-25-visual-cohesion-*`). JS-only except the new font asset (needs a rebuild).
 - **Background Play & PiP** — Video plays seamlessly in the background and transitions to Picture-in-Picture automatically when swiping home (requires Android 12+ or iOS). Settings toggles via `SettingSwitch`, backed by SQLite (`useBackgroundPlay`, `usePictureInPicture`). Relies on `expo-video` config plugin for native capabilities. Spec/plan: [background-pip](./superpowers/plans/2026-06-23-background-pip.md).
 - **Bottom tab bar** — top nav-icon row replaced by a 4-tab bottom bar (Home/Playlists/History/Settings) via an Expo Router `(tabs)` group. Flat Material You `tabBar` (`src/components/tab-bar.tsx`) flush at the bottom edge with a spring-animated `secondaryContainer` active pill (the floating lift-into-circle variant was tried first but looked detached on device). Detail screens stay full-screen; Home header keeps Sort+Layout only; Resume FAB raised above the bar. Pure `tabIconFor` Jest-tested. JS-only. Spec: [bottom-tab-bar-design](./superpowers/specs/2026-06-23-bottom-tab-bar-design.md).
 - **Playlists** — user-created playlists with manual reordering and player integration (`playlistId` param drives next/prev); home-header entry, `ThumbnailCollage` empty-guard, local `uuidv4`. Spec/plan: [playlists-design](./superpowers/specs/2026-06-21-playlists-design.md), [playlists-plan](./superpowers/plans/2026-06-21-playlists.md).

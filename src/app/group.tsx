@@ -1,11 +1,12 @@
 // src/app/group.tsx
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 
+import { AppBar } from '@/components/app-bar';
 import { EpisodeRow } from '@/components/episode-row';
 import { Screen } from '@/components/screen';
 import { getProgressMap, type ProgressMap } from '@/db/progress-repo';
@@ -31,15 +32,7 @@ export default function GroupDetailScreen() {
 
   return (
     <Screen style={{ paddingHorizontal: spacing.lg }}>
-      <Stack.Screen 
-        options={{ 
-          headerShown: true, 
-          title: group?.title ?? 'Group',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.onSurface,
-          headerShadowVisible: false
-        }} 
-      />
+      <AppBar title={group?.title ?? 'Group'} variant="detail" onBack={() => router.back()} />
       <FlashList
         data={group?.items ?? []}
         keyExtractor={(v) => v.id}

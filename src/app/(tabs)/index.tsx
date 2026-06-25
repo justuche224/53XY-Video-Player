@@ -10,7 +10,8 @@ import { GroupCard } from '@/components/group-card';
 import { GroupRow } from '@/components/group-row';
 import { LayoutToggle } from '@/components/layout-toggle';
 import { Screen } from '@/components/screen';
-import { ScreenHeader } from '@/components/screen-header';
+import { AppBar } from '@/components/app-bar';
+import { ContinueWatchingHero } from '@/components/continue-watching-hero';
 import { SearchBar } from '@/components/search-bar';
 import { SegmentedTabs } from '@/components/segmented-tabs';
 import { SortButton } from '@/components/sort-button';
@@ -19,7 +20,6 @@ import { getProgressMap, type ProgressMap } from '@/db/progress-repo';
 import { getSetting, setSetting } from '@/db/settings-repo';
 import { getHistory } from '@/db/history-repo';
 import { resolveLastPlayed } from '@/player/resume-last';
-import { ResumeFab } from '@/components/resume-fab';
 import { TAB_BAR_CLEARANCE } from '@/components/tab-bar';
 import { filterGroups } from '@/library/filter-groups';
 import { sortGroups, SORT_KEYS, type SortDir, type SortKey } from '@/library/sort-groups';
@@ -127,7 +127,7 @@ export default function LibraryScreen() {
 
   return (
     <Screen style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
-      <ScreenHeader
+      <AppBar
         title="53XY"
         accessory={refreshing ? <ActivityIndicator size="small" color={colors.primary} /> : null}
         right={
@@ -150,6 +150,15 @@ export default function LibraryScreen() {
           keyExtractor={(g) => g.key}
           numColumns={layout === 'grid' ? 2 : 1}
           renderItem={renderItem}
+          ListHeaderComponent={
+            resumeTarget ? (
+              <ContinueWatchingHero
+                video={resumeTarget}
+                percent={progress.get(resumeTarget.id)?.percent ?? 0}
+                onPress={onResume}
+              />
+            ) : null
+          }
           ListEmptyComponent={
             <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 2 }}>
               <Ionicons name={refreshing ? 'sync-outline' : 'folder-open-outline'} size={64} color={colors.surfaceVariant ?? '#444'} />
@@ -175,7 +184,6 @@ export default function LibraryScreen() {
         onSelect={onSort}
         onClose={() => setSortOpen(false)}
       />
-      {resumeTarget ? <ResumeFab onPress={onResume} bottomOffset={TAB_BAR_CLEARANCE} /> : null}
     </Screen>
   );
 }

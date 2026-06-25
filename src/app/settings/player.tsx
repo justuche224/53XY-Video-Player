@@ -1,0 +1,25 @@
+import { useRouter } from 'expo-router';
+import { View } from 'react-native';
+
+import { AppBar } from '@/components/app-bar';
+import { Screen } from '@/components/screen';
+import { SettingSwitch } from '@/components/setting-switch';
+import { useBackgroundPlay } from '@/player/use-background-play';
+import { usePictureInPicture } from '@/player/use-pip';
+import { useTheme } from '@/theme/theme-provider';
+
+export default function PlayerSettingsScreen() {
+  const router = useRouter();
+  const { spacing } = useTheme();
+  const { backgroundPlay, setBackgroundPlay } = useBackgroundPlay();
+  const { pictureInPicture, setPictureInPicture } = usePictureInPicture();
+  return (
+    <Screen style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
+      <AppBar title="Player" variant="detail" onBack={() => router.back()} />
+      <View style={{ gap: spacing.sm }}>
+        <SettingSwitch label="Play video in background" value={backgroundPlay} onValueChange={setBackgroundPlay} />
+        <SettingSwitch label="Picture in Picture" value={pictureInPicture} onValueChange={setPictureInPicture} />
+      </View>
+    </Screen>
+  );
+}

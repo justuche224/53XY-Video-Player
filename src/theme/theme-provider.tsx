@@ -4,7 +4,9 @@ import { useColorScheme } from 'react-native';
 
 import { resolveTheme, type Material3Theme, type ThemeTokens } from './resolve-theme';
 
-const FALLBACK_SOURCE_COLOR = '#FF6B00';
+// Brand violet (the app-icon accent). Seeds the whole Material You palette when
+// the system can't supply a dynamic source color (Android < 12, dynamic off).
+const FALLBACK_SOURCE_COLOR = '#5E4FA6';
 const ThemeContext = createContext<ThemeTokens | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

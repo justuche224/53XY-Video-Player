@@ -5,6 +5,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, Modal, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { AppBar } from '@/components/app-bar';
 import { Screen } from '@/components/screen';
 import { PlaylistItemRow } from '@/components/playlist-item-row';
 import { PressableScale } from '@/components/pressable-scale';
@@ -108,19 +109,10 @@ export default function PlaylistScreen() {
     ]);
   };
 
-  const handleRemoveItem = (videoId: string) => {
-    Alert.alert('Remove Video', 'Remove this video from the playlist?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          if (!id) return;
-          await removeItem(db, id, videoId);
-          loadData();
-        },
-      },
-    ]);
+  const handleRemoveItem = async (videoId: string) => {
+    if (!id) return;
+    await removeItem(db, id, videoId);
+    loadData();
   };
 
   const moveItem = async (index: number, direction: -1 | 1) => {
@@ -146,32 +138,24 @@ export default function PlaylistScreen() {
 
   return (
     <Screen style={{ paddingHorizontal: spacing.lg }}>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <PressableScale onPress={() => router.back()} style={{ padding: 4 }}>
-            <Ionicons name="arrow-back" size={24} color={colors.onSurface} />
-          </PressableScale>
-          <Text numberOfLines={1} style={[styles.title, { color: colors.onSurface, flexShrink: 1 }]}>
-            {playlist.name}
-          </Text>
-        </View>
-        <View style={styles.headerRight}>
-          <PressableScale onPress={handlePlayAll} style={{ padding: 4, opacity: items.length ? 1 : 0.3 }} disabled={!items.length}>
-            <Ionicons name="play" size={24} color={colors.primary} />
-          </PressableScale>
-          <PressableScale
-            onPress={() => {
-              setNewName(playlist.name);
-              setRenameVisible(true);
-            }}
-            style={{ padding: 4 }}>
-            <MaterialIcons name="edit" size={24} color={colors.onSurface} />
-          </PressableScale>
-          <PressableScale onPress={handleDelete} style={{ padding: 4 }}>
-            <Ionicons name="trash-outline" size={24} color={colors.error ?? '#ef4444'} />
-          </PressableScale>
-        </View>
-      </View>
+      <AppBar
+        title={playlist.name}
+        variant="detail"
+        onBack={() => router.back()}
+        right={
+          <>
+            <PressableScale onPress={handlePlayAll} style={{ padding: 4, opacity: items.length ? 1 : 0.3 }} disabled={!items.length}>
+              <Ionicons name="play" size={24} color={colors.primary} />
+            </PressableScale>
+            <PressableScale onPress={() => { setNewName(playlist.name); setRenameVisible(true); }} style={{ padding: 4 }}>
+              <MaterialIcons name="edit" size={24} color={colors.onSurface} />
+            </PressableScale>
+            <PressableScale onPress={handleDelete} style={{ padding: 4 }}>
+              <Ionicons name="trash-outline" size={24} color={colors.error ?? '#ef4444'} />
+            </PressableScale>
+          </>
+        }
+      />
 
       <FlashList
         data={items}
@@ -262,28 +246,6 @@ export default function PlaylistScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    marginBottom: 8,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-  },
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
