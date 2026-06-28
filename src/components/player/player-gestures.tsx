@@ -1,10 +1,12 @@
 // src/components/player/player-gestures.tsx
 import type { ReactNode } from 'react';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, type GestureType } from 'react-native-gesture-handler';
 import { useSharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+
+import { PlayerGestureRelationsProvider } from './player-gesture-relations';
 
 interface PlayerGesturesProps {
   onToggleControls: () => void;
@@ -31,11 +33,21 @@ export function PlayerGestures({
   // Full-screen dimensions, worklet-accessible.
   const width = useSharedValue(0);
   const height = useSharedValue(0);
+  const singleTapRef = useRef<GestureType | undefined>(undefined);
+  const doubleTapRef = useRef<GestureType | undefined>(undefined);
+  const longPressRef = useRef<GestureType | undefined>(undefined);
+  const panRef = useRef<GestureType | undefined>(undefined);
+
+  const playerGestureRelations = useMemo(
+    () => [singleTapRef, doubleTapRef, longPressRef, panRef],
+    [],
+  );
 
   const composed = useMemo(() => {
     // No maxDuration cap — a slightly-long press should still count as a tap
     // (so double-tap detection isn't flaky); the 350ms long-press handles holds.
     const singleTap = Gesture.Tap()
+      .withRef(singleTapRef)
       .numberOfTaps(1)
       .onEnd((_e, success) => {
         'worklet';
@@ -43,6 +55,7 @@ export function PlayerGestures({
       });
 
     const doubleTap = Gesture.Tap()
+      .withRef(doubleTapRef)
       .numberOfTaps(2)
       .onEnd((e, success) => {
         'worklet';
@@ -50,6 +63,7 @@ export function PlayerGestures({
       });
 
     const longPress = Gesture.LongPress()
+      .withRef(longPressRef)
       .minDuration(350)
       // Large travel tolerance so finger drift/shake doesn't cancel the 2× boost
       // once it's held — only lifting ends it (onFinalize). RNGH's default
@@ -65,6 +79,7 @@ export function PlayerGestures({
       });
 
     const pan = Gesture.Pan()
+      .withRef(panRef)
       .onStart(() => {
         'worklet';
         scheduleOnRN(onPanStart);
@@ -82,15 +97,17 @@ export function PlayerGestures({
   }, [onToggleControls, onDoubleTap, onBoostStart, onBoostEnd, onPanStart, onPanMove, onPanEnd]);
 
   return (
-    <GestureDetector gesture={composed}>
-      <View
-        style={StyleSheet.absoluteFill}
-        onLayout={(ev) => {
-          width.value = ev.nativeEvent.layout.width;
-          height.value = ev.nativeEvent.layout.height;
-        }}>
-        {children}
-      </View>
-    </GestureDetector>
+    <PlayerGestureRelationsProvider value={playerGestureRelations}>
+      <GestureDetector gesture={composed}>
+        <View
+          style={StyleSheet.absoluteFill}
+          onLayout={(ev) => {
+            width.value = ev.nativeEvent.layout.width;
+            height.value = ev.nativeEvent.layout.height;
+          }}>
+          {children}
+        </View>
+      </GestureDetector>
+    </PlayerGestureRelationsProvider>
   );
 }

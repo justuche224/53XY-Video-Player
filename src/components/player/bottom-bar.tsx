@@ -1,10 +1,10 @@
 // src/components/player/bottom-bar.tsx
 import { StyleSheet, Text, View } from 'react-native';
 
-import { PressableScale } from '@/components/pressable-scale';
 import { Seekbar } from './seekbar';
 import { formatTime } from '@/player/format-time';
 import { useTheme } from '@/theme/theme-provider';
+import { PlayerPressableScale } from './player-pressable-scale';
 
 // Speed cycle: 1 → 1.5 → 2 → 0.5 → 1
 const SPEED_CYCLE = [1, 1.5, 2, 0.5] as const;
@@ -50,14 +50,14 @@ export function BottomBar({
         <Text style={[styles.timeText, { opacity: 0.6 }]}>
           {formatTime(durationSec)}
         </Text>
-        <PressableScale
+        <PlayerPressableScale
           onPress={() => onCycleRate(nextRate(rate))}
           style={[
             styles.speedChip,
             { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: radius.pill },
           ]}>
           <Text style={styles.speedText}>{rateLabel}</Text>
-        </PressableScale>
+        </PlayerPressableScale>
       </View>
     </View>
   );

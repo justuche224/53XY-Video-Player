@@ -49,12 +49,12 @@
 | Visual cohesion 4–5 | Settings split into landing list + Player/Library filters/Hidden folders/About sub-screens (`ListItem`, `useAllVideos`); restrained motion (reduced-motion-aware hero entrance + consistent detail-screen slide) | ✅ merged |
 | Long-press context menu | Add to playlist, mark as read directly from list. | 📋 backlog — parked |
 | libVLC fallback | Custom Expo native module for exotic codecs (large native effort, parked) | 📋 backlog — parked |
-| Player: gesture-arena fix | RNGH `GestureButton` + `requireExternalGestureToFail` so double-tap works with controls showing | 📋 backlog — optional |
+| Player: gesture-arena fix | RNGH pressable arena so double-tap side seek works with controls showing while chrome buttons win their own taps | ✅ merged, device-verified |
 | Player: gated resume seek | Gate resume seek on player ready/status event instead of seeking immediately | 📋 backlog — optional |
 | Grouping refinements | Number-prefixed siblings, screen-recording bucketing | 📋 backlog — by design |
 | Themed error boundary | `SQLiteProvider` fallback (class component can't use `useTheme`) | 📋 backlog — minor |
 
-Tests: **260 passing**, `npx tsc --noEmit` clean.
+Tests: **262 passing**, `npx tsc --noEmit` clean.
 
 Plans live in [plans/](./plans/) ([roadmap](./plans/README.md)); 3a/3b specs+plans under [superpowers/](./superpowers/).
 
@@ -67,7 +67,7 @@ Nothing is in flight. The visual-cohesion overhaul (Phases 1–5) is merged. Nex
 - **Navigation perf** — tap→transition feels slow in dev; group-detail re-derives grouping over the whole library on mount and the player init is heavy. Verify on a release build first; if real, defer heavy mount work past first paint.
 - **libVLC fallback** — parked. RN 0.85 is new-arch-only so community VLC libs don't drop in; needs a custom Expo native module (libvlc-android + Fabric view + engine abstraction), adds APK weight, can't be agent-built/verified. Revisit only when there's appetite for a large native effort.
 - **Playlist drag-and-drop reorder** — deferred from visual cohesion (needs a draggable-list dep risky on RN 0.85 new-arch + FlashList); swipe-delete + up/down chevrons ship today.
-- Player refinements (gesture-arena fix, gated resume seek) are optional polish.
+- Player gated resume seek is optional polish.
 
 ---
 
@@ -127,6 +127,7 @@ Nothing is in flight. The visual-cohesion overhaul (Phases 1–5) is merged. Nex
 
 > Append-only, newest first. One bullet per shipped feature. Keep only the latest ~5 here; archive older entries to [CHANGELOG.md](./CHANGELOG.md).
 
+- **Player gesture arena fix** — double-tap side seek now works again while the controls overlay is visible, without chrome buttons accidentally toggling play/pause. The overlay is nested inside `PlayerGestures`, player chrome buttons use a player-scoped RNGH pressable with `blocksExternalGesture`, and double-tap policy is explicit: hidden overlay keeps left/center/right seek-toggle behavior; visible overlay allows left/right seek but center empty-space double-tap is a no-op. Pure `doubleTapAction` Jest coverage added. JS-only.
 - **Now-playing media notification** — the player now shows a proper system MediaSession notification (lock screen + quick-settings controls) in foreground, background, and PiP via `player.showNowPlayingNotification = true` + source `metadata` (title + "53XY" artist). Artwork uses the library's cached thumbnail when one exists, captured once and frozen per uri (read via a ref) so the source never changes mid-playback and recreates the player. Native side needed nothing new — the expo-video config plugin's `supportsBackgroundPlayback` (already set) compiles in the MediaSession service. JS-only. Known gaps: videos with no persisted thumbnail fall back to a placeholder; `file://` artwork rendering in MediaSession is plausible but unverified.
 - **Player rotation & boost fixes** — the player now follows the device sensor (true auto-rotate) via `lockAsync(ALL)` on focus (was `unlockAsync()`, which reverted to the portrait manifest default and killed rotation); the rotate button now toggles auto ↔ a lock to the *current* orientation (portrait or either landscape, via `getOrientationAsync`), with a clearer engaged state (`screen-lock-rotation` icon in bright violet). Long-press→2× no longer drops on finger drift/shake — `LongPress.maxDistance` raised so only lifting ends the boost. JS-only.
 - **Visual cohesion (design system, Phases 1–5)** — a Material-You-correct "M3 + a signature" overhaul. Foundation: a shared typography ramp + `<AppText>`, M3 tonal `elevation()`/`ICON`/`RADIUS.xl` tokens, the **Space Grotesk** display font, and a brand-violet (`#5E4FA6`) fallback palette seed. Canonical components — `MediaRow`, `MediaCard`, `AppBar`, `SectionHeader`, `ListItem` — replace the per-screen variants (all rows/cards/headers re-based onto them; pill `DurationBadge`; progress woven into the thumbnail). Signatures: a **continue-watching hero** (list header on Home) that replaced the floating Resume FAB, the typographic wordmark, and the progress-in-poster card. Settings split into a landing list + Player / Library filters / Hidden folders / About sub-screens (`useAllVideos`). Restrained motion: reduced-motion-aware hero entrance + consistent `slide_from_right` detail transitions (player exempted). Playlist gained swipe-to-delete (true drag-reorder deferred). Specs/plans under [superpowers/](./superpowers/) (`2026-06-25-visual-cohesion-*`). JS-only except the new font asset (needs a rebuild).
