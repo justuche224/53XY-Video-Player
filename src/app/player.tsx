@@ -18,6 +18,7 @@ import { buildProgress, shouldWrite } from '@/player/progress-writer';
 import { shouldResume } from '@/player/resume';
 import { neighbors } from '@/player/playlist';
 import { seekTarget, tapZone } from '@/player/seek';
+import { doubleTapAction } from '@/player/double-tap';
 import { panAxis, panHalf, clamp01, scrubDeltaSec } from '@/player/pan';
 import { useBackgroundPlay } from '@/player/use-background-play';
 import { usePictureInPicture } from '@/player/use-pip';
@@ -36,7 +37,7 @@ import { BottomBar } from '@/components/player/bottom-bar';
 import { ResumeSnackbar } from '@/components/player/resume-snackbar';
 import { TracksSheet } from '@/components/player/tracks-sheet';
 import { LockOverlay } from '@/components/player/lock-overlay';
-import { PressableScale } from '@/components/pressable-scale';
+import { PlayerPressableScale } from '@/components/player/player-pressable-scale';
 import { SystemVolume } from '@/native/system-volume';
 
 // Vertical-swipe sensitivity: a drag of ~(screen height / VERTICAL_GAIN) spans
@@ -404,11 +405,11 @@ export default function PlayerScreen() {
   }, []);
 
   const handleDoubleTap = useCallback((x: number, w: number) => {
-    // Gate: if controls are visible the user is interacting with the chrome,
-    // so ignore double-taps to prevent edge taps from accidentally toggling a control.
-    if (controlsVisibleRef.current) return;
     const zone = tapZone(x, w);
-    if (zone === 'center') {
+    const action = doubleTapAction(zone, controlsVisibleRef.current);
+    if (action === 'none') return;
+
+    if (action === 'toggle') {
       // Center third toggles play/pause; flash the action just taken.
       if (player.playing) {
         player.pause();
@@ -430,7 +431,7 @@ export default function PlayerScreen() {
     player.currentTime = target;
     setPositionSec(target);
     lastPositionSecRef.current = target;
-    setSeekFlash((prev) => ({ kind: zone, nonce: (prev?.nonce ?? 0) + 1 }));
+    setSeekFlash((prev) => ({ kind: zone === 'left' ? 'left' : 'right', nonce: (prev?.nonce ?? 0) + 1 }));
   }, [player]);
 
   const handleBoostStart = useCallback(() => {
@@ -557,19 +558,19 @@ export default function PlayerScreen() {
   // ── Top-bar right slot: lock + rotate + tracks buttons ───────────────────
   const topBarRight = (
     <View style={styles.topBarActions}>
-      <PressableScale onPress={() => setLocked(true)} style={styles.iconButton}>
+      <PlayerPressableScale onPress={() => setLocked(true)} style={styles.iconButton}>
         <MaterialIcons name="lock-open" size={24} color="#fff" />
-      </PressableScale>
-      <PressableScale onPress={() => setTracksSheetVisible(true)} style={styles.iconButton}>
+      </PlayerPressableScale>
+      <PlayerPressableScale onPress={() => setTracksSheetVisible(true)} style={styles.iconButton}>
         <MaterialIcons name="subtitles" size={24} color="#fff" />
-      </PressableScale>
-      <PressableScale onPress={handleRotate} style={styles.iconButton}>
+      </PlayerPressableScale>
+      <PlayerPressableScale onPress={handleRotate} style={styles.iconButton}>
         <MaterialIcons
           name={orientationLocked ? 'screen-lock-rotation' : 'screen-rotation'}
           size={24}
           color={orientationLocked ? '#9C8CFF' : '#fff'}
         />
-      </PressableScale>
+      </PlayerPressableScale>
     </View>
   );
 
@@ -602,61 +603,61 @@ export default function PlayerScreen() {
             onPanStart={handlePanStart}
             onPanMove={handlePanMove}
             onPanEnd={handlePanEnd}
-          />
-
-          {/* Layer 3: Chrome overlay — box-none so empty space falls through to gesture layer */}
-          <ControlsOverlay
-            playing={playing}
-            visible={controlsVisible}
-            onAutoHide={handleAutoHide}
           >
-            <TopBar
-              title={title ?? ''}
-              onBack={() => router.back()}
-              right={topBarRight}
-            />
-            <CenterControls
+            {/* Layer 3: Chrome overlay — box-none so empty space falls through to gesture layer */}
+            <ControlsOverlay
               playing={playing}
-              isEnded={!playing && durationSec > 0 && positionSec >= durationSec - 0.5}
-              onToggle={handleTogglePlay}
-              onPrev={
-                (playlistId || group)
-                  ? () => {
-                      if (prev) void handleNavigateTo(prev);
-                    }
-                  : undefined
-              }
-              onNext={
-                (playlistId || group)
-                  ? () => {
-                      if (next) void handleNavigateTo(next);
-                    }
-                  : undefined
-              }
-              hasPrev={prev !== null}
-              hasNext={next !== null}
-            />
-            <BottomBar
-              positionSec={positionSec}
-              durationSec={durationSec}
-              rate={rate}
-              onSeek={handleSeek}
-              onCycleRate={handleCycleRate}
-            />
-            {snackbarVisible && (
-              <View style={styles.snackbarContainer}>
-                <ResumeSnackbar
-                  positionSec={resumePositionSec}
-                  onDismiss={() => setSnackbarVisible(false)}
-                  onRestart={() => {
-                    player.currentTime = 0;
-                    setPositionSec(0);
-                    lastPositionSecRef.current = 0;
-                  }}
-                />
-              </View>
-            )}
-          </ControlsOverlay>
+              visible={controlsVisible}
+              onAutoHide={handleAutoHide}
+            >
+              <TopBar
+                title={title ?? ''}
+                onBack={() => router.back()}
+                right={topBarRight}
+              />
+              <CenterControls
+                playing={playing}
+                isEnded={!playing && durationSec > 0 && positionSec >= durationSec - 0.5}
+                onToggle={handleTogglePlay}
+                onPrev={
+                  (playlistId || group)
+                    ? () => {
+                        if (prev) void handleNavigateTo(prev);
+                      }
+                    : undefined
+                }
+                onNext={
+                  (playlistId || group)
+                    ? () => {
+                        if (next) void handleNavigateTo(next);
+                      }
+                    : undefined
+                }
+                hasPrev={prev !== null}
+                hasNext={next !== null}
+              />
+              <BottomBar
+                positionSec={positionSec}
+                durationSec={durationSec}
+                rate={rate}
+                onSeek={handleSeek}
+                onCycleRate={handleCycleRate}
+              />
+              {snackbarVisible && (
+                <View style={styles.snackbarContainer}>
+                  <ResumeSnackbar
+                    positionSec={resumePositionSec}
+                    onDismiss={() => setSnackbarVisible(false)}
+                    onRestart={() => {
+                      player.currentTime = 0;
+                      setPositionSec(0);
+                      lastPositionSecRef.current = 0;
+                    }}
+                  />
+                </View>
+              )}
+            </ControlsOverlay>
+          </PlayerGestures>
 
           {/* Layer 4: Gesture indicators (pointer-events none, always on top) */}
           <GestureIndicators boostActive={boostActive} seekFlash={seekFlash} />

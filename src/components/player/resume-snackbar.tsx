@@ -2,9 +2,9 @@
 import { useEffect, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { PressableScale } from '@/components/pressable-scale';
 import { useTheme } from '@/theme/theme-provider';
 import { formatTime } from '@/player/format-time';
+import { PlayerPressableScale } from './player-pressable-scale';
 
 interface ResumeSnackbarProps {
   /** Position in seconds that was resumed from */
@@ -47,7 +47,7 @@ export function ResumeSnackbar({ positionSec, onDismiss, onRestart }: ResumeSnac
         Resumed at {formatTime(positionSec)}
       </Text>
       <Text style={[styles.dot, { color: colors.inverseOnSurface ?? '#fff' }]}>{'·'}</Text>
-      <PressableScale
+      <PlayerPressableScale
         onPress={() => {
           onRestart();
           onDismiss();
@@ -56,7 +56,7 @@ export function ResumeSnackbar({ positionSec, onDismiss, onRestart }: ResumeSnac
         <Text style={[styles.restartLabel, { color: colors.inversePrimary ?? '#90caf9' }]}>
           Restart
         </Text>
-      </PressableScale>
+      </PlayerPressableScale>
     </View>
   );
 }
