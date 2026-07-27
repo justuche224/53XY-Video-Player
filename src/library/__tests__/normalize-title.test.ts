@@ -13,6 +13,8 @@ describe('normalizeTitle', () => {
     ['His and Hers 2026 S01E03.mkv', 'His and Hers'],
     ['Citadel S01.mkv', 'Citadel'],
     ['Some.Show.1x05.mp4', 'Some Show'],
+    ['Boston Legal S04xE01 - Beauty And The Beast(@Intermedia).avi', 'Boston Legal'],
+    ['Boston Legal S04xE02 - The Innocent Man(@Intermedia).avi', 'Boston Legal'],
   ])('strips episode markers: %s -> %s', (input, expected) => {
     expect(normalizeTitle(input)).toBe(expected);
   });

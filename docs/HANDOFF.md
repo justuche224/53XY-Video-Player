@@ -101,7 +101,7 @@ Nothing is in flight. The visual-cohesion overhaul (Phases 1–5) is merged. Nex
 - **Player chrome must be fixed white**, not theme `onSurface` (near-black on dark video under a light theme); wrap controls in safe-area insets.
 - **Library lists refetch progress via `useFocusEffect`**, so resume bars update on return from the player.
 - **Volume must use the system stream, not `player.volume`** — ExoPlayer's per-player volume corrupts audio. The local `modules/system-volume` Kotlin module sets `AudioManager.STREAM_MUSIC`. Worklet→JS hops use `scheduleOnRN` (not deprecated `runOnJS`); pure helpers are called on the JS thread, never inside a worklet. **Changes to `modules/system-volume` need `npx expo run:android`.**
-- **Chrome buttons overlap the gesture layer** — double-tap gated to controls-hidden as the simpler fix. Proper fix (RNGH gesture arena) is deferred.
+- **Chrome buttons overlap the gesture layer** — fixed via an RNGH gesture arena (`player-gesture-relations.ts` + `player-pressable-scale.tsx`'s `blocksExternalGesture`): chrome buttons win their own taps while double-tap side-seek still works with controls showing. Double-tap policy lives in pure `src/player/double-tap.ts` (`doubleTapAction`, Jest-tested): hidden overlay → left/center/right all act (center = play/pause toggle); visible overlay → left/right seek but center empty-space double-tap is a no-op.
 
 ---
 

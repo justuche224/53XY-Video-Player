@@ -10,8 +10,9 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import type { SubtitleTrack, AudioTrack, TimeUpdateEventPayload } from 'expo-video';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, StyleSheet, Text, View } from 'react-native';
+import { AppState, StyleSheet, View } from 'react-native';
 import type { AppStateStatus } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { getProgressMap, upsertProgress } from '@/db/progress-repo';
 import { buildProgress, shouldWrite } from '@/player/progress-writer';
@@ -182,6 +183,13 @@ export default function PlayerScreen() {
   // True when the user has manually locked orientation (to whatever it was);
   // false means auto-rotate (follow the sensor).
   const [orientationLocked, setOrientationLocked] = useState(false);
+  // Bumped on every orientation transition (sensor rotate AND the lock button).
+  // Used as a `key` to remount the gesture subtree: RNGH's recognizers wedge
+  // after a setRequestedOrientation / config change — raw touches still arrive
+  // (onTouchesDown fires) but no gesture ever activates. Rebuilding the
+  // GestureDetector re-attaches fresh handlers so recognition resumes.
+  const [gestureGen, setGestureGen] = useState(0);
+  const bumpGestureGen = useCallback(() => setGestureGen((g) => g + 1), []);
 
   // ── Resume snackbar state ────────────────────────────────────────────────
   const [snackbarVisible, setSnackbarVisible] = useState(false);
@@ -368,6 +376,31 @@ export default function PlayerScreen() {
     }, []),
   );
 
+  // Rebuild the gesture subtree after every sensor-driven orientation change
+  // (the lock-button case is handled in handleRotate, since locking to the same
+  // orientation fires no change event).
+  useEffect(() => {
+    const sub = ScreenOrientation.addOrientationChangeListener(bumpGestureGen);
+    return () => ScreenOrientation.removeOrientationChangeListener(sub);
+  }, [bumpGestureGen]);
+
+  // Same wedge, different trigger: a prev/next switch changes `uri`, which
+  // recreates the expo-video player and attaches a FRESH native SurfaceView.
+  // That new surface grabs Android's touch-delivery lock and wedges the gesture
+  // recognizers exactly like an orientation change does (touches arrive, nothing
+  // activates) — but nothing remounts the detector on this path, so it stayed
+  // dead until backing out. Bump the gesture generation whenever the player
+  // object changes to rebuild the GestureDetector. Skip the initial mount: the
+  // first surface attaches cleanly, so only recreations need the remount.
+  const firstPlayerRef = useRef(true);
+  useEffect(() => {
+    if (firstPlayerRef.current) {
+      firstPlayerRef.current = false;
+      return;
+    }
+    bumpGestureGen();
+  }, [player, bumpGestureGen]);
+
   // Keep the ref in sync so gesture callbacks read current visibility without
   // needing to be recreated on every toggle.
   useEffect(() => {
@@ -519,6 +552,7 @@ export default function PlayerScreen() {
     if (orientationLocked) {
       await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.ALL);
       setOrientationLocked(false);
+      bumpGestureGen();
       return;
     }
     const current = await ScreenOrientation.getOrientationAsync();
@@ -534,6 +568,7 @@ export default function PlayerScreen() {
             : L.PORTRAIT_UP;
     await ScreenOrientation.lockAsync(lock);
     setOrientationLocked(true);
+    bumpGestureGen();
   }
 
   // ── Next / Prev handlers ─────────────────────────────────────────────────
@@ -575,7 +610,19 @@ export default function PlayerScreen() {
   );
 
   return (
-    <View style={styles.root}>
+    // Screen-level gesture root, FORCED ACTIVE. expo-video's native VideoView
+    // (a SurfaceView) sits behind the gesture layer; on an orientation change —
+    // and intermittently — that native surface grabs the Android touch-delivery
+    // lock, which permanently kills gestures handled only by the distant
+    // app-root GestureHandlerRootView (video + JS keep running, hence the
+    // overlay still auto-hides). A plain nested GestureHandlerRootView is a
+    // no-op here: RNGestureHandlerRootView.onAttachedToWindow self-disables when
+    // it finds an ancestor root (rootViewEnabled = forceActive || !hasAncestor).
+    // unstable_forceActive forces this root to install its own touch helper
+    // BELOW the surface boundary, so the surface re-grabbing the lock can't
+    // cancel the player's gestures. (Documented RNGH workaround for native views
+    // that grab the touch lock.)
+    <GestureHandlerRootView style={styles.root} unstable_forceActive>
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar hidden />
 
@@ -596,6 +643,7 @@ export default function PlayerScreen() {
         <>
           {/* Layer 2: Full-screen gesture catcher (below chrome so buttons still work) */}
           <PlayerGestures
+            key={gestureGen}
             onToggleControls={handleToggleControls}
             onDoubleTap={handleDoubleTap}
             onBoostStart={handleBoostStart}
@@ -675,7 +723,7 @@ export default function PlayerScreen() {
           )}
         </>
       )}
-    </View>
+    </GestureHandlerRootView>
   );
 }
 

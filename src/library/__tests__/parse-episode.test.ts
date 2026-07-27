@@ -11,6 +11,11 @@ describe('parseEpisode', () => {
     expect(parseEpisode('Some.Show.1x05.mp4')).toEqual({ season: 1, episode: 5 });
   });
 
+  it('parses SxxxExx (x-separated hybrid)', () => {
+    expect(parseEpisode('Boston Legal S04xE01 - Beauty.avi')).toEqual({ season: 4, episode: 1 });
+    expect(parseEpisode('Boston Legal S04xE12 - Something.avi')).toEqual({ season: 4, episode: 12 });
+  });
+
   it('parses season-only', () => {
     expect(parseEpisode('Citadel S01.mkv')).toEqual({ season: 1, episode: null });
   });

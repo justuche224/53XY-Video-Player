@@ -1,5 +1,5 @@
 // Matches the first season/episode marker; the show name is everything before it.
-const EPISODE_MARKER = /\b(s\d{1,2}(e\d{1,3})?|\d{1,2}x\d{1,3}|season\s*\d+|episode\s*\d+)\b/i;
+const EPISODE_MARKER = /\b(s\d{1,2}(x?e\d{1,3})?|\d{1,2}x\d{1,3}|season\s*\d+|episode\s*\d+)\b/i;
 // A number delimited by a dash (e.g. "Show - 216 - Title") is an episode marker.
 const DASH_NUMBER = /\s[-–]\s*\d{1,4}\b/;
 // Promo junk that signals the title has ended (handles, "JOIN ...", urls).

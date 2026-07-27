@@ -1,6 +1,7 @@
 import type { EpisodeInfo } from './types';
 
-const SXXEXX = /\bs(\d{1,2})(?:e(\d{1,3}))?\b/i;
+// Optional `x` covers the `S04xE01` hybrid (season-x-episode with S/E letters).
+const SXXEXX = /\bs(\d{1,2})(?:x?e(\d{1,3}))?\b/i;
 const NXNN = /\b(\d{1,2})x(\d{1,3})\b/i;
 
 export function parseEpisode(filename: string): EpisodeInfo {
