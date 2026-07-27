@@ -627,24 +627,17 @@ export default function PlayerScreen() {
       <StatusBar hidden />
 
       {/* Layer 1: Video — always mounted so playback/progress are never broken.
-          Two deliberate isolations keep the native video view out of the touch
-          and window-lifecycle equations (the root of the recurring RNGH gesture
-          wedges — rotation, pause's keepScreenOn flip, modal close, player
-          recreation all wedged recognition while a SurfaceView was involved):
-          - surfaceType="textureView": a TextureView is an ordinary composited
-            view with no separate window surface, unlike SurfaceView. DRM (the
-            one real TextureView limitation) is irrelevant for local files.
-          - pointerEvents="none" wrapper: expo-video's Android VideoView
-            overrides onTouchEvent to consume EVERY touch and re-dispatch
-            synthetic events into RN (expo/expo#35479). With native controls off
-            and our own gesture layer on top, it must never be a touch target. */}
+          The pointerEvents="none" wrapper keeps the native video view out of
+          touch dispatch entirely: expo-video's Android VideoView overrides
+          onTouchEvent to consume EVERY touch and re-dispatch synthetic events
+          into RN (expo/expo#35479). With native controls off and our own
+          gesture layer on top, it must never be a touch target. */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <VideoView
           style={StyleSheet.absoluteFill}
           player={player}
           nativeControls={false}
           contentFit="contain"
-          surfaceType="textureView"
           allowsPictureInPicture={pictureInPicture}
           startsPictureInPictureAutomatically={pictureInPicture}
         />
