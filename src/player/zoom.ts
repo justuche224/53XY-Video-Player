@@ -16,7 +16,7 @@ export interface Size {
 
 export const MIN_SCALE = 0.25;
 export const MAX_SCALE = 4;
-export const SNAP_TOLERANCE = 0.04;
+export const SNAP_TOLERANCE = 0.06;
 
 export function clampScale(s: number): number {
   if (s < MIN_SCALE) return MIN_SCALE;

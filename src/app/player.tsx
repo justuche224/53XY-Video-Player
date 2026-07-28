@@ -171,6 +171,10 @@ export default function PlayerScreen() {
   >(null);
   const zoomHudTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pinchActiveRef = useRef(false);
+  // Tracks the mode previewed by the current pinch (null = free/no snap zone),
+  // so we can fire a haptic tick only on ENTRY into a snap zone — not on every
+  // update while already inside one, and not when leaving to free.
+  const pinchSnapZoneRef = useRef<DisplayMode | null>(null);
   const zoomScale = useSharedValue(1);
 
   const displayMode: DisplayMode = zoomState.kind === 'mode' ? zoomState.mode : 'fit';
@@ -562,6 +566,7 @@ export default function PlayerScreen() {
 
   const handlePinchStart = useCallback(() => {
     pinchActiveRef.current = true;
+    pinchSnapZoneRef.current = null;
     // A pinch is a zoom, never a boost: kill a boost the long-press may have
     // started before the second finger landed.
     handleBoostEnd();
@@ -571,9 +576,28 @@ export default function PlayerScreen() {
     );
   }, [handleBoostEnd]);
 
-  const handlePinchUpdate = useCallback((scale: number) => {
-    setZoomHud({ kind: 'percent', percent: Math.round(scale * 100) });
-  }, []);
+  const handlePinchUpdate = useCallback(
+    (scale: number) => {
+      // Preview exactly what release would snap to, so the HUD shows the same
+      // target the user will actually land on (Crop/100%) instead of a raw
+      // percentage they can't tell is inside the snap window.
+      const preview = snapZoom(scale, screen, naturalSize, pixelRatio);
+      const previewedMode = preview.kind === 'mode' ? preview.mode : null;
+      if (previewedMode !== pinchSnapZoneRef.current && previewedMode !== null) {
+        // Haptic tick on zone ENTRY only — not on every update inside the zone,
+        // and not when leaving back to free.
+        Haptics.selectionAsync();
+      }
+      pinchSnapZoneRef.current = previewedMode;
+
+      if (preview.kind === 'mode') {
+        setZoomHud({ kind: 'label', label: modeLabel(preview.mode) });
+      } else {
+        setZoomHud({ kind: 'percent', percent: Math.round(scale * 100) });
+      }
+    },
+    [screen, naturalSize, pixelRatio],
+  );
 
   const handlePinchEnd = useCallback(
     (scale: number) => {

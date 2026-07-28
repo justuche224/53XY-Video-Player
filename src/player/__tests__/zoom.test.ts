@@ -68,11 +68,15 @@ describe('snapZoom', () => {
     expect(snapZoom(1.03, LANDSCAPE_SCREEN, WIDE_VIDEO, 3)).toEqual({ kind: 'mode', mode: 'fit' });
   });
   it('snaps to crop within tolerance', () => {
-    // crop = 1.25; 1.28/1.25 = 1.024 → within 4%
+    // crop = 1.25; 1.28/1.25 = 1.024 → within 6%
     expect(snapZoom(1.28, LANDSCAPE_SCREEN, WIDE_VIDEO, 3)).toEqual({ kind: 'mode', mode: 'crop' });
   });
   it('stays free between targets', () => {
     expect(snapZoom(1.12, LANDSCAPE_SCREEN, WIDE_VIDEO, 3)).toEqual({ kind: 'free', scale: 1.12 });
+  });
+  it('snaps to fit at the edge of the widened 6% tolerance', () => {
+    // fit target = 1; 1.05/1 = 1.05 → 5% off, within the new 6% window
+    expect(snapZoom(1.05, LANDSCAPE_SCREEN, WIDE_VIDEO, 3)).toEqual({ kind: 'mode', mode: 'fit' });
   });
   it('only fit is a target without natural size', () => {
     expect(snapZoom(1.02, LANDSCAPE_SCREEN, null, 3)).toEqual({ kind: 'mode', mode: 'fit' });
