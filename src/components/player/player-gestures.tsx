@@ -17,6 +17,13 @@ interface PlayerGesturesProps {
   onPanStart: () => void;
   onPanMove: (x: number, translationX: number, translationY: number, width: number, height: number) => void;
   onPanEnd: () => void;
+  /** Resting zoom scale; the pinch worklet reads it at onStart as the base. */
+  zoomScale: ReturnType<typeof useSharedValue<number>>;
+  onPinchStart: () => void;
+  /** Fires on every pinch update with the clamped live scale (for the % HUD). */
+  onPinchUpdate: (scale: number) => void;
+  /** Fires once with the final clamped scale. */
+  onPinchEnd: (scale: number) => void;
   children?: ReactNode;
 }
 
@@ -28,18 +35,24 @@ export function PlayerGestures({
   onPanStart,
   onPanMove,
   onPanEnd,
+  zoomScale,
+  onPinchStart,
+  onPinchUpdate,
+  onPinchEnd,
   children,
 }: PlayerGesturesProps) {
   // Full-screen dimensions, worklet-accessible.
   const width = useSharedValue(0);
   const height = useSharedValue(0);
+  const zoomBase = useSharedValue(1);
   const singleTapRef = useRef<GestureType | undefined>(undefined);
   const doubleTapRef = useRef<GestureType | undefined>(undefined);
   const longPressRef = useRef<GestureType | undefined>(undefined);
   const panRef = useRef<GestureType | undefined>(undefined);
+  const pinchRef = useRef<GestureType | undefined>(undefined);
 
   const playerGestureRelations = useMemo(
-    () => [singleTapRef, doubleTapRef, longPressRef, panRef],
+    () => [singleTapRef, doubleTapRef, longPressRef, panRef, pinchRef],
     [],
   );
 
@@ -80,6 +93,7 @@ export function PlayerGestures({
 
     const pan = Gesture.Pan()
       .withRef(panRef)
+      .maxPointers(1)
       .onStart(() => {
         'worklet';
         scheduleOnRN(onPanStart);
@@ -93,8 +107,29 @@ export function PlayerGestures({
         scheduleOnRN(onPanEnd);
       });
 
-    return Gesture.Race(pan, longPress, Gesture.Exclusive(doubleTap, singleTap));
-  }, [onToggleControls, onDoubleTap, onBoostStart, onBoostEnd, onPanStart, onPanMove, onPanEnd]);
+    // Two-finger zoom. zoomBase is captured at onStart so e.scale (relative to
+    // gesture start) composes with the current resting scale. Clamp bounds are
+    // MIN_SCALE/MAX_SCALE from src/player/zoom.ts — inlined for the worklet.
+    const pinch = Gesture.Pinch()
+      .withRef(pinchRef)
+      .onStart(() => {
+        'worklet';
+        zoomBase.value = zoomScale.value;
+        scheduleOnRN(onPinchStart);
+      })
+      .onUpdate((e) => {
+        'worklet';
+        const s = Math.min(4, Math.max(0.25, zoomBase.value * e.scale));
+        zoomScale.value = s;
+        scheduleOnRN(onPinchUpdate, s);
+      })
+      .onEnd(() => {
+        'worklet';
+        scheduleOnRN(onPinchEnd, zoomScale.value);
+      });
+
+    return Gesture.Race(pinch, pan, longPress, Gesture.Exclusive(doubleTap, singleTap));
+  }, [onToggleControls, onDoubleTap, onBoostStart, onBoostEnd, onPanStart, onPanMove, onPanEnd, zoomScale, onPinchStart, onPinchUpdate, onPinchEnd]);
 
   return (
     <PlayerGestureRelationsProvider value={playerGestureRelations}>

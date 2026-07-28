@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import type { AppStateStatus } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useSharedValue } from 'react-native-reanimated';
 
 import { getProgressMap, upsertProgress } from '@/db/progress-repo';
 import { buildProgress, shouldWrite } from '@/player/progress-writer';
@@ -155,6 +156,9 @@ export default function PlayerScreen() {
     | { kind: 'center'; glyph: '▶' | '⏸' | '↻'; nonce: number }
     | null
   >(null);
+
+  // ── Pinch zoom state ─────────────────────────────────────────────────────
+  const zoomScale = useSharedValue(1);
 
   // ── Pan gesture HUD state ────────────────────────────────────────────────
   const [levelHud, setLevelHud] = useState<{ kind: 'brightness' | 'volume'; level: number } | null>(null);
@@ -658,6 +662,10 @@ export default function PlayerScreen() {
             onPanStart={handlePanStart}
             onPanMove={handlePanMove}
             onPanEnd={handlePanEnd}
+            zoomScale={zoomScale}
+            onPinchStart={() => {}}
+            onPinchUpdate={() => {}}
+            onPinchEnd={() => {}}
           >
             {/* Layer 3: Chrome overlay — box-none so empty space falls through to gesture layer */}
             <ControlsOverlay
