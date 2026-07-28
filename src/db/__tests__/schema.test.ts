@@ -24,5 +24,6 @@ describe('schema migrations', () => {
     expect(m6).toBeDefined();
     expect(m6!.up).toContain('CREATE TABLE IF NOT EXISTS preview_frames');
     expect(m6!.up).toMatch(/PRIMARY KEY \(video_id, idx\)/);
+    expect(LATEST_VERSION).toBe(6);
   });
 });

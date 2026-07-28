@@ -1,8 +1,8 @@
 // src/components/player/preview-bubble.tsx
 import { StyleSheet, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 
 import { formatTime } from '@/player/format-time';
+import { PreviewFrameImage } from './preview-frame-image';
 
 export const BUBBLE_WIDTH = 148;
 
@@ -16,9 +16,7 @@ interface PreviewBubbleProps {
 export function PreviewBubble({ targetSec, frameUri }: PreviewBubbleProps) {
   return (
     <View style={styles.bubble}>
-      {frameUri && (
-        <Image source={{ uri: frameUri }} style={styles.frame} contentFit="cover" />
-      )}
+      {frameUri && <PreviewFrameImage uri={frameUri} style={styles.frame} />}
       <Text style={styles.time}>{formatTime(targetSec)}</Text>
     </View>
   );

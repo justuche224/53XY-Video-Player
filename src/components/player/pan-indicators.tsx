@@ -1,8 +1,8 @@
 // src/components/player/pan-indicators.tsx
 import { StyleSheet, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 
 import { formatTime } from '@/player/format-time';
+import { PreviewFrameImage } from './preview-frame-image';
 
 interface PanIndicatorsProps {
   levelHud: { kind: 'brightness' | 'volume'; level: number } | null;
@@ -35,7 +35,7 @@ export function PanIndicators({ levelHud, scrubHud, scrubPreviewUri, zoomHud }: 
         <View style={styles.center}>
           <View style={styles.scrubPill}>
             {scrubPreviewUri && (
-              <Image source={{ uri: scrubPreviewUri }} style={styles.scrubFrame} contentFit="cover" />
+              <PreviewFrameImage uri={scrubPreviewUri} style={styles.scrubFrame} />
             )}
             <Text style={styles.scrubTime}>{formatTime(scrubHud.targetSec)}</Text>
             <Text style={styles.scrubDelta}>

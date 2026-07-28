@@ -1,5 +1,5 @@
 // src/player/use-preview-strip.ts
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSQLiteContext } from 'expo-sqlite';
 import { getThumbnailAsync } from 'expo-video-thumbnails';
 
@@ -29,21 +29,22 @@ export interface PreviewStrip {
 export function usePreviewStrip(videoId: string, uri: string, durationSec: number): PreviewStrip {
   const db = useSQLiteContext();
   const [frames, setFrames] = useState<Map<number, string>>(new Map());
-  // One generation loop per videoId — duration updates must not spawn a second.
-  const generatingForRef = useRef<string | null>(null);
 
-  const intervalSec = durationSec > 0 ? previewIntervalSec(durationSec) : 0;
-  const count = durationSec > 0 ? frameCount(durationSec, intervalSec) : 0;
+  // Whole-second duration: player.duration is re-set on every timeUpdate, and
+  // any sub-second jitter would change intervalSec/count and cancel-restart
+  // the generation loop. Flooring makes the deps stable once duration is known.
+  const stableDurationSec = Math.floor(durationSec);
+  const intervalSec = stableDurationSec > 0 ? previewIntervalSec(stableDurationSec) : 0;
+  const count = stableDurationSec > 0 ? frameCount(stableDurationSec, intervalSec) : 0;
 
   useEffect(() => {
     setFrames(new Map());
-    generatingForRef.current = null;
   }, [videoId]);
 
+  // Concurrency safety is the cancelled flag: a deps change (video switch,
+  // first-known duration) cancels the old loop before the new one starts.
   useEffect(() => {
-    if (durationSec <= 0 || count <= 0) return;
-    if (generatingForRef.current === videoId) return;
-    generatingForRef.current = videoId;
+    if (stableDurationSec <= 0 || count <= 0) return;
 
     let cancelled = false;
     (async () => {
@@ -59,7 +60,7 @@ export function usePreviewStrip(videoId: string, uri: string, durationSec: numbe
       for (let idx = 0; idx < count; idx++) {
         if (cancelled) return;
         if (completed.has(idx)) continue;
-        const timeMs = frameTimeMs(idx, intervalSec, durationSec);
+        const timeMs = frameTimeMs(idx, intervalSec, stableDurationSec);
         try {
           const { uri: frameUri } = await getThumbnailAsync(uri, {
             time: timeMs,
@@ -78,11 +79,9 @@ export function usePreviewStrip(videoId: string, uri: string, durationSec: numbe
 
     return () => {
       cancelled = true;
-      // Allow resume if the same video re-mounts (e.g. prev/next back to it).
-      generatingForRef.current = null;
     };
-    // intervalSec/count derive from durationSec; videoId gates the loop.
-  }, [db, videoId, uri, durationSec, intervalSec, count]);
+  }, [db, videoId, uri, stableDurationSec, intervalSec, count]);
 
-  return { intervalSec, count, frames };
+  // Stable object while nothing changed, so consumers can depend on it.
+  return useMemo(() => ({ intervalSec, count, frames }), [intervalSec, count, frames]);
 }
