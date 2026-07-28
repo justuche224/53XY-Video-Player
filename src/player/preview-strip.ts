@@ -3,9 +3,12 @@
 // slots; one frame is captured at each slot's midpoint. All lookups are
 // slot-index based so a partially generated strip is usable immediately.
 
-export const PREVIEW_TARGET_FRAMES = 50;
+// Density is a swipe-feel tradeoff: the drag-scrub window spans ±120s, so the
+// interval cap decides how many distinct frames a full swipe crosses. 30s
+// keeps long movies at ~240 frames (~1 min background generation).
+export const PREVIEW_TARGET_FRAMES = 60;
 export const PREVIEW_MIN_INTERVAL_SEC = 5;
-export const PREVIEW_MAX_INTERVAL_SEC = 60;
+export const PREVIEW_MAX_INTERVAL_SEC = 30;
 /** How many slots away a cached frame may be and still represent the target.
  *  Beyond this the bubble shows timestamp-only rather than a misleading frame. */
 export const PREVIEW_MAX_SLOT_DISTANCE = 1;

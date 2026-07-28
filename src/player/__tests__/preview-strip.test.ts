@@ -9,10 +9,10 @@ import {
 } from '../preview-strip';
 
 describe('previewIntervalSec', () => {
-  it('targets ~50 frames with a 5s floor and 60s ceiling', () => {
-    expect(previewIntervalSec(100)).toBe(PREVIEW_MIN_INTERVAL_SEC); // 2s raw → floor
-    expect(previewIntervalSec(1000)).toBe(20);
-    expect(previewIntervalSec(7200)).toBe(PREVIEW_MAX_INTERVAL_SEC); // 144s raw → ceiling
+  it('targets ~60 frames with a 5s floor and 30s ceiling', () => {
+    expect(previewIntervalSec(100)).toBe(PREVIEW_MIN_INTERVAL_SEC); // raw < floor
+    expect(previewIntervalSec(1200)).toBe(20); // 1200/60
+    expect(previewIntervalSec(7200)).toBe(PREVIEW_MAX_INTERVAL_SEC); // 120s raw → ceiling
   });
 });
 
