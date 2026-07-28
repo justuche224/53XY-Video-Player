@@ -123,7 +123,11 @@ export function PlayerGestures({
         zoomScale.value = s;
         scheduleOnRN(onPinchUpdate, s);
       })
-      .onEnd(() => {
+      // onFinalize, not onEnd: it fires on cancellation too (orientation-change
+      // remounts, surface touch-lock grabs), so the RN side always gets its
+      // end callback and pinch-active state can never leak — same reason the
+      // long-press boost uses onFinalize.
+      .onFinalize(() => {
         'worklet';
         scheduleOnRN(onPinchEnd, zoomScale.value);
       });

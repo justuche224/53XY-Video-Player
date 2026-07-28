@@ -577,6 +577,10 @@ export default function PlayerScreen() {
 
   const handlePinchEnd = useCallback(
     (scale: number) => {
+      // onFinalize fires for failed (never-activated) pinches too — every
+      // single-finger tap finalizes the pinch recognizer. Same guard pattern
+      // as boostingRef for the long-press boost.
+      if (!pinchActiveRef.current) return;
       pinchActiveRef.current = false;
       const snapped = snapZoom(scale, screen, naturalSize, pixelRatio);
       setZoomState(snapped);
