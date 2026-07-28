@@ -48,9 +48,21 @@ export function usePreviewStrip(videoId: string, uri: string, durationSec: numbe
 
     let cancelled = false;
     (async () => {
-      let completed: Map<number, string>;
+      const completed = new Map<number, string>();
       try {
-        completed = await getPreviewFrames(db, videoId);
+        const stored = await getPreviewFrames(db, videoId);
+        // A stored frame is only valid if it was captured for the CURRENT slot
+        // math — density/interval changes re-index the slots, and reusing an
+        // old capture would show a wrong frame. Mismatches regenerate below
+        // (the insert upserts over the stale row).
+        for (const [idx, frame] of stored) {
+          if (
+            idx < count &&
+            Math.abs(frame.timeMs - frameTimeMs(idx, intervalSec, stableDurationSec)) <= 1000
+          ) {
+            completed.set(idx, frame.uri);
+          }
+        }
       } catch {
         return;
       }

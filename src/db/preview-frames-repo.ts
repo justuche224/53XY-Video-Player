@@ -2,20 +2,26 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 interface PreviewFrameRow {
   idx: number;
+  time_ms: number;
   uri: string;
 }
 
-/** Completed frames for a video, keyed by slot index. */
+export interface PreviewFrame {
+  timeMs: number;
+  uri: string;
+}
+
+/** Completed frames for a video, keyed by slot index, with capture times. */
 export async function getPreviewFrames(
   db: SQLiteDatabase,
   videoId: string,
-): Promise<Map<number, string>> {
+): Promise<Map<number, PreviewFrame>> {
   const rows = await db.getAllAsync<PreviewFrameRow>(
-    'SELECT idx, uri FROM preview_frames WHERE video_id = ?',
+    'SELECT idx, time_ms, uri FROM preview_frames WHERE video_id = ?',
     [videoId],
   );
-  const map = new Map<number, string>();
-  for (const r of rows) map.set(r.idx, r.uri);
+  const map = new Map<number, PreviewFrame>();
+  for (const r of rows) map.set(r.idx, { timeMs: r.time_ms, uri: r.uri });
   return map;
 }
 
