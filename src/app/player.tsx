@@ -10,13 +10,17 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import type { SubtitleTrack, AudioTrack, TimeUpdateEventPayload } from 'expo-video';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, StyleSheet, View } from 'react-native';
+import { AppState, PixelRatio, StyleSheet, useWindowDimensions, View } from 'react-native';
 import type { AppStateStatus } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useSharedValue } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { getProgressMap, upsertProgress } from '@/db/progress-repo';
+import { getDisplayMode, getProgressMap, setDisplayMode, upsertProgress } from '@/db/progress-repo';
 import { buildProgress, shouldWrite } from '@/player/progress-writer';
+import {
+  cycleMode, isDisplayMode, modeLabel, restingScale, snapZoom,
+  type DisplayMode, type ZoomState,
+} from '@/player/zoom';
 import { shouldResume } from '@/player/resume';
 import { neighbors } from '@/player/playlist';
 import { seekTarget, tapZone } from '@/player/seek';
@@ -157,8 +161,19 @@ export default function PlayerScreen() {
     | null
   >(null);
 
-  // ── Pinch zoom state ─────────────────────────────────────────────────────
+  // ── Zoom / display-mode state ────────────────────────────────────────────
+  const screen = useWindowDimensions();
+  const pixelRatio = PixelRatio.get();
+  const [zoomState, setZoomState] = useState<ZoomState>({ kind: 'mode', mode: 'fit' });
+  const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
+  const [zoomHud, setZoomHud] = useState<
+    { kind: 'percent'; percent: number } | { kind: 'label'; label: string } | null
+  >(null);
+  const zoomHudTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pinchActiveRef = useRef(false);
   const zoomScale = useSharedValue(1);
+
+  const displayMode: DisplayMode = zoomState.kind === 'mode' ? zoomState.mode : 'fit';
 
   // ── Pan gesture HUD state ────────────────────────────────────────────────
   const [levelHud, setLevelHud] = useState<{ kind: 'brightness' | 'volume'; level: number } | null>(null);
@@ -258,6 +273,42 @@ export default function PlayerScreen() {
       cancelled = true;
     };
   }, [player, videoId, db]);
+
+  // Natural video size: library scan dims as fallback, corrected by sourceLoad
+  // (availableVideoTracks[0].size, in px) once the container is parsed.
+  useEffect(() => {
+    const v = videosRef.current.find((vv) => vv.id === videoId);
+    setNaturalSize(v?.width && v?.height ? { width: v.width, height: v.height } : null);
+    const sub = player.addListener('sourceLoad', (payload) => {
+      const size = payload.availableVideoTracks?.[0]?.size;
+      if (size?.width && size?.height) {
+        setNaturalSize({ width: size.width, height: size.height });
+      }
+    });
+    return () => sub.remove();
+  }, [player, videoId]);
+
+  // Apply the persisted display mode (spec: written only when ≠ fit).
+  useEffect(() => {
+    let cancelled = false;
+    setZoomState({ kind: 'mode', mode: 'fit' });
+    getDisplayMode(db, videoId)
+      .then((m) => {
+        if (!cancelled && isDisplayMode(m)) setZoomState({ kind: 'mode', mode: m });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [db, videoId]);
+
+  // Drive the resting scale. Re-runs on rotation and when naturalSize arrives
+  // (e.g. persisted crop applied before sourceLoad). Never during a pinch.
+  useEffect(() => {
+    if (pinchActiveRef.current) return;
+    const target = restingScale(zoomState, screen, naturalSize, pixelRatio);
+    zoomScale.value = withTiming(target, { duration: 180 });
+  }, [zoomState, naturalSize, screen.width, screen.height, pixelRatio, zoomScale]);
 
   // timeUpdate subscription: throttled progress writes + position sync
   useEffect(() => {
@@ -489,6 +540,64 @@ export default function PlayerScreen() {
 
   const handleAutoHide = useCallback(() => setControlsVisible(false), []);
 
+  // ── Zoom / display-mode handlers ─────────────────────────────────────────
+  // A label flash auto-dismisses; live % (during a pinch) stays until replaced.
+  const flashZoomLabel = useCallback((label: string) => {
+    if (zoomHudTimerRef.current) clearTimeout(zoomHudTimerRef.current);
+    setZoomHud({ kind: 'label', label });
+    zoomHudTimerRef.current = setTimeout(() => setZoomHud(null), 800);
+  }, []);
+
+  useEffect(() => () => {
+    if (zoomHudTimerRef.current) clearTimeout(zoomHudTimerRef.current);
+  }, []);
+
+  // Spec: NULL for fit, mode string otherwise.
+  const persistDisplayMode = useCallback(
+    (mode: DisplayMode) => {
+      setDisplayMode(db, currentVideoIdRef.current, mode === 'fit' ? null : mode, Date.now()).catch(() => {});
+    },
+    [db],
+  );
+
+  const handlePinchStart = useCallback(() => {
+    pinchActiveRef.current = true;
+    // A pinch is a zoom, never a boost: kill a boost the long-press may have
+    // started before the second finger landed.
+    handleBoostEnd();
+    // Stretch is non-uniform; pinching exits it to the uniform baseline first.
+    setZoomState((s) =>
+      s.kind === 'mode' && s.mode === 'stretch' ? { kind: 'free', scale: 1 } : s,
+    );
+  }, [handleBoostEnd]);
+
+  const handlePinchUpdate = useCallback((scale: number) => {
+    setZoomHud({ kind: 'percent', percent: Math.round(scale * 100) });
+  }, []);
+
+  const handlePinchEnd = useCallback(
+    (scale: number) => {
+      pinchActiveRef.current = false;
+      const snapped = snapZoom(scale, screen, naturalSize, pixelRatio);
+      setZoomState(snapped);
+      if (snapped.kind === 'mode') {
+        flashZoomLabel(modeLabel(snapped.mode));
+        persistDisplayMode(snapped.mode);
+      } else {
+        setZoomHud(null);
+      }
+      // The apply-effect animates zoomScale to the snapped target.
+    },
+    [screen, naturalSize, pixelRatio, flashZoomLabel, persistDisplayMode],
+  );
+
+  const handleCycleDisplayMode = useCallback(() => {
+    const next = cycleMode(displayMode, naturalSize !== null);
+    setZoomState({ kind: 'mode', mode: next });
+    flashZoomLabel(modeLabel(next));
+    persistDisplayMode(next);
+  }, [displayMode, naturalSize, flashZoomLabel, persistDisplayMode]);
+
   // ── Pan gesture handlers ─────────────────────────────────────────────────
   const handlePanStart = useCallback(() => {
     panRef.current = {
@@ -588,6 +697,7 @@ export default function PlayerScreen() {
     setAudioTracks([]);
     setActiveSubtitle(null);
     setActiveAudio(null);
+    setZoomHud(null);
 
     // Changing `uri` recreates the player (expo-video); the [player, videoId]
     // effect then runs resume + play and the subscription effects re-bind.
@@ -613,6 +723,10 @@ export default function PlayerScreen() {
     </View>
   );
 
+  const zoomAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: zoomScale.value }],
+  }));
+
   return (
     // Screen-level gesture root, FORCED ACTIVE. expo-video's native VideoView
     // (a SurfaceView) sits behind the gesture layer; on an orientation change —
@@ -636,16 +750,16 @@ export default function PlayerScreen() {
           onTouchEvent to consume EVERY touch and re-dispatch synthetic events
           into RN (expo/expo#35479). With native controls off and our own
           gesture layer on top, it must never be a touch target. */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Animated.View style={[StyleSheet.absoluteFill, zoomAnimatedStyle]} pointerEvents="none">
         <VideoView
           style={StyleSheet.absoluteFill}
           player={player}
           nativeControls={false}
-          contentFit="contain"
+          contentFit={zoomState.kind === 'mode' && zoomState.mode === 'stretch' ? 'fill' : 'contain'}
           allowsPictureInPicture={pictureInPicture}
           startsPictureInPictureAutomatically={pictureInPicture}
         />
-      </View>
+      </Animated.View>
 
       {locked ? (
         /* Locked: hide all chrome and gestures; only show the unlock overlay */
@@ -663,9 +777,9 @@ export default function PlayerScreen() {
             onPanMove={handlePanMove}
             onPanEnd={handlePanEnd}
             zoomScale={zoomScale}
-            onPinchStart={() => {}}
-            onPinchUpdate={() => {}}
-            onPinchEnd={() => {}}
+            onPinchStart={handlePinchStart}
+            onPinchUpdate={handlePinchUpdate}
+            onPinchEnd={handlePinchEnd}
           >
             {/* Layer 3: Chrome overlay — box-none so empty space falls through to gesture layer */}
             <ControlsOverlay
@@ -705,8 +819,8 @@ export default function PlayerScreen() {
                 rate={rate}
                 onSeek={handleSeek}
                 onCycleRate={handleCycleRate}
-                displayMode={'fit'}
-                onCycleDisplayMode={() => {}}
+                displayMode={displayMode}
+                onCycleDisplayMode={handleCycleDisplayMode}
               />
               {snackbarVisible && (
                 <View style={styles.snackbarContainer}>
@@ -726,7 +840,7 @@ export default function PlayerScreen() {
 
           {/* Layer 4: Gesture indicators (pointer-events none, always on top) */}
           <GestureIndicators boostActive={boostActive} seekFlash={seekFlash} />
-          <PanIndicators levelHud={levelHud} scrubHud={scrubHud} zoomHud={null} />
+          <PanIndicators levelHud={levelHud} scrubHud={scrubHud} zoomHud={zoomHud} />
 
           {tracksSheetVisible && (
             <TracksSheet
