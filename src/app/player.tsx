@@ -724,7 +724,7 @@ export default function PlayerScreen() {
 
           {/* Layer 4: Gesture indicators (pointer-events none, always on top) */}
           <GestureIndicators boostActive={boostActive} seekFlash={seekFlash} />
-          <PanIndicators levelHud={levelHud} scrubHud={scrubHud} />
+          <PanIndicators levelHud={levelHud} scrubHud={scrubHud} zoomHud={null} />
 
           {tracksSheetVisible && (
             <TracksSheet

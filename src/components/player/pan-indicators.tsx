@@ -6,10 +6,11 @@ import { formatTime } from '@/player/format-time';
 interface PanIndicatorsProps {
   levelHud: { kind: 'brightness' | 'volume'; level: number } | null;
   scrubHud: { targetSec: number; deltaSec: number } | null;
+  zoomHud: { kind: 'percent'; percent: number } | { kind: 'label'; label: string } | null;
 }
 
-export function PanIndicators({ levelHud, scrubHud }: PanIndicatorsProps) {
-  if (!levelHud && !scrubHud) return null;
+export function PanIndicators({ levelHud, scrubHud, zoomHud }: PanIndicatorsProps) {
+  if (!levelHud && !scrubHud && !zoomHud) return null;
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -35,6 +36,16 @@ export function PanIndicators({ levelHud, scrubHud }: PanIndicatorsProps) {
               {scrubHud.deltaSec >= 0
                 ? `+${formatTime(scrubHud.deltaSec)}`
                 : `-${formatTime(-scrubHud.deltaSec)}`}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {zoomHud && (
+        <View style={styles.center}>
+          <View style={styles.scrubPill}>
+            <Text style={styles.scrubTime}>
+              {zoomHud.kind === 'percent' ? `${zoomHud.percent}%` : zoomHud.label}
             </Text>
           </View>
         </View>
