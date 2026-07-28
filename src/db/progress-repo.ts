@@ -44,3 +44,31 @@ export async function deleteProgressByIds(db: SQLiteDatabase, ids: string[]): Pr
   const placeholders = ids.map(() => '?').join(',');
   await db.runAsync(`DELETE FROM watch_progress WHERE video_id IN (${placeholders})`, ids);
 }
+
+export async function getDisplayMode(
+  db: SQLiteDatabase,
+  videoId: string,
+): Promise<string | null> {
+  const row = await db.getFirstAsync<{ display_mode: string | null }>(
+    'SELECT display_mode FROM watch_progress WHERE video_id = ?',
+    [videoId],
+  );
+  return row?.display_mode ?? null;
+}
+
+// Upsert: a fresh video may have no progress row yet (last_played_at is NOT
+// NULL, hence nowMs). Progress writes name their columns in ON CONFLICT, so
+// they never clobber display_mode and vice versa.
+export async function setDisplayMode(
+  db: SQLiteDatabase,
+  videoId: string,
+  mode: string | null,
+  nowMs: number,
+): Promise<void> {
+  await db.runAsync(
+    `INSERT INTO watch_progress (video_id, position_ms, percent, completed, last_played_at, display_mode)
+     VALUES (?, 0, 0, 0, ?, ?)
+     ON CONFLICT(video_id) DO UPDATE SET display_mode = excluded.display_mode`,
+    [videoId, nowMs, mode],
+  );
+}

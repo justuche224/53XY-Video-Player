@@ -60,6 +60,10 @@ export const MIGRATIONS: Migration[] = [
       CREATE UNIQUE INDEX IF NOT EXISTS idx_pi_unique ON playlist_items(playlist_id, video_id);
     `,
   },
+  {
+    version: 5,
+    up: `ALTER TABLE watch_progress ADD COLUMN display_mode TEXT;`,
+  },
 ];
 
-export const LATEST_VERSION = 4;
+export const LATEST_VERSION = 5;
