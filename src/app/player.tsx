@@ -705,6 +705,8 @@ export default function PlayerScreen() {
                 rate={rate}
                 onSeek={handleSeek}
                 onCycleRate={handleCycleRate}
+                displayMode={'fit'}
+                onCycleDisplayMode={() => {}}
               />
               {snackbarVisible && (
                 <View style={styles.snackbarContainer}>

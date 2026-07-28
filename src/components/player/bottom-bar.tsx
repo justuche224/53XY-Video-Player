@@ -1,5 +1,7 @@
 // src/components/player/bottom-bar.tsx
 import { StyleSheet, Text, View } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import type { DisplayMode } from '@/player/zoom';
 
 import { Seekbar } from './seekbar';
 import { formatTime } from '@/player/format-time';
@@ -8,6 +10,13 @@ import { PlayerPressableScale } from './player-pressable-scale';
 
 // Speed cycle: 1 → 1.5 → 2 → 0.5 → 1
 const SPEED_CYCLE = [1, 1.5, 2, 0.5] as const;
+
+const MODE_ICON: Record<DisplayMode, keyof typeof MaterialIcons.glyphMap> = {
+  fit: 'fit-screen',
+  crop: 'crop',
+  stretch: 'aspect-ratio',
+  pixel: 'crop-free',
+};
 
 function nextRate(current: number): number {
   const idx = SPEED_CYCLE.indexOf(current as (typeof SPEED_CYCLE)[number]);
@@ -21,6 +30,8 @@ interface BottomBarProps {
   rate: number;
   onSeek: (sec: number) => void;
   onCycleRate: (newRate: number) => void;
+  displayMode: DisplayMode;
+  onCycleDisplayMode: () => void;
 }
 
 export function BottomBar({
@@ -29,6 +40,8 @@ export function BottomBar({
   rate,
   onSeek,
   onCycleRate,
+  displayMode,
+  onCycleDisplayMode,
 }: BottomBarProps) {
   const { spacing, radius } = useTheme();
 
@@ -50,14 +63,19 @@ export function BottomBar({
         <Text style={[styles.timeText, { opacity: 0.6 }]}>
           {formatTime(durationSec)}
         </Text>
-        <PlayerPressableScale
-          onPress={() => onCycleRate(nextRate(rate))}
-          style={[
-            styles.speedChip,
-            { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: radius.pill },
-          ]}>
-          <Text style={styles.speedText}>{rateLabel}</Text>
-        </PlayerPressableScale>
+        <View style={styles.rightControls}>
+          <PlayerPressableScale onPress={onCycleDisplayMode} style={styles.modeButton}>
+            <MaterialIcons name={MODE_ICON[displayMode]} size={20} color="#fff" />
+          </PlayerPressableScale>
+          <PlayerPressableScale
+            onPress={() => onCycleRate(nextRate(rate))}
+            style={[
+              styles.speedChip,
+              { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: radius.pill },
+            ]}>
+            <Text style={styles.speedText}>{rateLabel}</Text>
+          </PlayerPressableScale>
+        </View>
       </View>
     </View>
   );
@@ -77,8 +95,19 @@ const styles = StyleSheet.create({
     marginRight: 6,
     color: '#fff',
   },
-  speedChip: {
+  rightControls: {
     marginLeft: 'auto',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  modeButton: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  speedChip: {
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
