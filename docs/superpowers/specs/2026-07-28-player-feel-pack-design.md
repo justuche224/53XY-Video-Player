@@ -22,7 +22,7 @@ Cycle order: **Fit → Crop → Stretch → 100%**.
 
 ### Model
 
-A pure module `src/player/zoom-model.ts` owns all math. Inputs: screen size, video natural size, state (named mode or free scale). Output: render rect (width, height, offsets) for the video container.
+A pure module `src/player/zoom.ts` owns all math. Inputs: screen size, video natural size, state (named mode or free scale). Output: render rect (width, height, offsets) for the video container.
 
 - Fit, Crop, and 100% are uniform scales of the same `contentFit="contain"` baseline: Fit = 1.0, Crop = cover-ratio, 100% = naturalWidth / containBaseWidth. The `VideoView` keeps `contentFit="contain"`; its container is sized/scaled from the render rect.
 - **Stretch** is the sole non-uniform case: special-cased as full-screen `VideoView` with `contentFit="fill"`.
@@ -33,7 +33,7 @@ A pure module `src/player/zoom-model.ts` owns all math. Inputs: screen size, vid
 - Two-finger `Gesture.Pinch` added to the player arena. It cannot collide with the single-finger pan/double-tap wedges, but it is wired with the same raw-gesture discipline this repo already uses, and regression-tested on-device (adb) against: double-tap seek zones, brightness/volume swipes, drag-scrub, long-press boost, lock overlay.
 - While pinching: continuous free scale, clamped to [0.25×, 4.0×] of Fit; center HUD (pan-indicator pattern) shows live percentage ("115%").
 - On release: if final scale is within **4%** of a named uniform mode's scale, animate-snap to that mode and show its name in the HUD; otherwise stay at the free scale and show the %.
-- Pinching while in Stretch exits Stretch into the nearest uniform mode first.
+- Pinching while in Stretch first exits Stretch to the uniform Fit baseline (scale 1), then follows the fingers.
 - Pinch is disabled while the lock overlay is active.
 
 ### Chrome
@@ -42,7 +42,7 @@ Cycle button in the bottom bar (adjacent to the speed chip). Tap advances the mo
 
 ### Persistence
 
-- SQLite migration **v4**: add `display_mode TEXT` (nullable) to `watch_progress`.
+- SQLite migration **v5** (schema is already at v4 — playlists): add `display_mode TEXT` (nullable) to `watch_progress`.
 - Written only when the resting state is a named mode ≠ Fit; cleared (NULL) when the user returns to Fit.
 - Free-zoom % is session-only. Applied on player load before first frame is visible.
 
