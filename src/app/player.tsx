@@ -10,7 +10,7 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import type { SubtitleTrack, AudioTrack, TimeUpdateEventPayload } from 'expo-video';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, PixelRatio, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { AppState, PixelRatio, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import type { AppStateStatus } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -28,6 +28,11 @@ import { doubleTapAction } from '@/player/double-tap';
 import { panAxis, panHalf, clamp01, scrubDeltaSec } from '@/player/pan';
 import { useBackgroundPlay } from '@/player/use-background-play';
 import { usePictureInPicture } from '@/player/use-pip';
+import { useAutoplayNext } from '@/player/use-autoplay-next';
+import { shouldAutoplayNext, AUTOPLAY_COUNTDOWN_SEC } from '@/player/autoplay-next';
+import { badgeMinutes, fadeVolume, remainingSec, type SleepTimer } from '@/player/sleep-timer';
+import { parseEpisode } from '@/library/parse-episode';
+import { formatEpisodeLabel } from '@/library/episode-label';
 import { getPlaylistItems } from '@/db/playlists-repo';
 import { resolvePlaylistItems } from '@/playlists/resolve-items';
 import { useLibraryData } from '@/library/library-provider';
@@ -43,6 +48,9 @@ import { BottomBar } from '@/components/player/bottom-bar';
 import { ResumeSnackbar } from '@/components/player/resume-snackbar';
 import { TracksSheet } from '@/components/player/tracks-sheet';
 import { LockOverlay } from '@/components/player/lock-overlay';
+import { AutoplayCard } from '@/components/player/autoplay-card';
+import { SleepSheet } from '@/components/player/sleep-sheet';
+import { PlayerToast } from '@/components/player/player-toast';
 import { PlayerPressableScale } from '@/components/player/player-pressable-scale';
 import { SystemVolume } from '@/native/system-volume';
 
@@ -219,6 +227,29 @@ export default function PlayerScreen() {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [resumePositionSec, setResumePositionSec] = useState(0);
 
+  // ── Binge state: autoplay-next countdown + sleep timer + toast ──────────
+  const { autoplayNext } = useAutoplayNext();
+  const [autoplayCountdown, setAutoplayCountdown] = useState<number | null>(null);
+  const [sleepTimer, setSleepTimer] = useState<SleepTimer | null>(null);
+  const [sleepRemainingSec, setSleepRemainingSec] = useState<number | null>(null);
+  const [sleepSheetVisible, setSleepSheetVisible] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Ref mirrors so the playToEnd listener binds once per player yet always
+  // reads current values (same pattern as controlsVisibleRef).
+  const autoplayEnabledRef = useRef(true);
+  const nextRef = useRef<LibraryVideo | null>(null);
+  const sleepTimerRef = useRef<SleepTimer | null>(null);
+  useEffect(() => {
+    autoplayEnabledRef.current = autoplayNext;
+  }, [autoplayNext]);
+  useEffect(() => {
+    nextRef.current = next;
+  }, [next]);
+  useEffect(() => {
+    sleepTimerRef.current = sleepTimer;
+  }, [sleepTimer]);
+
   const lastWriteRef = useRef<number>(0);
   // Tracks the active video id so progress always writes under the current
   // video. Kept in sync by the resume effect below.
@@ -356,7 +387,11 @@ export default function PlayerScreen() {
   useEffect(() => {
     const subscription = player.addListener('playingChange', (payload) => {
       setPlaying(payload.isPlaying);
-      if (!payload.isPlaying) {
+      if (payload.isPlaying) {
+        // Any resume (replay tap, seek-back) invalidates a pending autoplay
+        // countdown — the video is no longer "ended".
+        setAutoplayCountdown(null);
+      } else {
         flushProgress();
       }
     });
@@ -365,6 +400,75 @@ export default function PlayerScreen() {
       subscription.remove();
     };
   }, [player, flushProgress]);
+
+  // ── Toast (transient one-liner in the snackbar position) ─────────────────
+  const showToast = useCallback((message: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast(message);
+    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
+  }, []);
+
+  useEffect(() => () => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+  }, []);
+
+  // ── End of video: end-of-video sleep timer wins; else autoplay countdown ─
+  useEffect(() => {
+    const sub = player.addListener('playToEnd', () => {
+      if (sleepTimerRef.current?.kind === 'endOfVideo') {
+        // Playback already stopped at the end; just disarm and report.
+        setSleepTimer(null);
+        showToast('Sleep timer paused playback');
+        return;
+      }
+      if (shouldAutoplayNext(nextRef.current !== null, autoplayEnabledRef.current, false)) {
+        setAutoplayCountdown(AUTOPLAY_COUNTDOWN_SEC);
+      }
+    });
+    return () => sub.remove();
+  }, [player, showToast]);
+
+  // Tick the countdown once a second; advance when it reaches 0.
+  useEffect(() => {
+    if (autoplayCountdown === null) return;
+    if (autoplayCountdown <= 0) {
+      const target = nextRef.current;
+      setAutoplayCountdown(null);
+      if (target) handleNavigateTo(target);
+      return;
+    }
+    const t = setTimeout(
+      () => setAutoplayCountdown((c) => (c === null ? null : c - 1)),
+      1000,
+    );
+    return () => clearTimeout(t);
+  }, [autoplayCountdown]);
+
+  // ── Sleep timer tick: badge + last-10s fade + expiry pause ───────────────
+  // A minutes timer survives next/prev switches (deps re-bind to the new
+  // player and keep ticking); leaving the player screen drops it with state.
+  useEffect(() => {
+    if (sleepTimer?.kind !== 'minutes') {
+      setSleepRemainingSec(null);
+      // Undo a mid-fade cancel — fade is the only thing that touches volume.
+      player.volume = 1;
+      return;
+    }
+    const tick = () => {
+      const rem = remainingSec(sleepTimer.endAtMs, Date.now());
+      setSleepRemainingSec(rem);
+      player.volume = fadeVolume(rem);
+      if (rem <= 0) {
+        player.pause();
+        player.volume = 1;
+        setSleepTimer(null);
+        showToast('Sleep timer paused playback');
+      }
+    };
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, [sleepTimer, player, showToast]);
 
   // Flush on AppState → background
   useEffect(() => {
@@ -732,15 +836,28 @@ export default function PlayerScreen() {
     setActiveSubtitle(null);
     setActiveAudio(null);
     setZoomHud(null);
+    setAutoplayCountdown(null);
 
     // Changing `uri` recreates the player (expo-video); the [player, videoId]
     // effect then runs resume + play and the subscription effects re-bind.
     router.setParams({ videoId: target.id, uri: target.uri, title: target.filename });
   }
 
-  // ── Top-bar right slot: lock + rotate + tracks buttons ───────────────────
+  // Episode label for the autoplay card ("S04E05", or '' when unparseable).
+  const nextEpisodeInfo = next ? parseEpisode(next.filename) : null;
+  const nextEpisodeLabel = nextEpisodeInfo
+    ? formatEpisodeLabel(nextEpisodeInfo.season, nextEpisodeInfo.episode)
+    : '';
+
+  // ── Top-bar right slot: sleep + lock + rotate + tracks buttons ───────────
   const topBarRight = (
     <View style={styles.topBarActions}>
+      <PlayerPressableScale onPress={() => setSleepSheetVisible(true)} style={styles.iconButton}>
+        <MaterialIcons name="bedtime" size={24} color={sleepTimer ? '#9C8CFF' : '#fff'} />
+        {sleepTimer?.kind === 'minutes' && sleepRemainingSec !== null && (
+          <Text style={styles.sleepBadge}>{badgeMinutes(sleepRemainingSec)}</Text>
+        )}
+      </PlayerPressableScale>
       <PlayerPressableScale onPress={() => setLocked(true)} style={styles.iconButton}>
         <MaterialIcons name="lock-open" size={24} color="#fff" />
       </PlayerPressableScale>
@@ -877,6 +994,33 @@ export default function PlayerScreen() {
           <GestureIndicators boostActive={boostActive} seekFlash={seekFlash} />
           <PanIndicators levelHud={levelHud} scrubHud={scrubHud} zoomHud={zoomHud} />
 
+          {/* Autoplay-next card: independent of chrome visibility (the chrome
+              is usually auto-hidden when a video runs to its end). */}
+          {autoplayCountdown !== null && next && (
+            <View style={styles.snackbarContainer} pointerEvents="box-none">
+              <AutoplayCard
+                title={next.filename}
+                episodeLabel={nextEpisodeLabel}
+                thumbUri={next.thumbUri}
+                countdownSec={autoplayCountdown}
+                onCancel={() => setAutoplayCountdown(null)}
+                onPlayNow={() => {
+                  setAutoplayCountdown(null);
+                  handleNavigateTo(next);
+                }}
+              />
+            </View>
+          )}
+
+          {sleepSheetVisible && (
+            <SleepSheet
+              active={sleepTimer}
+              remainingSec={sleepRemainingSec}
+              onSet={setSleepTimer}
+              onClose={() => setSleepSheetVisible(false)}
+            />
+          )}
+
           {tracksSheetVisible && (
             <TracksSheet
               player={player}
@@ -888,6 +1032,14 @@ export default function PlayerScreen() {
             />
           )}
         </>
+      )}
+
+      {/* Toast renders above everything, locked or not (sleep expiry can fire
+          while the lock overlay is up). */}
+      {toast && (
+        <View style={styles.snackbarContainer} pointerEvents="none">
+          <PlayerToast message={toast} />
+        </View>
       )}
     </GestureHandlerRootView>
   );
@@ -919,5 +1071,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
+  },
+  sleepBadge: {
+    position: 'absolute',
+    bottom: 1,
+    right: 0,
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#9C8CFF',
   },
 });
