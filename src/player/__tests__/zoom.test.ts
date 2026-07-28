@@ -1,6 +1,6 @@
 import {
   clampScale, cropScale, pixelScale, modeScale, restingScale,
-  cycleMode, snapZoom, modeLabel, isDisplayMode,
+  cycleMode, snapZoom, modeLabel, isDisplayMode, maxPinchScale,
   MIN_SCALE, MAX_SCALE, SNAP_TOLERANCE,
 } from '../zoom';
 
@@ -81,6 +81,31 @@ describe('snapZoom', () => {
   it('only fit is a target without natural size', () => {
     expect(snapZoom(1.02, LANDSCAPE_SCREEN, null, 3)).toEqual({ kind: 'mode', mode: 'fit' });
     expect(snapZoom(1.3, LANDSCAPE_SCREEN, null, 3)).toEqual({ kind: 'free', scale: 1.3 });
+  });
+});
+
+describe('maxPinchScale', () => {
+  it('returns MAX_SCALE when there is no natural size', () => {
+    expect(maxPinchScale(LANDSCAPE_SCREEN, null, 3)).toBe(MAX_SCALE);
+  });
+  it('returns MAX_SCALE when crop/pixel headroom is small', () => {
+    // crop = 1 (matching 16:9 aspect); contain = min(1600/1920, 900/1080) = 0.8333…,
+    // pixel = 1/(3 * 0.8333…) = 0.4 — both well under MAX_SCALE even with headroom.
+    expect(
+      maxPinchScale({ width: 1600, height: 900 }, { width: 1920, height: 1080 }, 3),
+    ).toBe(4);
+  });
+  it('exceeds MAX_SCALE with headroom for a portrait screen + wide video', () => {
+    // screen 360×780, video 1920×804.
+    // contain = min(360/1920, 780/804) = min(0.1875, 0.970149…) = 0.1875
+    // cover   = max(360/1920, 780/804) = 0.970149…
+    // cropScale = cover / contain = 0.970149… / 0.1875 = 5.174129…
+    // cropScale * 1.3 headroom = 6.726368…
+    const screen = { width: 360, height: 780 };
+    const video = { width: 1920, height: 804 };
+    const crop = cropScale(screen, video);
+    expect(maxPinchScale(screen, video, 3)).toBeCloseTo(crop * 1.3, 5);
+    expect(maxPinchScale(screen, video, 3)).toBeGreaterThan(4);
   });
 });
 

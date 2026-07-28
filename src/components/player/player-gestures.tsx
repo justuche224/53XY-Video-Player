@@ -19,6 +19,8 @@ interface PlayerGesturesProps {
   onPanEnd: () => void;
   /** Resting zoom scale; the pinch worklet reads it at onStart as the base. */
   zoomScale: ReturnType<typeof useSharedValue<number>>;
+  /** Dynamic pinch ceiling (see src/player/zoom.ts maxPinchScale); the pinch worklet reads it live. */
+  zoomMaxScale: ReturnType<typeof useSharedValue<number>>;
   onPinchStart: () => void;
   /** Fires on every pinch update with the clamped live scale (for the % HUD). */
   onPinchUpdate: (scale: number) => void;
@@ -36,6 +38,7 @@ export function PlayerGestures({
   onPanMove,
   onPanEnd,
   zoomScale,
+  zoomMaxScale,
   onPinchStart,
   onPinchUpdate,
   onPinchEnd,
@@ -108,8 +111,10 @@ export function PlayerGestures({
       });
 
     // Two-finger zoom. zoomBase is captured at onStart so e.scale (relative to
-    // gesture start) composes with the current resting scale. Clamp bounds are
-    // MIN_SCALE/MAX_SCALE from src/player/zoom.ts — inlined for the worklet.
+    // gesture start) composes with the current resting scale. Lower bound is
+    // MIN_SCALE from src/player/zoom.ts — inlined for the worklet. Upper bound
+    // is zoomMaxScale (see maxPinchScale in zoom.ts), read live so it tracks
+    // screen/video geometry instead of a fixed MAX_SCALE.
     const pinch = Gesture.Pinch()
       .withRef(pinchRef)
       .onStart(() => {
@@ -119,7 +124,7 @@ export function PlayerGestures({
       })
       .onUpdate((e) => {
         'worklet';
-        const s = Math.min(4, Math.max(0.25, zoomBase.value * e.scale));
+        const s = Math.min(zoomMaxScale.value, Math.max(0.25, zoomBase.value * e.scale));
         zoomScale.value = s;
         scheduleOnRN(onPinchUpdate, s);
       })
@@ -133,7 +138,7 @@ export function PlayerGestures({
       });
 
     return Gesture.Race(pinch, pan, longPress, Gesture.Exclusive(doubleTap, singleTap));
-  }, [onToggleControls, onDoubleTap, onBoostStart, onBoostEnd, onPanStart, onPanMove, onPanEnd, zoomScale, onPinchStart, onPinchUpdate, onPinchEnd]);
+  }, [onToggleControls, onDoubleTap, onBoostStart, onBoostEnd, onPanStart, onPanMove, onPanEnd, zoomScale, zoomMaxScale, onPinchStart, onPinchUpdate, onPinchEnd]);
 
   return (
     <PlayerGestureRelationsProvider value={playerGestureRelations}>

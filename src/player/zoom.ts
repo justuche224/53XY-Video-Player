@@ -38,6 +38,24 @@ export function pixelScale(screen: Size, natural: Size, pixelRatio: number): num
   return 1 / (pixelRatio * containScale(screen, natural));
 }
 
+/**
+ * Upper pinch bound: every named uniform mode must be reachable by fingers
+ * with overshoot headroom, whatever the screen/video geometry.
+ */
+export function maxPinchScale(
+  screen: Size,
+  natural: Size | null,
+  pixelRatio: number,
+): number {
+  if (!natural) return MAX_SCALE;
+  const headroom = 1.3;
+  return Math.max(
+    MAX_SCALE,
+    cropScale(screen, natural) * headroom,
+    pixelScale(screen, natural, pixelRatio) * headroom,
+  );
+}
+
 export function modeScale(
   mode: DisplayMode,
   screen: Size,

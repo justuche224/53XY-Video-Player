@@ -18,7 +18,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { getDisplayMode, getProgressMap, setDisplayMode, upsertProgress } from '@/db/progress-repo';
 import { buildProgress, shouldWrite } from '@/player/progress-writer';
 import {
-  cycleMode, isDisplayMode, modeLabel, restingScale, snapZoom,
+  cycleMode, isDisplayMode, maxPinchScale, modeLabel, restingScale, snapZoom,
   type DisplayMode, type ZoomState,
 } from '@/player/zoom';
 import { shouldResume } from '@/player/resume';
@@ -176,6 +176,7 @@ export default function PlayerScreen() {
   // update while already inside one, and not when leaving to free.
   const pinchSnapZoneRef = useRef<DisplayMode | null>(null);
   const zoomScale = useSharedValue(1);
+  const zoomMaxScale = useSharedValue(4);
 
   const displayMode: DisplayMode = zoomState.kind === 'mode' ? zoomState.mode : 'fit';
 
@@ -313,6 +314,11 @@ export default function PlayerScreen() {
     const target = restingScale(zoomState, screen, naturalSize, pixelRatio);
     zoomScale.value = withTiming(target, { duration: 180 });
   }, [zoomState, naturalSize, screen.width, screen.height, pixelRatio, zoomScale]);
+
+  // Pinch ceiling tracks geometry so Crop/100% stay finger-reachable.
+  useEffect(() => {
+    zoomMaxScale.value = maxPinchScale(screen, naturalSize, pixelRatio);
+  }, [screen.width, screen.height, naturalSize, pixelRatio, zoomMaxScale]);
 
   // timeUpdate subscription: throttled progress writes + position sync
   useEffect(() => {
@@ -805,6 +811,7 @@ export default function PlayerScreen() {
             onPanMove={handlePanMove}
             onPanEnd={handlePanEnd}
             zoomScale={zoomScale}
+            zoomMaxScale={zoomMaxScale}
             onPinchStart={handlePinchStart}
             onPinchUpdate={handlePinchUpdate}
             onPinchEnd={handlePinchEnd}
