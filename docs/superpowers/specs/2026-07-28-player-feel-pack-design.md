@@ -31,8 +31,9 @@ A pure module `src/player/zoom.ts` owns all math. Inputs: screen size, video nat
 ### Pinch gesture
 
 - Two-finger `Gesture.Pinch` added to the player arena. It cannot collide with the single-finger pan/double-tap wedges, but it is wired with the same raw-gesture discipline this repo already uses, and regression-tested on-device (adb) against: double-tap seek zones, brightness/volume swipes, drag-scrub, long-press boost, lock overlay.
-- While pinching: continuous free scale, clamped to [0.25×, 4.0×] of Fit; center HUD (pan-indicator pattern) shows live percentage ("115%").
-- On release: if final scale is within **4%** of a named uniform mode's scale, animate-snap to that mode and show its name in the HUD; otherwise stay at the free scale and show the %.
+- While pinching: continuous free scale, clamped to [0.25×, `maxPinchScale`] of Fit, where `maxPinchScale = max(4.0, crop×1.3, pixel×1.3)` so full-screen Crop and 100% are always finger-reachable regardless of screen/video geometry; center HUD (pan-indicator pattern) shows live percentage ("115%").
+- Live snap preview: while pinching, whenever release would snap to a named mode the HUD shows that mode's name instead of the %, with a haptic tick on zone entry (preview uses the same `snapZoom` call as release, so they can never disagree).
+- On release: if final scale is within **6%** of a named uniform mode's scale, animate-snap to that mode and show its name in the HUD; otherwise stay at the free scale and show the %.
 - Pinching while in Stretch first exits Stretch to the uniform Fit baseline (scale 1), then follows the fingers.
 - Pinch is disabled while the lock overlay is active.
 
