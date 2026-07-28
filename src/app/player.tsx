@@ -29,6 +29,8 @@ import { panAxis, panHalf, clamp01, scrubDeltaSec } from '@/player/pan';
 import { useBackgroundPlay } from '@/player/use-background-play';
 import { usePictureInPicture } from '@/player/use-pip';
 import { useAutoplayNext } from '@/player/use-autoplay-next';
+import { usePreviewStrip } from '@/player/use-preview-strip';
+import { frameIndexFor, nearestCompleted } from '@/player/preview-strip';
 import { shouldAutoplayNext, AUTOPLAY_COUNTDOWN_SEC } from '@/player/autoplay-next';
 import { badgeMinutes, fadeVolume, remainingSec, type SleepTimer } from '@/player/sleep-timer';
 import { parseEpisode } from '@/library/parse-episode';
@@ -846,6 +848,19 @@ export default function PlayerScreen() {
     router.setParams({ videoId: target.id, uri: target.uri, title: target.filename });
   }
 
+  // ── Scrub preview strip (lazy background generation) ─────────────────────
+  const previewStrip = usePreviewStrip(videoId, uri, durationSec);
+  const previewFor = useCallback(
+    (sec: number): string | null => {
+      const { intervalSec, count, frames } = previewStrip;
+      if (count <= 0 || frames.size === 0) return null;
+      const idx = frameIndexFor(sec, intervalSec, count);
+      const near = nearestCompleted(idx, new Set(frames.keys()), count);
+      return near !== null ? frames.get(near) ?? null : null;
+    },
+    [previewStrip],
+  );
+
   // Episode label for the autoplay card ("S04E05", or '' when unparseable).
   const nextEpisodeInfo = next ? parseEpisode(next.filename) : null;
   const nextEpisodeLabel = nextEpisodeInfo
@@ -974,6 +989,7 @@ export default function PlayerScreen() {
                 rate={rate}
                 onSeek={handleSeek}
                 onCycleRate={handleCycleRate}
+                previewFor={previewFor}
                 displayMode={displayMode}
                 onCycleDisplayMode={handleCycleDisplayMode}
               />
@@ -1016,7 +1032,12 @@ export default function PlayerScreen() {
 
           {/* Layer 4: Gesture indicators (pointer-events none, always on top) */}
           <GestureIndicators boostActive={boostActive} seekFlash={seekFlash} />
-          <PanIndicators levelHud={levelHud} scrubHud={scrubHud} zoomHud={zoomHud} />
+          <PanIndicators
+            levelHud={levelHud}
+            scrubHud={scrubHud}
+            scrubPreviewUri={scrubHud ? previewFor(scrubHud.targetSec) : null}
+            zoomHud={zoomHud}
+          />
 
           {sleepSheetVisible && (
             <SleepSheet

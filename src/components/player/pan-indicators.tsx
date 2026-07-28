@@ -1,15 +1,18 @@
 // src/components/player/pan-indicators.tsx
 import { StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 
 import { formatTime } from '@/player/format-time';
 
 interface PanIndicatorsProps {
   levelHud: { kind: 'brightness' | 'volume'; level: number } | null;
   scrubHud: { targetSec: number; deltaSec: number } | null;
+  /** Preview frame for the drag-scrub target (null → time-only pill). */
+  scrubPreviewUri?: string | null;
   zoomHud: { kind: 'percent'; percent: number } | { kind: 'label'; label: string } | null;
 }
 
-export function PanIndicators({ levelHud, scrubHud, zoomHud }: PanIndicatorsProps) {
+export function PanIndicators({ levelHud, scrubHud, scrubPreviewUri, zoomHud }: PanIndicatorsProps) {
   if (!levelHud && !scrubHud && !zoomHud) return null;
 
   return (
@@ -31,6 +34,9 @@ export function PanIndicators({ levelHud, scrubHud, zoomHud }: PanIndicatorsProp
       {scrubHud && (
         <View style={styles.center}>
           <View style={styles.scrubPill}>
+            {scrubPreviewUri && (
+              <Image source={{ uri: scrubPreviewUri }} style={styles.scrubFrame} contentFit="cover" />
+            )}
             <Text style={styles.scrubTime}>{formatTime(scrubHud.targetSec)}</Text>
             <Text style={styles.scrubDelta}>
               {scrubHud.deltaSec >= 0
@@ -99,6 +105,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     gap: 4,
+  },
+  scrubFrame: {
+    width: 200,
+    height: 112,
+    borderRadius: 10,
+    backgroundColor: '#111',
+    marginBottom: 4,
   },
   scrubTime: {
     color: '#fff',

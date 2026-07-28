@@ -64,6 +64,18 @@ export const MIGRATIONS: Migration[] = [
     version: 5,
     up: `ALTER TABLE watch_progress ADD COLUMN display_mode TEXT;`,
   },
+  {
+    version: 6,
+    up: `
+      CREATE TABLE IF NOT EXISTS preview_frames (
+        video_id TEXT NOT NULL,
+        idx INTEGER NOT NULL,
+        time_ms INTEGER NOT NULL,
+        uri TEXT NOT NULL,
+        PRIMARY KEY (video_id, idx)
+      );
+    `,
+  },
 ];
 
-export const LATEST_VERSION = 5;
+export const LATEST_VERSION = 6;

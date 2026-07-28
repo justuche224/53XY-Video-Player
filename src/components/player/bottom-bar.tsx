@@ -30,6 +30,8 @@ interface BottomBarProps {
   rate: number;
   onSeek: (sec: number) => void;
   onCycleRate: (newRate: number) => void;
+  /** Scrub-preview lookup passed through to the seekbar. */
+  previewFor?: (sec: number) => string | null;
   displayMode: DisplayMode;
   onCycleDisplayMode: () => void;
 }
@@ -40,6 +42,7 @@ export function BottomBar({
   rate,
   onSeek,
   onCycleRate,
+  previewFor,
   displayMode,
   onCycleDisplayMode,
 }: BottomBarProps) {
@@ -55,6 +58,7 @@ export function BottomBar({
         positionSec={positionSec}
         durationSec={durationSec}
         onSeek={onSeek}
+        previewFor={previewFor}
       />
       <View style={styles.row}>
         <Text style={styles.timeText}>

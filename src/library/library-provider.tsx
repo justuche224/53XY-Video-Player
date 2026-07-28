@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 
 import { deleteVideosByIds, getAllVideos, upsertVideos } from '@/db/videos-repo';
 import { deleteProgressByIds } from '@/db/progress-repo';
+import { deletePreviewFramesByIds } from '@/db/preview-frames-repo';
 import { scanVideos } from '@/media/media-scanner';
 import type { LibraryVideo } from './types';
 
@@ -75,6 +76,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         if (removed.length) {
           await deleteVideosByIds(db, removed);
           await deleteProgressByIds(db, removed);
+          await deletePreviewFramesByIds(db, removed);
         }
         const all = await getAllVideos(db);
         if (cancelled) return;

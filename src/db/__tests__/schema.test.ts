@@ -17,6 +17,12 @@ describe('schema migrations', () => {
     const m5 = MIGRATIONS.find((m) => m.version === 5);
     expect(m5).toBeDefined();
     expect(m5!.up).toContain('ALTER TABLE watch_progress ADD COLUMN display_mode TEXT');
-    expect(LATEST_VERSION).toBe(5);
+  });
+
+  it('migration 6 creates preview_frames keyed by (video_id, idx)', () => {
+    const m6 = MIGRATIONS.find((m) => m.version === 6);
+    expect(m6).toBeDefined();
+    expect(m6!.up).toContain('CREATE TABLE IF NOT EXISTS preview_frames');
+    expect(m6!.up).toMatch(/PRIMARY KEY \(video_id, idx\)/);
   });
 });

@@ -1,5 +1,5 @@
 // src/components/player/seekbar.tsx
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -9,18 +9,25 @@ import Animated, {
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { useTheme } from '@/theme/theme-provider';
+import { PreviewBubble, BUBBLE_WIDTH } from './preview-bubble';
 
 interface SeekbarProps {
   positionSec: number;
   durationSec: number;
   onSeek: (sec: number) => void;
+  /** When set, dragging shows a preview bubble above the thumb. */
+  previewFor?: (sec: number) => string | null;
 }
 
-export function Seekbar({ positionSec, durationSec, onSeek }: SeekbarProps) {
+export function Seekbar({ positionSec, durationSec, onSeek, previewFor }: SeekbarProps) {
   const { colors } = useTheme();
 
   // Layout width stored in a shared value so it is worklet-accessible
   const barWidth = useSharedValue(0);
+  // JS-side mirror for bubble clamping.
+  const [barWidthJs, setBarWidthJs] = useState(0);
+  // Dragged fraction (null = not dragging) — drives the preview bubble.
+  const [dragFraction, setDragFraction] = useState<number | null>(null);
 
   const isDragging = useSharedValue(false);
   // 0–1 fraction, updated while dragging
@@ -46,13 +53,17 @@ export function Seekbar({ positionSec, durationSec, onSeek }: SeekbarProps) {
       'worklet';
       isDragging.value = true;
       if (barWidth.value > 0) {
-        dragProgress.value = Math.min(1, Math.max(0, e.x / barWidth.value));
+        const f = Math.min(1, Math.max(0, e.x / barWidth.value));
+        dragProgress.value = f;
+        scheduleOnRN(setDragFraction, f);
       }
     })
     .onUpdate((e) => {
       'worklet';
       if (barWidth.value > 0) {
-        dragProgress.value = Math.min(1, Math.max(0, e.x / barWidth.value));
+        const f = Math.min(1, Math.max(0, e.x / barWidth.value));
+        dragProgress.value = f;
+        scheduleOnRN(setDragFraction, f);
       }
     })
     .onEnd(() => {
@@ -68,6 +79,7 @@ export function Seekbar({ positionSec, durationSec, onSeek }: SeekbarProps) {
     .onFinalize(() => {
       'worklet';
       isDragging.value = false;
+      scheduleOnRN(setDragFraction, null);
     });
 
   const filledStyle = useAnimatedStyle(() => {
@@ -80,13 +92,27 @@ export function Seekbar({ positionSec, durationSec, onSeek }: SeekbarProps) {
     return { left: `${progress * 100}%` as `${number}%` };
   });
 
+  const dragSec = dragFraction !== null ? dragFraction * durationSec : null;
+  // Clamp the bubble inside the bar so it never clips at the screen edges.
+  const bubbleLeft =
+    dragFraction !== null && barWidthJs > 0
+      ? Math.min(Math.max(dragFraction * barWidthJs, BUBBLE_WIDTH / 2), barWidthJs - BUBBLE_WIDTH / 2) -
+        BUBBLE_WIDTH / 2
+      : 0;
+
   return (
     <GestureDetector gesture={pan}>
       <View
         style={styles.hitArea}
         onLayout={(e) => {
           barWidth.value = e.nativeEvent.layout.width;
+          setBarWidthJs(e.nativeEvent.layout.width);
         }}>
+        {previewFor && dragSec !== null && (
+          <View style={[styles.bubbleAnchor, { left: bubbleLeft }]} pointerEvents="none">
+            <PreviewBubble targetSec={dragSec} frameUri={previewFor(dragSec)} />
+          </View>
+        )}
         {/* track */}
         <View style={[styles.track, { backgroundColor: 'rgba(255,255,255,0.3)' }]}>
           {/* filled portion */}
@@ -110,6 +136,10 @@ const styles = StyleSheet.create({
   hitArea: {
     height: 28,
     justifyContent: 'center',
+  },
+  bubbleAnchor: {
+    position: 'absolute',
+    bottom: 34,
   },
   track: {
     height: TRACK_HEIGHT,
