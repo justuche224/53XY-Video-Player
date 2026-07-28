@@ -421,6 +421,9 @@ export default function PlayerScreen() {
         showToast('Sleep timer paused playback');
         return;
       }
+      // Backgrounded ends (background-audio mode) don't auto-advance: the card
+      // would be invisible and the param-navigation would happen off-screen.
+      if (AppState.currentState !== 'active') return;
       if (shouldAutoplayNext(nextRef.current !== null, autoplayEnabledRef.current, false)) {
         setAutoplayCountdown(AUTOPLAY_COUNTDOWN_SEC);
       }
@@ -988,29 +991,32 @@ export default function PlayerScreen() {
                 </View>
               )}
             </ControlsOverlay>
+
+            {/* Autoplay-next card: INSIDE PlayerGestures so its buttons get the
+                gesture-arena relation (blocksExternalGesture) and a tap can't
+                also fire the background single-tap chrome toggle — but outside
+                ControlsOverlay, so it shows regardless of chrome visibility
+                (the chrome is usually auto-hidden when a video runs to its end). */}
+            {autoplayCountdown !== null && next && (
+              <View style={styles.snackbarContainer} pointerEvents="box-none">
+                <AutoplayCard
+                  title={next.filename}
+                  episodeLabel={nextEpisodeLabel}
+                  thumbUri={next.thumbUri}
+                  countdownSec={autoplayCountdown}
+                  onCancel={() => setAutoplayCountdown(null)}
+                  onPlayNow={() => {
+                    setAutoplayCountdown(null);
+                    handleNavigateTo(next);
+                  }}
+                />
+              </View>
+            )}
           </PlayerGestures>
 
           {/* Layer 4: Gesture indicators (pointer-events none, always on top) */}
           <GestureIndicators boostActive={boostActive} seekFlash={seekFlash} />
           <PanIndicators levelHud={levelHud} scrubHud={scrubHud} zoomHud={zoomHud} />
-
-          {/* Autoplay-next card: independent of chrome visibility (the chrome
-              is usually auto-hidden when a video runs to its end). */}
-          {autoplayCountdown !== null && next && (
-            <View style={styles.snackbarContainer} pointerEvents="box-none">
-              <AutoplayCard
-                title={next.filename}
-                episodeLabel={nextEpisodeLabel}
-                thumbUri={next.thumbUri}
-                countdownSec={autoplayCountdown}
-                onCancel={() => setAutoplayCountdown(null)}
-                onPlayNow={() => {
-                  setAutoplayCountdown(null);
-                  handleNavigateTo(next);
-                }}
-              />
-            </View>
-          )}
 
           {sleepSheetVisible && (
             <SleepSheet
