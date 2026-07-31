@@ -1,11 +1,12 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, Pressable, SectionList, Text, View } from 'react-native';
+import { Alert, SectionList, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { AppBar } from '@/components/app-bar';
 import { HistoryRow } from '@/components/history-row';
+import { IconButton } from '@/components/icon-button';
 import { SectionHeader } from '@/components/section-header';
 import { TAB_BAR_CLEARANCE } from '@/components/tab-bar';
 import { Screen } from '@/components/screen';
@@ -71,9 +72,7 @@ export default function HistoryScreen() {
       <AppBar
         title="History"
         right={
-          <Pressable onPress={onClearAll} hitSlop={10}>
-            <Ionicons name="trash-outline" size={22} color={colors.onSurface} />
-          </Pressable>
+          <IconButton name="trash-outline" onPress={onClearAll} accessibilityLabel="Clear history" />
         }
       />
 

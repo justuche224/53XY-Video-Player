@@ -103,7 +103,8 @@ export default function AddToPlaylistScreen() {
             size={24}
             color={isSelected ? colors.primary : colors.onSurfaceVariant ?? '#888'}
           />
-          <VideoThumbnail video={item} style={styles.thumb} />
+          {/* Standalone (no clipping poster container), so it owns its corner. */}
+          <VideoThumbnail video={item} style={styles.thumb} radius={radius.md} />
           <View style={{ flex: 1 }}>
             <Text numberOfLines={2} style={[styles.title, { color: colors.onSurface }]}>
               {item.filename}

@@ -42,7 +42,7 @@ export function SleepSheet({ active, remainingSec, onSet, onClose }: SleepSheetP
             styles.sheet,
             {
               backgroundColor: colors.surface ?? '#1e1e1e',
-              borderRadius: radius.lg,
+              borderRadius: radius.xl,
               paddingTop: spacing.lg,
               paddingBottom: spacing.xl,
               marginHorizontal: spacing.md,

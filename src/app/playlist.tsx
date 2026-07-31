@@ -1,4 +1,4 @@
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -6,6 +6,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Alert, Modal, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AppBar } from '@/components/app-bar';
+import { IconButton } from '@/components/icon-button';
 import { Screen } from '@/components/screen';
 import { PlaylistItemRow } from '@/components/playlist-item-row';
 import { PressableScale } from '@/components/pressable-scale';
@@ -144,15 +145,24 @@ export default function PlaylistScreen() {
         onBack={() => router.back()}
         right={
           <>
-            <PressableScale onPress={handlePlayAll} style={{ padding: 4, opacity: items.length ? 1 : 0.3 }} disabled={!items.length}>
-              <Ionicons name="play" size={24} color={colors.primary} />
-            </PressableScale>
-            <PressableScale onPress={() => { setNewName(playlist.name); setRenameVisible(true); }} style={{ padding: 4 }}>
-              <MaterialIcons name="edit" size={24} color={colors.onSurface} />
-            </PressableScale>
-            <PressableScale onPress={handleDelete} style={{ padding: 4 }}>
-              <Ionicons name="trash-outline" size={24} color={colors.error ?? '#ef4444'} />
-            </PressableScale>
+            <IconButton
+              name="play"
+              onPress={handlePlayAll}
+              disabled={!items.length}
+              tint={colors.primary}
+              accessibilityLabel="Play all"
+            />
+            <IconButton
+              name="pencil"
+              onPress={() => { setNewName(playlist.name); setRenameVisible(true); }}
+              accessibilityLabel="Rename playlist"
+            />
+            <IconButton
+              name="trash-outline"
+              onPress={handleDelete}
+              tint={colors.error ?? '#ef4444'}
+              accessibilityLabel="Delete playlist"
+            />
           </>
         }
       />

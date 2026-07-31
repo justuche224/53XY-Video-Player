@@ -33,8 +33,8 @@ export function SortSheet({
             styles.sheet,
             {
               backgroundColor: colors.surface ?? '#1b1b1b',
-              borderTopLeftRadius: radius.lg,
-              borderTopRightRadius: radius.lg,
+              borderTopLeftRadius: radius.xl,
+              borderTopRightRadius: radius.xl,
               padding: spacing.lg,
             },
           ]}

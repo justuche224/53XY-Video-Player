@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 
 import { AppBar } from '@/components/app-bar';
+import { IconButton } from '@/components/icon-button';
 import { Screen } from '@/components/screen';
 import { TAB_BAR_CLEARANCE } from '@/components/tab-bar';
 import { PlaylistRow } from '@/components/playlist-row';
@@ -92,9 +93,11 @@ export default function PlaylistsScreen() {
       <AppBar
         title="Playlists"
         right={
-          <PressableScale onPress={() => setPromptVisible(true)} style={{ padding: 4 }}>
-            <Ionicons name="add-circle-outline" size={28} color={colors.onSurface} />
-          </PressableScale>
+          <IconButton
+            name="add"
+            onPress={() => setPromptVisible(true)}
+            accessibilityLabel="New playlist"
+          />
         }
       />
 

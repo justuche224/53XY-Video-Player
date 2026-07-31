@@ -12,12 +12,21 @@ export function VideoThumbnail({
   video,
   style,
   width = THUMB_WIDTH_CARD,
+  radius = 0,
 }: {
   video: LibraryVideo;
   style?: StyleProp<ViewStyle>;
   width?: number;
+  /**
+   * Corner radius. Defaults to square: a thumbnail almost always sits inside a
+   * clipping container (card poster, row thumb, collage cell) that already owns
+   * the corner, and rounding here too meant two radii had to be kept manually in
+   * sync — the double-rounding issue logged in HANDOFF §3. Only pass this when
+   * the thumbnail is standalone.
+   */
+  radius?: number;
 }) {
-  const { colors, radius } = useTheme();
+  const { colors } = useTheme();
   // thumbUri from the library row is the card-sized file; other sizes start empty.
   const [uri, setUri] = useState<string | null>(
     width === THUMB_WIDTH_CARD ? video.thumbUri : null,
@@ -43,7 +52,15 @@ export function VideoThumbnail({
   }, [db, video, uri, width]);
 
   return (
-    <View style={[{ backgroundColor: colors.surfaceVariant ?? '#222', borderRadius: radius.md, overflow: 'hidden' }, style]}>
+    <View
+      style={[
+        {
+          backgroundColor: colors.surfaceVariant ?? '#222',
+          borderRadius: radius,
+          overflow: 'hidden',
+        },
+        style,
+      ]}>
       {uri ? (
         <Image
           source={{ uri }}

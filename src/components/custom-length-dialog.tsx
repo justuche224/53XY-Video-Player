@@ -45,7 +45,7 @@ export function CustomLengthDialog({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <Pressable style={styles.backdrop} onPress={onCancel}>
         <Pressable
-          style={[styles.card, { backgroundColor: colors.surface ?? '#1b1b1b', borderRadius: radius.lg, padding: spacing.lg }]}
+          style={[styles.card, { backgroundColor: colors.surface ?? '#1b1b1b', borderRadius: radius.xl, padding: spacing.lg }]}
           onPress={() => {}}>
           <Text style={[styles.title, { color: colors.onSurface }]}>Custom length</Text>
           <TextInput

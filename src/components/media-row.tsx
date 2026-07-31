@@ -3,13 +3,20 @@ import { StyleSheet, View } from 'react-native';
 
 import { AppText } from './app-text';
 import { DurationBadge } from './duration-badge';
+import { CLEAR, Gradient } from './gradient';
 import { PressableScale } from './pressable-scale';
 import { ProgressBar } from './progress-bar';
+import { RADIUS } from '@/theme/resolve-theme';
 import { useTheme } from '@/theme/theme-provider';
 
 // One canonical thumbnail size for every list row (16:9-ish).
-export const ROW_THUMB = { width: 100, height: 56 } as const;
+export const ROW_THUMB = { width: 112, height: 63 } as const;
 
+/**
+ * List row: the same tonal container as `MediaCard` but without the shadow, so
+ * grid and list read as two deliberate densities rather than the same treatment
+ * twice — a shadow under every row in a long list turns into visual noise.
+ */
 export function MediaRow({
   thumbnail,
   title,
@@ -33,24 +40,61 @@ export function MediaRow({
   onPress?: () => void;
   onLongPress?: () => void;
 }) {
-  const { colors, spacing, radius } = useTheme();
+  const { colors, spacing, radius, elevation } = useTheme();
   return (
     <PressableScale
       onPress={onPress}
       onLongPress={onLongPress}
-      style={[styles.row, { paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, gap: spacing.md, borderRadius: radius.md }]}
-    >
-      <View style={[styles.thumb, { width: ROW_THUMB.width, height: ROW_THUMB.height, borderRadius: radius.md, backgroundColor: colors.surfaceVariant ?? '#222' }]}>
+      morph={{ from: RADIUS.lg, to: RADIUS.xl }}
+      style={[
+        styles.row,
+        {
+          padding: spacing.sm,
+          marginBottom: spacing.sm,
+          gap: spacing.md,
+          borderRadius: radius.lg,
+          backgroundColor: elevation(1),
+        },
+      ]}>
+      <View
+        style={[
+          styles.thumb,
+          {
+            width: ROW_THUMB.width,
+            height: ROW_THUMB.height,
+            borderRadius: radius.md,
+            backgroundColor: colors.surfaceVariant ?? '#222',
+          },
+        ]}>
         {thumbnail}
+        <Gradient
+          style={styles.thumbScrim}
+          stops={[
+            { color: CLEAR, at: '0%' },
+            { color: 'rgba(0,0,0,0.55)', at: '100%' },
+          ]}
+        />
         <DurationBadge ms={durationMs} />
         {percent > 0 ? (
-          <View style={styles.progress}><ProgressBar percent={percent} /></View>
+          <View style={styles.progress}>
+            <ProgressBar percent={percent} tone="artwork" />
+          </View>
         ) : null}
       </View>
       <View style={styles.body}>
-        {overline ? <AppText variant="episode" color={colors.primary}>{overline}</AppText> : null}
-        <AppText variant="title" numberOfLines={titleLines}>{title}</AppText>
-        {meta ? <AppText variant="meta" color={colors.onSurfaceVariant ?? colors.onSurface}>{meta}</AppText> : null}
+        {overline ? (
+          <AppText variant="episode" color={colors.primary}>
+            {overline}
+          </AppText>
+        ) : null}
+        <AppText variant="title" numberOfLines={titleLines}>
+          {title}
+        </AppText>
+        {meta ? (
+          <AppText variant="meta" color={colors.onSurfaceVariant ?? colors.onSurface}>
+            {meta}
+          </AppText>
+        ) : null}
       </View>
       {trailing}
     </PressableScale>
@@ -58,8 +102,10 @@ export function MediaRow({
 }
 
 const styles = StyleSheet.create({
+  // overflow keeps the Android ripple inside the rounded container.
   row: { flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
   thumb: { overflow: 'hidden' },
+  thumbScrim: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '55%' },
   progress: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   body: { flex: 1, gap: 2 },
 });

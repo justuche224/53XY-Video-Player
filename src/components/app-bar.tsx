@@ -1,11 +1,18 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
 import { AppText } from './app-text';
-import { PressableScale } from './pressable-scale';
+import { IconButton } from './icon-button';
 import { useTheme } from '@/theme/theme-provider';
 
+/**
+ * The header for every screen except Home, which has its own pinned header over
+ * the hero banner (see `home-header.tsx`).
+ *
+ * `large` is a page title; `detail` adds a back button and drops to the headline
+ * ramp. Actions passed in `right` should be `IconButton`s so every header in the
+ * app shares the same circular tonal control.
+ */
 export function AppBar({
   title,
   variant = 'large',
@@ -19,29 +26,34 @@ export function AppBar({
   accessory?: ReactNode;
   right?: ReactNode;
 }) {
-  const { colors, icon } = useTheme();
+  const { spacing } = useTheme();
   return (
-    <View style={styles.bar}>
-      <View style={styles.left}>
+    <View style={[styles.bar, { marginBottom: spacing.lg, gap: spacing.sm }]}>
+      <View style={[styles.left, { gap: spacing.sm }]}>
         {variant === 'detail' && onBack ? (
-          <PressableScale onPress={onBack} style={styles.back}>
-            <Ionicons name="arrow-back" size={icon.md} color={colors.onSurface} />
-          </PressableScale>
+          // Pulled left so the 40dp touch target still leaves the glyph optically
+          // aligned with the screen's content margin.
+          <View style={styles.back}>
+            <IconButton name="arrow-back" tone="plain" onPress={onBack} accessibilityLabel="Go back" />
+          </View>
         ) : null}
-        <AppText variant={variant === 'large' ? 'display' : 'headline'} numberOfLines={1} style={styles.title}>
+        <AppText
+          variant={variant === 'large' ? 'display' : 'headline'}
+          numberOfLines={1}
+          style={styles.title}>
           {title}
         </AppText>
         {accessory}
       </View>
-      {right ? <View style={styles.right}>{right}</View> : null}
+      {right ? <View style={[styles.right, { gap: spacing.xs }]}>{right}</View> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  bar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 44, marginBottom: 16 },
-  left: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
-  back: { padding: 4 },
+  bar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 48 },
+  left: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  back: { marginLeft: -8 },
   title: { flexShrink: 1 },
-  right: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  right: { flexDirection: 'row', alignItems: 'center' },
 });
