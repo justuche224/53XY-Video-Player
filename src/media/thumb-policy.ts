@@ -113,3 +113,22 @@ export function decideThumbAction(
   if (!needsThumbnail(state, fileExists)) return fileExists ? 'serve' : 'give-up';
   return 'generate';
 }
+
+/**
+ * Which of a video's other-width thumbnail files are safe to delete after the
+ * card path writes a fresh frame. A width currently being generated in this
+ * process is excluded: `THUMB_VERSION` is a compile-time constant, so anything
+ * decoding right now is already running the current algorithm — it is by
+ * definition not stale, and deleting it would race the native writer's
+ * `FileOutputStream` (which has no atomic rename) rather than clean up a
+ * genuinely outdated file. Everything else in `otherWidths` — sitting on disk,
+ * not currently being written — is still deleted, which is how a `THUMB_VERSION`
+ * bump (or a corrected card frame) eventually reaches those sizes without any of
+ * them writing to the `videos` row themselves.
+ */
+export function siblingWidthsToDelete(
+  otherWidths: number[],
+  inFlightWidths: ReadonlySet<number>,
+): number[] {
+  return otherWidths.filter((width) => !inFlightWidths.has(width));
+}

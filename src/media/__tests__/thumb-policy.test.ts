@@ -2,6 +2,7 @@ import {
   candidatePositions,
   decideThumbAction,
   needsThumbnail,
+  siblingWidthsToDelete,
   thumbFileName,
   THUMB_MAX_ATTEMPTS,
   THUMB_VERSION,
@@ -149,5 +150,32 @@ describe('decideThumbAction', () => {
     it('gives up without decoding once the card path has exhausted its attempts', () => {
       expect(decideThumbAction(attemptsExhausted, false, false)).toBe('give-up');
     });
+  });
+});
+
+describe('siblingWidthsToDelete', () => {
+  // Regression coverage for fix round 2: an in-flight sibling must never be
+  // proposed for deletion, because it is by definition using the current
+  // algorithm and its native writer has no atomic rename — deleting it mid-write
+  // can leave a "successful" grab pointing at an unlinked file.
+  const OTHER_WIDTHS = [1280];
+
+  it('deletes every other width when nothing is in flight', () => {
+    expect(siblingWidthsToDelete(OTHER_WIDTHS, new Set())).toEqual([1280]);
+  });
+
+  it('skips a width that is currently being generated', () => {
+    expect(siblingWidthsToDelete(OTHER_WIDTHS, new Set([1280]))).toEqual([]);
+  });
+
+  it('deletes the non-in-flight widths and only those, when the list has more than one', () => {
+    const widths = [1280, 1920];
+    expect(siblingWidthsToDelete(widths, new Set([1920]))).toEqual([1280]);
+  });
+
+  it('is unaffected by in-flight entries for widths outside the list', () => {
+    // e.g. the card's own width is in flight (it's the caller), but that's not
+    // a member of "other widths" in the first place.
+    expect(siblingWidthsToDelete(OTHER_WIDTHS, new Set([640]))).toEqual([1280]);
   });
 });

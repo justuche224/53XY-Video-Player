@@ -8,6 +8,7 @@ import { FrameGrabber } from '@/native/frame-grabber';
 import {
   candidatePositions,
   decideThumbAction,
+  siblingWidthsToDelete,
   thumbFileName,
   THUMB_MIN_SCORE,
   THUMB_QUALITY_CARD,
@@ -61,14 +62,21 @@ export function hasThumbnailFile(videoId: string, width: number = THUMB_WIDTH_CA
 }
 
 /**
- * Deletes every other size's file for this video. Called only after the card
- * path writes a fresh frame, so a stale hero file turns back into "absent" and
+ * Deletes the other sizes' files for this video that are safe to delete —
+ * everything in `OTHER_WIDTHS` except a width whose own `getOrCreateThumbnail`
+ * call is currently in flight for this video (see `siblingWidthsToDelete`:
+ * deleting a file mid-write would race the native writer's non-atomic
+ * `FileOutputStream`). Called only after the card path writes a fresh frame, so
+ * a stale-but-not-currently-generating sibling turns back into "absent" and
  * `decideThumbAction` regenerates it on the next request — the only way a
  * version bump or a re-scored card frame reaches non-card sizes, since they
  * never write `thumb_version`/`thumb_uri` themselves.
  */
 function deleteSiblingThumbnails(videoId: string): void {
-  for (const width of OTHER_WIDTHS) {
+  const inFlightWidths = new Set(
+    OTHER_WIDTHS.filter((width) => inFlight.has(`${videoId}@${width}`)),
+  );
+  for (const width of siblingWidthsToDelete(OTHER_WIDTHS, inFlightWidths)) {
     const file = thumbFile(videoId, width);
     if (file.exists) file.delete();
   }
