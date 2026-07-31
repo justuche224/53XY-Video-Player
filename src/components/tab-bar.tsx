@@ -37,7 +37,11 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
     transform: [{ translateX: pos.value * tabWidth + (tabWidth - PILL_W) / 2 }],
   }));
 
-  const barBg = colors.surfaceVariant ?? '#1c1b1f';
+  // Mirrors the pinned header's solid state (background + outlineVariant
+  // hairline) so the bar reads as the same surface as the rest of the app. The
+  // old `surfaceVariant` slab was a leftover from before the M3 Expressive pass
+  // and looked like another app's bar.
+  const barBg = colors.background ?? '#1c1b1f';
   const pillBg = colors.secondaryContainer ?? colors.primaryContainer ?? colors.primary;
   const activeFg = colors.onSecondaryContainer ?? colors.onPrimaryContainer ?? colors.onPrimary ?? '#fff';
   const inactiveFg = colors.onSurfaceVariant ?? '#999';
@@ -50,7 +54,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
         {
           backgroundColor: barBg,
           paddingBottom: insets.bottom,
-          borderTopColor: colors.outline ?? 'rgba(255,255,255,0.08)',
+          borderTopColor: colors.outlineVariant ?? colors.outline ?? 'rgba(255,255,255,0.08)',
         },
       ]}
     >
