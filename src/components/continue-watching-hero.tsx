@@ -9,6 +9,7 @@ import { VideoThumbnail } from './video-thumbnail';
 import { formatEpisodeLabel } from '@/library/episode-label';
 import { parseEpisode } from '@/library/parse-episode';
 import type { LibraryVideo } from '@/library/types';
+import { THUMB_WIDTH_HERO } from '@/media/thumb-policy';
 import { formatTime } from '@/player/format-time';
 import { useTheme } from '@/theme/theme-provider';
 
@@ -35,7 +36,7 @@ export function ContinueWatchingHero({
       style={[styles.card, { backgroundColor: elevation(2), borderRadius: radius.xl, padding: spacing.sm, marginBottom: spacing.md, gap: spacing.md }]}
     >
       <View style={[styles.poster, { borderRadius: radius.md, backgroundColor: colors.surfaceVariant ?? '#222' }]}>
-        <VideoThumbnail video={video} style={styles.fill} />
+        <VideoThumbnail video={video} style={styles.fill} width={THUMB_WIDTH_HERO} />
         <View style={styles.playOverlay}>
           <Ionicons name="play" size={icon.lg} color="#fff" />
         </View>
