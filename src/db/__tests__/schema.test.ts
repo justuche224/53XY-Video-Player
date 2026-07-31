@@ -24,6 +24,15 @@ describe('schema migrations', () => {
     expect(m6).toBeDefined();
     expect(m6!.up).toContain('CREATE TABLE IF NOT EXISTS preview_frames');
     expect(m6!.up).toMatch(/PRIMARY KEY \(video_id, idx\)/);
-    expect(LATEST_VERSION).toBe(6);
+  });
+
+  it('migration 7 adds thumbnail columns and drops existing thumbnails', () => {
+    const m7 = MIGRATIONS.find((m) => m.version === 7);
+    expect(m7).toBeDefined();
+    expect(m7!.up).toContain('ALTER TABLE videos ADD COLUMN thumb_version INTEGER NOT NULL DEFAULT 0');
+    expect(m7!.up).toContain('ALTER TABLE videos ADD COLUMN thumb_attempts INTEGER NOT NULL DEFAULT 0');
+    expect(m7!.up).toContain('ALTER TABLE videos ADD COLUMN thumb_time_ms INTEGER');
+    expect(m7!.up).toContain('UPDATE videos SET thumb_uri = NULL');
+    expect(LATEST_VERSION).toBe(7);
   });
 });

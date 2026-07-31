@@ -38,7 +38,3 @@ export async function deleteVideosByIds(db: SQLiteDatabase, ids: string[]): Prom
   const placeholders = ids.map(() => '?').join(',');
   await db.runAsync(`DELETE FROM videos WHERE id IN (${placeholders})`, ids);
 }
-
-export async function setThumbUri(db: SQLiteDatabase, id: string, uri: string): Promise<void> {
-  await db.runAsync('UPDATE videos SET thumb_uri = ? WHERE id = ?', [uri, id]);
-}
