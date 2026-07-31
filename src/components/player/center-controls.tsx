@@ -1,7 +1,10 @@
 import { StyleSheet, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 
-import { PlayerPressableScale } from './player-pressable-scale';
+import { ChromeButton } from './chrome-button';
+
+const PLAY_SIZE = 72;
+const SIDE_SIZE = 52;
 
 interface CenterControlsProps {
   playing: boolean;
@@ -26,29 +29,25 @@ export function CenterControls({
     <View style={styles.row} pointerEvents="box-none">
       {/* Prev button — hidden when slot not filled */}
       {onPrev !== undefined ? (
-        <PlayerPressableScale
-          onPress={onPrev}
-          style={[styles.sideButton, !hasPrev && styles.disabled]}>
-          <MaterialIcons name="skip-previous" size={36} color="#fff" />
-        </PlayerPressableScale>
+        <ChromeButton onPress={onPrev} size={SIDE_SIZE} style={!hasPrev ? styles.disabled : undefined}>
+          <MaterialIcons name="skip-previous" size={32} color="#fff" />
+        </ChromeButton>
       ) : (
-        <View style={styles.sideButton} pointerEvents="none" />
+        <View style={styles.sideSpacer} pointerEvents="none" />
       )}
 
       {/* Play / Pause */}
-      <PlayerPressableScale onPress={onToggle} style={styles.playButton}>
-        <MaterialIcons name={playing ? 'pause' : isEnded ? 'replay' : 'play-arrow'} size={48} color="#fff" />
-      </PlayerPressableScale>
+      <ChromeButton onPress={onToggle} size={PLAY_SIZE}>
+        <MaterialIcons name={playing ? 'pause' : isEnded ? 'replay' : 'play-arrow'} size={44} color="#fff" />
+      </ChromeButton>
 
       {/* Next button — hidden when slot not filled */}
       {onNext !== undefined ? (
-        <PlayerPressableScale
-          onPress={onNext}
-          style={[styles.sideButton, !hasNext && styles.disabled]}>
-          <MaterialIcons name="skip-next" size={36} color="#fff" />
-        </PlayerPressableScale>
+        <ChromeButton onPress={onNext} size={SIDE_SIZE} style={!hasNext ? styles.disabled : undefined}>
+          <MaterialIcons name="skip-next" size={32} color="#fff" />
+        </ChromeButton>
       ) : (
-        <View style={styles.sideButton} pointerEvents="none" />
+        <View style={styles.sideSpacer} pointerEvents="none" />
       )}
     </View>
   );
@@ -59,28 +58,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 40,
+    gap: 32,
   },
-  playButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  playIcon: {
-    fontSize: 28,
-    color: '#fff',
-  },
-  sideButton: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sideIcon: {
-    fontSize: 22,
-    color: '#fff',
+  sideSpacer: {
+    width: SIDE_SIZE,
+    height: SIDE_SIZE,
   },
   disabled: {
     opacity: 0.3,

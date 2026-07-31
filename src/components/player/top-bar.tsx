@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 
 import { useTheme } from '@/theme/theme-provider';
-import { PlayerPressableScale } from './player-pressable-scale';
+import { ChromeButton } from './chrome-button';
 
 interface TopBarProps {
   title: string;
@@ -20,9 +20,9 @@ export function TopBar({ title, onBack, right }: TopBarProps) {
     <View
       pointerEvents="box-none"
       style={[styles.row, { paddingHorizontal: spacing.md, paddingVertical: spacing.sm }]}>
-      <PlayerPressableScale onPress={onBack} style={styles.backButton}>
-        <MaterialIcons name="arrow-back" size={28} color="#fff" />
-      </PlayerPressableScale>
+      <ChromeButton onPress={onBack}>
+        <MaterialIcons name="arrow-back" size={24} color="#fff" />
+      </ChromeButton>
 
       <Text
         numberOfLines={1}
@@ -41,18 +41,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  backButton: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backIcon: {
-    fontSize: 30,
-    lineHeight: 36,
-    fontWeight: '300',
-    color: '#fff',
-  },
   title: {
     flex: 1,
     fontSize: 16,
@@ -61,8 +49,8 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   rightSlot: {
-    minWidth: 36,
-    height: 36,
+    minWidth: 40,
+    height: 40,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',

@@ -53,7 +53,7 @@ import { LockOverlay } from '@/components/player/lock-overlay';
 import { AutoplayCard } from '@/components/player/autoplay-card';
 import { SleepSheet } from '@/components/player/sleep-sheet';
 import { PlayerToast } from '@/components/player/player-toast';
-import { PlayerPressableScale } from '@/components/player/player-pressable-scale';
+import { ChromeButton } from '@/components/player/chrome-button';
 import { SystemVolume } from '@/native/system-volume';
 
 // Vertical-swipe sensitivity: a drag of ~(screen height / VERTICAL_GAIN) spans
@@ -870,25 +870,25 @@ export default function PlayerScreen() {
   // ── Top-bar right slot: sleep + lock + rotate + tracks buttons ───────────
   const topBarRight = (
     <View style={styles.topBarActions}>
-      <PlayerPressableScale onPress={() => setSleepSheetVisible(true)} style={styles.iconButton}>
-        <MaterialIcons name="bedtime" size={24} color={sleepTimer ? '#9C8CFF' : '#fff'} />
+      <ChromeButton onPress={() => setSleepSheetVisible(true)}>
+        <MaterialIcons name="bedtime" size={22} color={sleepTimer ? '#9C8CFF' : '#fff'} />
         {sleepTimer?.kind === 'minutes' && sleepRemainingSec !== null && (
           <Text style={styles.sleepBadge}>{badgeMinutes(sleepRemainingSec)}</Text>
         )}
-      </PlayerPressableScale>
-      <PlayerPressableScale onPress={() => setLocked(true)} style={styles.iconButton}>
-        <MaterialIcons name="lock-open" size={24} color="#fff" />
-      </PlayerPressableScale>
-      <PlayerPressableScale onPress={() => setTracksSheetVisible(true)} style={styles.iconButton}>
-        <MaterialIcons name="subtitles" size={24} color="#fff" />
-      </PlayerPressableScale>
-      <PlayerPressableScale onPress={handleRotate} style={styles.iconButton}>
+      </ChromeButton>
+      <ChromeButton onPress={() => setLocked(true)}>
+        <MaterialIcons name="lock-open" size={22} color="#fff" />
+      </ChromeButton>
+      <ChromeButton onPress={() => setTracksSheetVisible(true)}>
+        <MaterialIcons name="subtitles" size={22} color="#fff" />
+      </ChromeButton>
+      <ChromeButton onPress={handleRotate}>
         <MaterialIcons
           name={orientationLocked ? 'screen-lock-rotation' : 'screen-rotation'}
-          size={24}
+          size={22}
           color={orientationLocked ? '#9C8CFF' : '#fff'}
         />
-      </PlayerPressableScale>
+      </ChromeButton>
     </View>
   );
 
@@ -1080,17 +1080,7 @@ const styles = StyleSheet.create({
   topBarActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-  },
-  iconButton: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconText: {
-    fontSize: 18,
-    color: '#fff',
+    gap: 8,
   },
   snackbarContainer: {
     position: 'absolute',
@@ -1101,8 +1091,8 @@ const styles = StyleSheet.create({
   },
   sleepBadge: {
     position: 'absolute',
-    bottom: 1,
-    right: 0,
+    bottom: 4,
+    right: 3,
     fontSize: 9,
     fontWeight: '700',
     color: '#9C8CFF',

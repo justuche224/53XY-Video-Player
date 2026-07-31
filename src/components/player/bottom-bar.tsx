@@ -5,7 +5,9 @@ import type { DisplayMode } from '@/player/zoom';
 
 import { Seekbar } from './seekbar';
 import { formatTime } from '@/player/format-time';
+import { ON_ARTWORK } from '@/theme/resolve-theme';
 import { useTheme } from '@/theme/theme-provider';
+import { ChromeButton } from './chrome-button';
 import { PlayerPressableScale } from './player-pressable-scale';
 
 // Speed cycle: 1 → 1.5 → 2 → 0.5 → 1
@@ -68,14 +70,14 @@ export function BottomBar({
           {formatTime(durationSec)}
         </Text>
         <View style={styles.rightControls}>
-          <PlayerPressableScale onPress={onCycleDisplayMode} style={styles.modeButton}>
+          <ChromeButton onPress={onCycleDisplayMode} size={36}>
             <MaterialIcons name={MODE_ICON[displayMode]} size={20} color="#fff" />
-          </PlayerPressableScale>
+          </ChromeButton>
           <PlayerPressableScale
             onPress={() => onCycleRate(nextRate(rate))}
             style={[
               styles.speedChip,
-              { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: radius.pill },
+              { backgroundColor: ON_ARTWORK.tonal, borderRadius: radius.pill },
             ]}>
             <Text style={styles.speedText}>{rateLabel}</Text>
           </PlayerPressableScale>
@@ -105,15 +107,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  modeButton: {
-    width: 32,
-    height: 32,
+  speedChip: {
+    height: 36,
+    paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  speedChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
   },
   speedText: {
     fontSize: 13,
