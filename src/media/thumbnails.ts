@@ -7,13 +7,14 @@ import { pLimit } from '@/lib/p-limit';
 import { FrameGrabber } from '@/native/frame-grabber';
 import {
   candidatePositions,
-  needsThumbnail,
+  decideThumbAction,
   thumbFileName,
   THUMB_MIN_SCORE,
   THUMB_QUALITY_CARD,
   THUMB_QUALITY_HERO,
   THUMB_VERSION,
   THUMB_WIDTH_CARD,
+  THUMB_WIDTH_HERO,
 } from './thumb-policy';
 
 /**
@@ -25,6 +26,25 @@ const THUMB_DIR = 'thumbnails';
 
 /** Shared with the background sweep, so total extraction concurrency stays bounded. */
 const limit = pLimit(3);
+
+/**
+ * Only non-card size today. The card path deletes files in this list whenever it
+ * writes a new frame, so a version bump or a corrected card frame propagates to
+ * every other size without any of them writing to the `videos` row. Add future
+ * sizes here.
+ */
+const OTHER_WIDTHS = [THUMB_WIDTH_HERO];
+
+/**
+ * One promise per (video, width) pair currently being resolved. Two callers
+ * requesting the same size for the same video — a collage cell and that video's
+ * own row, say — must share a single `FrameGrabber.grabFrame` call: they'd
+ * otherwise both pass the same `outPath` to two real, concurrently-running
+ * native writes, and whichever finishes (or fails and deletes the file) last wins
+ * over the other. Entries are removed once the shared promise settles, win or
+ * lose.
+ */
+const inFlight = new Map<string, Promise<string | null>>();
 
 function thumbFile(videoId: string, width: number): File {
   return new File(new Directory(Paths.document, THUMB_DIR), thumbFileName(videoId, width));
@@ -41,51 +61,80 @@ export function hasThumbnailFile(videoId: string, width: number = THUMB_WIDTH_CA
 }
 
 /**
+ * Deletes every other size's file for this video. Called only after the card
+ * path writes a fresh frame, so a stale hero file turns back into "absent" and
+ * `decideThumbAction` regenerates it on the next request — the only way a
+ * version bump or a re-scored card frame reaches non-card sizes, since they
+ * never write `thumb_version`/`thumb_uri` themselves.
+ */
+function deleteSiblingThumbnails(videoId: string): void {
+  for (const width of OTHER_WIDTHS) {
+    const file = thumbFile(videoId, width);
+    if (file.exists) file.delete();
+  }
+}
+
+/**
  * Returns a usable thumbnail uri, extracting one if needed.
  *
  * Non-card sizes (the hero banner) reuse the position the card frame won on, so
  * the two never show different moments, and they never write back to the videos
  * row — `thumb_uri` always means the card-sized file.
  */
-export async function getOrCreateThumbnail(
+export function getOrCreateThumbnail(
   db: SQLiteDatabase,
   video: LibraryVideo,
   width: number = THUMB_WIDTH_CARD,
 ): Promise<string | null> {
-  return limit(async () => {
-    const file = thumbFile(video.id, width);
-    const state = await getThumbState(db, video.id);
-    const isCard = width === THUMB_WIDTH_CARD;
+  const key = `${video.id}@${width}`;
+  const running = inFlight.get(key);
+  if (running) return running;
 
-    if (file.exists && !needsThumbnail(state, true)) return file.uri;
-    // Nothing to regenerate and nothing on disk — this video has defeated us.
-    if (!needsThumbnail(state, file.exists)) return file.exists ? file.uri : null;
+  const promise = limit(() => resolveThumbnail(db, video, width)).finally(() => {
+    inFlight.delete(key);
+  });
+  inFlight.set(key, promise);
+  return promise;
+}
 
-    ensureThumbDir();
+async function resolveThumbnail(
+  db: SQLiteDatabase,
+  video: LibraryVideo,
+  width: number,
+): Promise<string | null> {
+  const file = thumbFile(video.id, width);
+  const state = await getThumbState(db, video.id);
+  const isCard = width === THUMB_WIDTH_CARD;
+  const action = decideThumbAction(state, file.exists, isCard);
 
-    // The card frame already picked a good moment; match it rather than re-scoring.
-    const positionsMs =
-      !isCard && state?.timeMs != null ? [state.timeMs] : candidatePositions(video.durationMs);
+  if (action === 'serve') return file.uri;
+  if (action === 'give-up') return null;
 
-    try {
-      const result = await FrameGrabber.grabFrame(video.uri, {
-        positionsMs,
-        targetWidth: width,
-        minScore: THUMB_MIN_SCORE,
-        quality: isCard ? THUMB_QUALITY_CARD : THUMB_QUALITY_HERO,
-        outPath: file.uri,
-      });
-      if (!result) {
-        if (isCard) await recordThumbFailure(db, video.id, THUMB_VERSION);
-        return null;
-      }
-      if (isCard) {
-        await setThumbResult(db, video.id, result.uri, result.positionMs, THUMB_VERSION);
-      }
-      return result.uri;
-    } catch {
+  ensureThumbDir();
+
+  // The card frame already picked a good moment; match it rather than re-scoring.
+  const positionsMs =
+    !isCard && state?.timeMs != null ? [state.timeMs] : candidatePositions(video.durationMs);
+
+  try {
+    const result = await FrameGrabber.grabFrame(video.uri, {
+      positionsMs,
+      targetWidth: width,
+      minScore: THUMB_MIN_SCORE,
+      quality: isCard ? THUMB_QUALITY_CARD : THUMB_QUALITY_HERO,
+      outPath: file.uri,
+    });
+    if (!result) {
       if (isCard) await recordThumbFailure(db, video.id, THUMB_VERSION);
       return null;
     }
-  });
+    if (isCard) {
+      await setThumbResult(db, video.id, result.uri, result.positionMs, THUMB_VERSION);
+      deleteSiblingThumbnails(video.id);
+    }
+    return result.uri;
+  } catch {
+    if (isCard) await recordThumbFailure(db, video.id, THUMB_VERSION);
+    return null;
+  }
 }

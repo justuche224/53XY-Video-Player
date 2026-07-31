@@ -1,5 +1,6 @@
 import {
   candidatePositions,
+  decideThumbAction,
   needsThumbnail,
   thumbFileName,
   THUMB_MAX_ATTEMPTS,
@@ -77,5 +78,76 @@ describe('needsThumbnail', () => {
       timeMs: null,
     };
     expect(needsThumbnail(oldExhausted, false)).toBe(true);
+  });
+});
+
+describe('decideThumbAction', () => {
+  // Four state categories from the review: missing (never processed), fresh
+  // (current version, succeeded), stale-version (predates THUMB_VERSION), and
+  // attempts-exhausted (current version, gave up). Crossed with file
+  // present/absent and card/non-card — 16 combinations, all asserted.
+  const missing = undefined;
+  const fresh = { uri: 'file:///card.jpg', version: THUMB_VERSION, attempts: 0, timeMs: 500 };
+  const staleVersion = {
+    uri: 'file:///old-card.jpg',
+    version: THUMB_VERSION - 1,
+    attempts: 0,
+    timeMs: 500,
+  };
+  const attemptsExhausted = {
+    uri: null,
+    version: THUMB_VERSION,
+    attempts: THUMB_MAX_ATTEMPTS,
+    timeMs: null,
+  };
+
+  describe('card width', () => {
+    it('serves a fresh thumbnail whose file is present', () => {
+      expect(decideThumbAction(fresh, true, true)).toBe('serve');
+    });
+
+    it('serves the last-known file once attempts are exhausted, if one exists', () => {
+      expect(decideThumbAction(attemptsExhausted, true, true)).toBe('serve');
+    });
+
+    it('regenerates when never processed, regardless of a file being present', () => {
+      expect(decideThumbAction(missing, true, true)).toBe('generate');
+      expect(decideThumbAction(missing, false, true)).toBe('generate');
+    });
+
+    it('regenerates a stale-version thumbnail even if its old file is still present', () => {
+      expect(decideThumbAction(staleVersion, true, true)).toBe('generate');
+      expect(decideThumbAction(staleVersion, false, true)).toBe('generate');
+    });
+
+    it('regenerates a fresh thumbnail whose file has vanished from disk', () => {
+      expect(decideThumbAction(fresh, false, true)).toBe('generate');
+    });
+
+    it('gives up once attempts are exhausted and no file remains', () => {
+      expect(decideThumbAction(attemptsExhausted, false, true)).toBe('give-up');
+    });
+  });
+
+  describe('non-card width (e.g. the hero)', () => {
+    it('serves a present file unconditionally — never consults thumb_version', () => {
+      expect(decideThumbAction(missing, true, false)).toBe('serve');
+      expect(decideThumbAction(fresh, true, false)).toBe('serve');
+      expect(decideThumbAction(staleVersion, true, false)).toBe('serve');
+      expect(decideThumbAction(attemptsExhausted, true, false)).toBe('serve');
+    });
+
+    it('generates a first-ever hero when there is no card frame yet and no file', () => {
+      expect(decideThumbAction(missing, false, false)).toBe('generate');
+    });
+
+    it('generates when the card is fresh or stale-version but the hero file is absent', () => {
+      expect(decideThumbAction(fresh, false, false)).toBe('generate');
+      expect(decideThumbAction(staleVersion, false, false)).toBe('generate');
+    });
+
+    it('gives up without decoding once the card path has exhausted its attempts', () => {
+      expect(decideThumbAction(attemptsExhausted, false, false)).toBe('give-up');
+    });
   });
 });
