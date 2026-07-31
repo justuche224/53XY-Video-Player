@@ -42,17 +42,16 @@ class FrameGrabberModule : Module() {
       val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
       val retriever = MediaMetadataRetriever()
       try {
-        // expo-media-library (and other callers) build `file://` uris by raw string
-        // concatenation with no percent-encoding, so filenames containing `#`, `?`
-        // or `%` are not valid uri components. Uri.parse().getPath() would percent-
-        // *decode* such a path and silently truncate or corrupt it (e.g. `#3.mkv` is
-        // parsed as a fragment). For a `file://` source, skip Uri parsing entirely
-        // and hand MediaMetadataRetriever the raw filesystem path — this mirrors how
-        // outPath is already handled below, so both ends agree on "raw string, no
-        // percent-decoding". Any other scheme (e.g. `content://`) still needs real
-        // Uri resolution, so that path is untouched.
+        // expo-media-library percent-encodes its `file://` uris, so a path segment
+        // like `His and Hers` arrives as `His%20and%20Hers` and must be decoded
+        // before it names a real file. Uri.decode() is the right tool and not
+        // Uri.parse().getPath(): the latter also applies uri *structure*, so a
+        // filename containing `#` or `?` would be truncated at a phantom fragment
+        // or query. Uri.decode only reverses %XX escapes, which is exactly the one
+        // transformation the encoder applied. Other schemes (`content://`) still
+        // need real Uri resolution via the ContentResolver.
         if (sourceUri.startsWith("file://")) {
-          retriever.setDataSource(sourceUri.removePrefix("file://"))
+          retriever.setDataSource(Uri.decode(sourceUri.removePrefix("file://")))
         } else {
           retriever.setDataSource(context, Uri.parse(sourceUri))
         }

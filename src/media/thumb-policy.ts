@@ -4,7 +4,7 @@ import type { ThumbState } from '@/db/thumbs-repo';
  * Bump when the extraction algorithm changes. Every thumbnail stamped with a
  * lower version is treated as stale and regenerated — no migration required.
  */
-export const THUMB_VERSION = 1;
+export const THUMB_VERSION = 2;
 
 /** Library cards, rows and collages. ~45 KB per video at this quality. */
 export const THUMB_WIDTH_CARD = 640;
