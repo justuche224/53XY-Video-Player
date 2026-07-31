@@ -65,7 +65,9 @@ export function useThumbnailSweep(): void {
 
         const video = byId.get(id);
         if (!video) continue;
-        await getOrCreateThumbnail(db, video);
+        // One unreadable file (or a DB hiccup) must not end the whole sweep —
+        // the attempt is already recorded, so the next pass skips it anyway.
+        await getOrCreateThumbnail(db, video).catch(() => null);
         if (cancelled) return;
         await delay(SWEEP_GAP_MS);
       }
