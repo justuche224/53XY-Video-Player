@@ -1,9 +1,10 @@
 // src/player/use-preview-strip.ts
 import { useEffect, useMemo, useState } from 'react';
+import { Directory, File, Paths } from 'expo-file-system';
 import { useSQLiteContext } from 'expo-sqlite';
-import { getThumbnailAsync } from 'expo-video-thumbnails';
 
 import { getPreviewFrames, insertPreviewFrame } from '@/db/preview-frames-repo';
+import { FrameGrabber } from '@/native/frame-grabber';
 import {
   frameCount,
   frameTimeMs,
@@ -12,7 +13,20 @@ import {
 
 /** Pause between frame extractions so generation stays a background chore. */
 const GENERATION_GAP_MS = 250;
-const FRAME_QUALITY = 0.3;
+const FRAME_QUALITY = 0.5;
+/** Wide enough for the scrub bubble at 2x DPR, small enough to be nearly free. */
+const FRAME_WIDTH = 320;
+/** Strip frames must land on their own slot, so any decodable frame is accepted. */
+const FRAME_MIN_SCORE = 0;
+
+/** Previews stay in the cache dir: they are per-session nice-to-haves, not library data. */
+const PREVIEW_DIR = 'previews';
+
+function previewFile(videoId: string, idx: number): File {
+  const dir = new Directory(Paths.cache, PREVIEW_DIR, videoId);
+  if (!dir.exists) dir.create({ intermediates: true });
+  return new File(dir, `${idx}.jpg`);
+}
 
 export interface PreviewStrip {
   intervalSec: number;
@@ -74,14 +88,19 @@ export function usePreviewStrip(videoId: string, uri: string, durationSec: numbe
         if (completed.has(idx)) continue;
         const timeMs = frameTimeMs(idx, intervalSec, stableDurationSec);
         try {
-          const { uri: frameUri } = await getThumbnailAsync(uri, {
-            time: timeMs,
+          const result = await FrameGrabber.grabFrame(uri, {
+            positionsMs: [timeMs],
+            targetWidth: FRAME_WIDTH,
+            minScore: FRAME_MIN_SCORE,
             quality: FRAME_QUALITY,
+            outPath: previewFile(videoId, idx).uri,
           });
           if (cancelled) return;
-          await insertPreviewFrame(db, videoId, idx, timeMs, frameUri);
-          completed.set(idx, frameUri);
-          setFrames(new Map(completed));
+          if (result) {
+            await insertPreviewFrame(db, videoId, idx, timeMs, result.uri);
+            completed.set(idx, result.uri);
+            setFrames(new Map(completed));
+          }
         } catch {
           // Extraction can fail on odd codecs/positions — skip the slot.
         }

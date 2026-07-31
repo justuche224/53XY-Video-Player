@@ -11,6 +11,7 @@ import { runMigrations } from '@/db/migrate';
 import { MIGRATIONS } from '@/db/schema';
 import { FilterSettingsProvider } from '@/library/filter-settings';
 import { LibraryProvider } from '@/library/library-provider';
+import { ThumbnailSweep } from '@/media/thumbnail-sweep';
 import { ThemeProvider, useTheme } from '@/theme/theme-provider';
 
 SplashScreen.preventAutoHideAsync();
@@ -44,6 +45,7 @@ export default function RootLayout() {
             <LibraryProvider>
               <ThemeProvider>
                 <ThemedStatusBar />
+                <ThumbnailSweep />
                 <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
                   <Stack.Screen name="(tabs)" />
                   <Stack.Screen name="group" />

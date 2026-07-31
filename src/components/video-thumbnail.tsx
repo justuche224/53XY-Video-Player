@@ -4,12 +4,24 @@ import { useEffect, useState } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { getOrCreateThumbnail } from '@/media/thumbnails';
+import { THUMB_WIDTH_CARD } from '@/media/thumb-policy';
 import type { LibraryVideo } from '@/library/types';
 import { useTheme } from '@/theme/theme-provider';
 
-export function VideoThumbnail({ video, style }: { video: LibraryVideo; style?: StyleProp<ViewStyle> }) {
+export function VideoThumbnail({
+  video,
+  style,
+  width = THUMB_WIDTH_CARD,
+}: {
+  video: LibraryVideo;
+  style?: StyleProp<ViewStyle>;
+  width?: number;
+}) {
   const { colors, radius } = useTheme();
-  const [uri, setUri] = useState<string | null>(video.thumbUri);
+  // thumbUri from the library row is the card-sized file; other sizes start empty.
+  const [uri, setUri] = useState<string | null>(
+    width === THUMB_WIDTH_CARD ? video.thumbUri : null,
+  );
   const db = useSQLiteContext();
 
   useEffect(() => {
@@ -20,7 +32,7 @@ export function VideoThumbnail({ video, style }: { video: LibraryVideo; style?: 
     // window and unmounts before idle fires, cancelIdleCallback drops the work
     // entirely — so a fast flick never piles up generations for passed rows.
     const handle = requestIdleCallback(() => {
-      getOrCreateThumbnail(db, video).then((u) => {
+      getOrCreateThumbnail(db, video, width).then((u) => {
         if (!cancelled && u) setUri(u);
       });
     });
@@ -28,7 +40,7 @@ export function VideoThumbnail({ video, style }: { video: LibraryVideo; style?: 
       cancelled = true;
       cancelIdleCallback(handle);
     };
-  }, [db, video, uri]);
+  }, [db, video, uri, width]);
 
   return (
     <View style={[{ backgroundColor: colors.surfaceVariant ?? '#222', borderRadius: radius.md, overflow: 'hidden' }, style]}>

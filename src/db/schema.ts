@@ -76,6 +76,15 @@ export const MIGRATIONS: Migration[] = [
       );
     `,
   },
+  {
+    version: 7,
+    up: `
+      ALTER TABLE videos ADD COLUMN thumb_version INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE videos ADD COLUMN thumb_attempts INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE videos ADD COLUMN thumb_time_ms INTEGER;
+      UPDATE videos SET thumb_uri = NULL;
+    `,
+  },
 ];
 
-export const LATEST_VERSION = 6;
+export const LATEST_VERSION = 7;
