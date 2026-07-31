@@ -3,6 +3,7 @@ import { View } from 'react-native';
 
 import { AppBar } from '@/components/app-bar';
 import { Screen } from '@/components/screen';
+import { SettingsGroup } from '@/components/settings-group';
 import { SettingSwitch } from '@/components/setting-switch';
 import { useBackgroundPlay } from '@/player/use-background-play';
 import { usePictureInPicture } from '@/player/use-pip';
@@ -18,10 +19,12 @@ export default function PlayerSettingsScreen() {
   return (
     <Screen style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
       <AppBar title="Player" variant="detail" onBack={() => router.back()} />
-      <View style={{ gap: spacing.sm }}>
-        <SettingSwitch label="Play video in background" value={backgroundPlay} onValueChange={setBackgroundPlay} />
-        <SettingSwitch label="Picture in Picture" value={pictureInPicture} onValueChange={setPictureInPicture} />
-        <SettingSwitch label="Autoplay next episode" value={autoplayNext} onValueChange={setAutoplayNext} />
+      <View style={{ gap: spacing.lg }}>
+        <SettingsGroup insetDividers={false}>
+          <SettingSwitch label="Play video in background" value={backgroundPlay} onValueChange={setBackgroundPlay} />
+          <SettingSwitch label="Picture in Picture" value={pictureInPicture} onValueChange={setPictureInPicture} />
+          <SettingSwitch label="Autoplay next episode" value={autoplayNext} onValueChange={setAutoplayNext} />
+        </SettingsGroup>
       </View>
     </Screen>
   );

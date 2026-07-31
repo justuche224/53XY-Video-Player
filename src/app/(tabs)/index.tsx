@@ -3,7 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { RefreshControl, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -65,7 +65,7 @@ export default function LibraryScreen() {
   const [sortOpen, setSortOpen] = useState(false);
   const [progress, setProgress] = useState<ProgressMap>(new Map());
   const { status, refreshing, groups } = useLibrary(mode);
-  const { videos } = useLibraryData();
+  const { videos, reload } = useLibraryData();
   const [resumeTarget, setResumeTarget] = useState<LibraryVideo | null>(null);
 
   // Tab screens stay mounted when you leave them, and expo-status-bar applies the
@@ -87,7 +87,21 @@ export default function LibraryScreen() {
   const [headerSolid, setHeaderSolid] = useState(false);
   const solidRef = useRef(false);
   const headerHeightRef = useRef(0);
+  // Mirrors the ref as state solely for the RefreshControl offset (the ref keeps
+  // onScroll from re-rendering; the spinner position needs a render).
+  const [headerHeight, setHeaderHeight] = useState(0);
   const hero = heroHeight(windowHeight, insets.top);
+
+  // Pull-to-refresh drives the shared background rescan. `pulled` scopes the
+  // spinner to explicit pulls so the automatic on-mount scan doesn't show one.
+  const [pulled, setPulled] = useState(false);
+  const onRefresh = useCallback(() => {
+    setPulled(true);
+    reload();
+  }, [reload]);
+  useEffect(() => {
+    if (pulled && !refreshing) setPulled(false);
+  }, [pulled, refreshing]);
 
   useEffect(() => {
     getSetting(db, 'mode').then((v) => v === 'folder' && setMode('folder'));
@@ -231,6 +245,16 @@ export default function LibraryScreen() {
         renderItem={renderItem}
         onScroll={onScroll}
         scrollEventThrottle={32}
+        refreshControl={
+          <RefreshControl
+            refreshing={pulled && refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            progressBackgroundColor={colors.surfaceContainerHigh ?? colors.surfaceVariant}
+            // Drop the spinner below the pinned header block.
+            progressViewOffset={headerHeight}
+          />
+        }
         ListHeaderComponent={listHeader}
         ListEmptyComponent={
           heroVideo ? (
@@ -271,7 +295,10 @@ export default function LibraryScreen() {
         onLayoutChange={onLayout}
         onSortPress={() => setSortOpen(true)}
         refreshing={refreshing}
-        onHeightChange={(h) => (headerHeightRef.current = h)}
+        onHeightChange={(h) => {
+          headerHeightRef.current = h;
+          setHeaderHeight(h);
+        }}
       />
 
       <SortSheet

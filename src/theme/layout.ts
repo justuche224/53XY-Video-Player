@@ -22,6 +22,21 @@ export function heroHeight(windowHeight: number, insetTop: number): number {
   return Math.round(band + Math.max(0, insetTop));
 }
 
+/** Group detail banner: shorter than the Home hero — it's a chapter head, not a
+ *  cover page, and the episode list is the point of the screen. */
+const GROUP_HERO_FRACTION = 0.3;
+const GROUP_HERO_MIN = 200;
+const GROUP_HERO_MAX = 300;
+
+/** Total height of the group-detail banner, status-bar area included. */
+export function groupHeroHeight(windowHeight: number, insetTop: number): number {
+  const band = Math.min(
+    GROUP_HERO_MAX,
+    Math.max(GROUP_HERO_MIN, windowHeight * GROUP_HERO_FRACTION),
+  );
+  return Math.round(band + Math.max(0, insetTop));
+}
+
 /**
  * Scroll offset at which the pinned header swaps from "over artwork" to "over
  * page". Fires slightly before the artwork fully clears the header so the solid

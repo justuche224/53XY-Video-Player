@@ -1,4 +1,4 @@
-import { headerSolidThreshold, heroHeight } from '../layout';
+import { groupHeroHeight, headerSolidThreshold, heroHeight } from '../layout';
 
 describe('heroHeight', () => {
   it('scales with the window on ordinary phones', () => {
@@ -26,6 +26,24 @@ describe('heroHeight', () => {
   it('always returns a whole number of dp', () => {
     for (const h of [640, 731, 812, 915, 1080]) {
       expect(Number.isInteger(heroHeight(h, 33))).toBe(true);
+    }
+  });
+});
+
+describe('groupHeroHeight', () => {
+  it('scales with the window inside its clamp', () => {
+    expect(groupHeroHeight(800, 0)).toBe(240);
+  });
+
+  it('adds the inset on top and clamps both ends', () => {
+    expect(groupHeroHeight(800, 40)).toBe(280);
+    expect(groupHeroHeight(500, 0)).toBe(200);
+    expect(groupHeroHeight(1600, 0)).toBe(300);
+  });
+
+  it('stays shorter than the Home hero for the same window', () => {
+    for (const h of [640, 800, 915, 1200]) {
+      expect(groupHeroHeight(h, 33)).toBeLessThan(heroHeight(h, 33));
     }
   });
 });
