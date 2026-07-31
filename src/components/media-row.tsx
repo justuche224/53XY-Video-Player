@@ -53,7 +53,11 @@ export function MediaRow({
           marginBottom: spacing.sm,
           gap: spacing.md,
           borderRadius: radius.lg,
-          backgroundColor: elevation(1),
+          // Matches MediaCard: the tonal step alone is too subtle against a dark
+          // `background`, so the hairline outline carries the separation.
+          backgroundColor: elevation(2),
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.outlineVariant ?? 'transparent',
         },
       ]}>
       <View

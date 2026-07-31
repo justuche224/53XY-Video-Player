@@ -160,5 +160,5 @@ export function HomeHeroPlaceholder({ message, hint }: { message: string; hint?:
 const styles = StyleSheet.create({
   body: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   overline: { letterSpacing: 1.1 },
-  actions: { flexDirection: 'row', alignItems: 'center' },
+  actions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
 });

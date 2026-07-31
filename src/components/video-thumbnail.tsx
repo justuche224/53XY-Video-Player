@@ -27,11 +27,24 @@ export function VideoThumbnail({
   radius?: number;
 }) {
   const { colors } = useTheme();
-  // thumbUri from the library row is the card-sized file; other sizes start empty.
-  const [uri, setUri] = useState<string | null>(
-    width === THUMB_WIDTH_CARD ? video.thumbUri : null,
-  );
   const db = useSQLiteContext();
+
+  // Which video+size the held uri actually belongs to. Without this the resolved
+  // uri outlives the prop that produced it: `useState` seeds only on first mount,
+  // so a component that stays mounted while `video` changes underneath it — the
+  // Home hero every time the resume target changes, or a recycled list row — keeps
+  // showing the previous video's frame, and the `if (uri) return` guard below then
+  // stops it ever regenerating.
+  const key = `${video.id}@${width}`;
+  const [resolved, setResolved] = useState<{ key: string; uri: string | null }>(() => ({
+    key,
+    // thumbUri from the library row is the card-sized file; other sizes start empty.
+    uri: width === THUMB_WIDTH_CARD ? video.thumbUri : null,
+  }));
+  if (resolved.key !== key) {
+    setResolved({ key, uri: width === THUMB_WIDTH_CARD ? video.thumbUri : null });
+  }
+  const uri = resolved.key === key ? resolved.uri : null;
 
   useEffect(() => {
     if (uri) return;
@@ -42,14 +55,16 @@ export function VideoThumbnail({
     // entirely — so a fast flick never piles up generations for passed rows.
     const handle = requestIdleCallback(() => {
       getOrCreateThumbnail(db, video, width).then((u) => {
-        if (!cancelled && u) setUri(u);
+        // Guard on `key` as well as cancellation: an extraction started for a
+        // previous video can still land after the prop changed.
+        if (!cancelled && u) setResolved((prev) => (prev.key === key ? { key, uri: u } : prev));
       });
     });
     return () => {
       cancelled = true;
       cancelIdleCallback(handle);
     };
-  }, [db, video, uri, width]);
+  }, [db, video, uri, width, key]);
 
   return (
     <View

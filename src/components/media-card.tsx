@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+
 import { AppText } from './app-text';
 import { DurationBadge } from './duration-badge';
 import { CLEAR, Gradient } from './gradient';
@@ -42,7 +43,13 @@ export function MediaCard({
         margin: spacing.sm,
         padding: spacing.xs + 2,
         borderRadius: radius.lg,
-        backgroundColor: elevation(1),
+        // elevation(2) rather than (1): on a dark Material You palette
+        // surfaceContainerLow sits only a tone or two off `background`, which read
+        // as no separation at all on device. The hairline outline does the rest —
+        // tonal steps alone are too subtle for a card floating on a dark page.
+        backgroundColor: elevation(2),
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: colors.outlineVariant ?? 'transparent',
         // Clips the Android ripple to the rounded corner. It does not clip the
         // shadow: `overflow` bounds descendants, never the element's own box-shadow.
         overflow: 'hidden',
