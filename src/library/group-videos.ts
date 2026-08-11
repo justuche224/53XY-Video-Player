@@ -63,10 +63,11 @@ function mergeNumericVariants(groups: Group[]): Group[] {
   return result.sort(byTitle);
 }
 
-export function groupByName(videos: LibraryVideo[]): Group[] {
+export function groupByName(videos: LibraryVideo[], manualGroups: Map<string, string>): Group[] {
   const map = new Map<string, Group>();
   for (const video of videos) {
-    const title = normalizeTitle(video.filename);
+    const manualGroup = manualGroups.get(video.id);
+    const title = manualGroup || normalizeTitle(video.filename);
     const key = title.toLowerCase();
     let group = map.get(key);
     if (!group) {
@@ -78,14 +79,17 @@ export function groupByName(videos: LibraryVideo[]): Group[] {
   return mergeNumericVariants([...map.values()]);
 }
 
-export function groupByFolder(videos: LibraryVideo[]): Group[] {
+export function groupByFolder(videos: LibraryVideo[], manualGroups: Map<string, string>): Group[] {
   const map = new Map<string, Group>();
   for (const video of videos) {
-    const key = video.folder || '';
+    const manualGroup = manualGroups.get(video.id);
+    const key = manualGroup || video.folder || '';
     let group = map.get(key);
     if (!group) {
       let name: string;
-      if (key) {
+      if (manualGroup) {
+        name = manualGroup;
+      } else if (key) {
         const lastSlash = key.lastIndexOf('/');
         name = lastSlash >= 0 ? key.slice(lastSlash + 1) : key;
         name = name || 'Unknown';

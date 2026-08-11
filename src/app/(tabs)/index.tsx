@@ -3,7 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { RefreshControl, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { BackHandler, RefreshControl, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,17 +13,23 @@ import { AppText } from '@/components/app-text';
 import { GroupCard } from '@/components/group-card';
 import { GroupRow } from '@/components/group-row';
 import { HomeHeader } from '@/components/home-header';
+import { ContextualAppBar } from '@/components/contextual-app-bar';
 import { HomeHero, HomeHeroPlaceholder, type HeroKind } from '@/components/home-hero';
 import { Screen } from '@/components/screen';
 import { SortSheet } from '@/components/sort-sheet';
+import { AddToPlaylistSheet } from '@/components/add-to-playlist-sheet';
+import { EditGroupSheet } from '@/components/edit-group-sheet';
 import { getProgressMap, type ProgressMap } from '@/db/progress-repo';
 import { getSetting, setSetting } from '@/db/settings-repo';
 import { getHistory } from '@/db/history-repo';
+import { setManualGroup } from '@/db/manual-groups-repo';
 import { resolveLastPlayed } from '@/player/resume-last';
 import { TAB_BAR_CLEARANCE } from '@/components/tab-bar';
 import { filterGroups } from '@/library/filter-groups';
 import { sortGroups, SORT_KEYS, type SortDir, type SortKey } from '@/library/sort-groups';
 import { useLibrary } from '@/library/use-library';
+import { deleteVideos, shareVideos } from '@/library/media-actions';
+import { setVideosPlayedState } from '@/db/progress-repo';
 import { useLibraryData } from '@/library/library-provider';
 import type { Group, LibraryVideo } from '@/library/types';
 import { headerSolidThreshold, heroHeight } from '@/theme/layout';
@@ -67,6 +73,19 @@ export default function LibraryScreen() {
   const { status, refreshing, groups } = useLibrary(mode);
   const { videos, reload } = useLibraryData();
   const [resumeTarget, setResumeTarget] = useState<LibraryVideo | null>(null);
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [playlistVideoIds, setPlaylistVideoIds] = useState<string[]>([]);
+  const [ungroupVideoIds, setUngroupVideoIds] = useState<string[]>([]);
+
+  // Clear selection on back press
+  useEffect(() => {
+    if (selectedKeys.size === 0) return;
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      setSelectedKeys(new Set());
+      return true; // prevent default
+    });
+    return () => backHandler.remove();
+  }, [selectedKeys]);
 
   // Tab screens stay mounted when you leave them, and expo-status-bar applies the
   // last <StatusBar> still mounted — so Home's forced-light style would follow you
@@ -192,13 +211,47 @@ export default function LibraryScreen() {
   }, [router, mode]);
 
   const renderItem = useCallback(
-    ({ item }: { item: Group }) =>
-      layout === 'grid' ? (
-        <GroupCard group={item} percent={groupPercent(item, progress)} onPress={() => openGroup(item)} />
+    ({ item }: { item: Group }) => {
+      const isSelectionMode = selectedKeys.size > 0;
+      const selected = selectedKeys.has(item.key);
+
+      const handlePress = () => {
+        if (isSelectionMode) {
+          const next = new Set(selectedKeys);
+          if (next.has(item.key)) next.delete(item.key);
+          else next.add(item.key);
+          setSelectedKeys(next);
+        } else {
+          openGroup(item);
+        }
+      };
+
+      const handleLongPress = () => {
+        const next = new Set(selectedKeys);
+        if (next.has(item.key)) next.delete(item.key);
+        else next.add(item.key);
+        setSelectedKeys(next);
+      };
+
+      return layout === 'grid' ? (
+        <GroupCard
+          group={item}
+          percent={groupPercent(item, progress)}
+          onPress={handlePress}
+          onLongPress={handleLongPress}
+          selected={selected}
+        />
       ) : (
-        <GroupRow group={item} percent={groupPercent(item, progress)} onPress={() => openGroup(item)} />
-      ),
-    [layout, progress, openGroup],
+        <GroupRow
+          group={item}
+          percent={groupPercent(item, progress)}
+          onPress={handlePress}
+          onLongPress={handleLongPress}
+          selected={selected}
+        />
+      );
+    },
+    [layout, progress, openGroup, selectedKeys],
   );
 
   // Grid cards carry their own 8dp margin, so the gutter is split between the two;
@@ -230,6 +283,57 @@ export default function LibraryScreen() {
       )}
     </View>
   );
+
+  const selectedGroups = useMemo(
+    () => groups.filter((g) => selectedKeys.has(g.key)),
+    [groups, selectedKeys]
+  );
+
+  const handleDelete = useCallback(() => {
+    const ids = selectedGroups.flatMap((g) => g.items.map((i) => i.id));
+    deleteVideos(ids, () => {
+      setSelectedKeys(new Set());
+      reload();
+    });
+  }, [selectedGroups, reload]);
+
+  const handleShare = useCallback(() => {
+    const uris = selectedGroups.flatMap((g) => g.items.map((i) => i.uri));
+    shareVideos(uris);
+  }, [selectedGroups]);
+
+  const handlePlay = useCallback(() => {
+    // In a real implementation we would queue all these videos.
+    // For now we just open the first video of the first selected group.
+    const firstGroup = selectedGroups.find(g => g.items.length > 0);
+    if (!firstGroup) return;
+    openGroup(firstGroup);
+    setSelectedKeys(new Set());
+  }, [selectedGroups, openGroup]);
+
+  const handleMarkPlayed = useCallback(async () => {
+    const ids = selectedGroups.flatMap((g) => g.items.map((i) => i.id));
+    await setVideosPlayedState(db, ids, true, Date.now());
+    setSelectedKeys(new Set());
+    
+    setProgress(prev => {
+      const next = new Map(prev);
+      for (const id of ids) next.set(id, { percent: 1, positionMs: 0 });
+      return next;
+    });
+  }, [selectedGroups, db]);
+
+  const handleMarkUnplayed = useCallback(async () => {
+    const ids = selectedGroups.flatMap((g) => g.items.map((i) => i.id));
+    await setVideosPlayedState(db, ids, false, Date.now());
+    setSelectedKeys(new Set());
+    
+    setProgress(prev => {
+      const next = new Map(prev);
+      for (const id of ids) next.delete(id);
+      return next;
+    });
+  }, [selectedGroups, db]);
 
   return (
     <Screen edges={['left', 'right']}>
@@ -301,12 +405,57 @@ export default function LibraryScreen() {
         }}
       />
 
+      {selectedKeys.size > 0 && (
+        <ContextualAppBar
+          selectedCount={selectedKeys.size}
+          onClearSelection={() => setSelectedKeys(new Set())}
+          onPlay={handlePlay}
+          onMarkPlayed={handleMarkPlayed}
+          onMarkUnplayed={handleMarkUnplayed}
+          onAddToPlaylist={() => {
+            const ids = selectedGroups.flatMap((g) => g.items.map((i) => i.id));
+            if (ids.length > 0) {
+              setPlaylistVideoIds(ids);
+            }
+          }}
+          onUngroup={() => {
+            const ids = selectedGroups.flatMap((g) => g.items.map((i) => i.id));
+            if (ids.length > 0) {
+              setUngroupVideoIds(ids);
+            }
+          }}
+          onShare={handleShare}
+          onDelete={handleDelete}
+        />
+      )}
+
       <SortSheet
         visible={sortOpen}
         sortKey={sortKey}
         sortDir={sortDir}
         onSelect={onSort}
         onClose={() => setSortOpen(false)}
+      />
+      
+      <AddToPlaylistSheet
+        videoIds={playlistVideoIds}
+        visible={playlistVideoIds.length > 0}
+        onClose={() => {
+          setPlaylistVideoIds([]);
+          setSelectedKeys(new Set());
+        }}
+      />
+      <EditGroupSheet
+        visible={ungroupVideoIds.length > 0}
+        defaultName={ungroupVideoIds.length > 0 ? selectedGroups[0]?.title : ''}
+        onClose={() => {
+          setUngroupVideoIds([]);
+          setSelectedKeys(new Set());
+        }}
+        onSubmit={async (newName) => {
+          await setManualGroup(db, ungroupVideoIds, newName);
+          reload();
+        }}
       />
     </Screen>
   );

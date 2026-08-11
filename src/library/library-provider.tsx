@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 
 import { deleteVideosByIds, getAllVideos, upsertVideos } from '@/db/videos-repo';
 import { deleteProgressByIds } from '@/db/progress-repo';
+import { getManualGroupsMap } from '@/db/manual-groups-repo';
 import { deletePreviewFramesByIds } from '@/db/preview-frames-repo';
 import { scanVideos } from '@/media/media-scanner';
 import type { LibraryVideo } from './types';
@@ -12,6 +13,7 @@ export type LibraryStatus = 'loading' | 'ready' | 'denied' | 'error';
 
 interface LibraryData {
   videos: LibraryVideo[];
+  manualGroups: Map<string, string>;
   status: LibraryStatus;
   refreshing: boolean;
   error?: string;
@@ -38,13 +40,16 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | undefined>();
   const [token, setToken] = useState(0);
 
+  const [manualGroups, setManualGroups] = useState<Map<string, string>>(new Map());
+
   // 1) Show the cached library immediately — reading our own DB needs no permission.
   useEffect(() => {
     let cancelled = false;
-    getAllVideos(db)
-      .then((all) => {
+    Promise.all([getAllVideos(db), getManualGroupsMap(db)])
+      .then(([all, mg]) => {
         if (cancelled) return;
         setVideos(all);
+        setManualGroups(mg);
         setLoaded(true);
       })
       .catch((e) => {
@@ -77,10 +82,12 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
           await deleteVideosByIds(db, removed);
           await deleteProgressByIds(db, removed);
           await deletePreviewFramesByIds(db, removed);
+          // manual_groups cascades on delete
         }
-        const all = await getAllVideos(db);
+        const [all, mg] = await Promise.all([getAllVideos(db), getManualGroupsMap(db)]);
         if (cancelled) return;
         setVideos(all);
+        setManualGroups(mg);
         setLoaded(true);
       } catch (e) {
         if (!cancelled) setError(toMessage(e));
@@ -105,7 +112,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         : 'loading';
 
   return (
-    <LibraryContext.Provider value={{ videos, status, refreshing, error, reload }}>
+    <LibraryContext.Provider value={{ videos, manualGroups, status, refreshing, error, reload }}>
       {children}
     </LibraryContext.Provider>
   );

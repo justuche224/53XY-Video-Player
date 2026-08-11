@@ -5,7 +5,19 @@ import { MediaCard } from './media-card';
 import { ThumbnailCollage } from './thumbnail-collage';
 import type { Group } from '@/library/types';
 
-export const GroupCard = memo(function GroupCard({ group, percent, onPress }: { group: Group; percent: number; onPress: () => void }) {
+export const GroupCard = memo(function GroupCard({
+  group,
+  percent,
+  onPress,
+  onLongPress,
+  selected,
+}: {
+  group: Group;
+  percent: number;
+  onPress?: () => void;
+  onLongPress?: () => void;
+  selected?: boolean;
+}) {
   const totalMs = group.items.reduce((acc, v) => acc + (v.durationMs ?? 0), 0);
   return (
     <MediaCard
@@ -15,6 +27,8 @@ export const GroupCard = memo(function GroupCard({ group, percent, onPress }: { 
       percent={percent}
       durationMs={totalMs}
       onPress={onPress}
+      onLongPress={onLongPress}
+      selected={selected}
     />
   );
 });

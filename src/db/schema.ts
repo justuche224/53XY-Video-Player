@@ -85,6 +85,16 @@ export const MIGRATIONS: Migration[] = [
       UPDATE videos SET thumb_uri = NULL;
     `,
   },
+  {
+    version: 8,
+    up: `
+      CREATE TABLE IF NOT EXISTS manual_groups (
+        video_id TEXT PRIMARY KEY NOT NULL,
+        group_name TEXT NOT NULL,
+        FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
+      );
+    `,
+  },
 ];
 
-export const LATEST_VERSION = 7;
+export const LATEST_VERSION = 8;

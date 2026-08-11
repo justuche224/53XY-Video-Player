@@ -6,7 +6,19 @@ import { formatEpisodeLabel } from '@/library/episode-label';
 import { parseEpisode } from '@/library/parse-episode';
 import type { LibraryVideo } from '@/library/types';
 
-export function EpisodeRow({ video, percent, onPress }: { video: LibraryVideo; percent: number; onPress: () => void }) {
+export function EpisodeRow({
+  video,
+  percent,
+  onPress,
+  onLongPress,
+  selected,
+}: {
+  video: LibraryVideo;
+  percent: number;
+  onPress?: () => void;
+  onLongPress?: () => void;
+  selected?: boolean;
+}) {
   const { season, episode } = parseEpisode(video.filename);
   const label = formatEpisodeLabel(season, episode);
   return (
@@ -17,6 +29,8 @@ export function EpisodeRow({ video, percent, onPress }: { video: LibraryVideo; p
       percent={percent}
       durationMs={video.durationMs}
       onPress={onPress}
+      onLongPress={onLongPress}
+      selected={selected}
     />
   );
 }

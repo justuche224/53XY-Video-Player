@@ -19,13 +19,13 @@ export interface LibraryState {
  * in LibraryProvider so every screen shares one in-memory library.
  */
 export function useLibrary(mode: 'name' | 'folder'): LibraryState {
-  const { videos, status, refreshing, error } = useLibraryData();
+  const { videos, manualGroups, status, refreshing, error } = useLibraryData();
   const { filter } = useFilterSettings();
 
   const groups = useMemo(() => {
     const visible = applyFilters(videos, filter);
-    return mode === 'name' ? groupByName(visible) : groupByFolder(visible);
-  }, [videos, mode, filter]);
+    return mode === 'name' ? groupByName(visible, manualGroups) : groupByFolder(visible, manualGroups);
+  }, [videos, manualGroups, mode, filter]);
 
   return { status, refreshing, groups, error };
 }

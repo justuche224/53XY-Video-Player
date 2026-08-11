@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
-
-
+import { Ionicons } from '@expo/vector-icons';
 import { AppText } from './app-text';
 import { DurationBadge } from './duration-badge';
 import { CLEAR, Gradient } from './gradient';
@@ -25,18 +24,23 @@ export function MediaCard({
   percent = 0,
   durationMs,
   onPress,
+  onLongPress,
+  selected = false,
 }: {
   thumbnail: ReactNode;
   title: string;
   meta?: string;
   percent?: number;
   durationMs?: number | null;
-  onPress: () => void;
+  onPress?: () => void;
+  onLongPress?: () => void;
+  selected?: boolean;
 }) {
   const { colors, spacing, radius, elevation, shadow } = useTheme();
   return (
     <PressableScale
       onPress={onPress}
+      onLongPress={onLongPress}
       morph={{ from: RADIUS.lg, to: RADIUS.xl }}
       style={{
         flex: 1,
@@ -47,9 +51,9 @@ export function MediaCard({
         // surfaceContainerLow sits only a tone or two off `background`, which read
         // as no separation at all on device. The hairline outline does the rest —
         // tonal steps alone are too subtle for a card floating on a dark page.
-        backgroundColor: elevation(2),
+        backgroundColor: selected ? colors.secondaryContainer : elevation(2),
         borderWidth: StyleSheet.hairlineWidth,
-        borderColor: colors.outlineVariant ?? 'transparent',
+        borderColor: selected ? colors.primary : (colors.outlineVariant ?? 'transparent'),
         // Clips the Android ripple to the rounded corner. It does not clip the
         // shadow: `overflow` bounds descendants, never the element's own box-shadow.
         overflow: 'hidden',
@@ -74,6 +78,11 @@ export function MediaCard({
             <ProgressBar percent={percent} tone="artwork" />
           </View>
         ) : null}
+        {selected ? (
+          <View style={styles.selectedOverlay}>
+            <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
+          </View>
+        ) : null}
       </View>
       <View style={{ paddingHorizontal: spacing.xs, paddingTop: spacing.sm, paddingBottom: spacing.xs, gap: 2 }}>
         <AppText variant="title" numberOfLines={1}>
@@ -93,4 +102,10 @@ const styles = StyleSheet.create({
   poster: { width: '100%', aspectRatio: 16 / 10, overflow: 'hidden' },
   posterScrim: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '45%' },
   progress: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  selectedOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

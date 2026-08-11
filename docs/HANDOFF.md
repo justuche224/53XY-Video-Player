@@ -47,7 +47,7 @@
 | Bottom tab bar | Flat Material You tab bar (Home/Playlists/History/Settings); `(tabs)` group | ✅ merged (device-verify pending) |
 | Visual cohesion 1–3 | Design-system foundation (typography ramp + `AppText`, M3 tonal elevation/icon/radius tokens, Space Grotesk display font, brand-violet fallback seed); canonical `MediaRow`/`MediaCard`/`AppBar`/`SectionHeader`; continue-watching hero replacing the Resume FAB; all rows/cards/headers unified | ✅ merged |
 | Visual cohesion 4–5 | Settings split into landing list + Player/Library filters/Hidden folders/About sub-screens (`ListItem`, `useAllVideos`); restrained motion (reduced-motion-aware hero entrance + consistent detail-screen slide) | ✅ merged |
-| Long-press context menu | Add to playlist, mark as read directly from list. | 📋 backlog — parked |
+| Long-press context menu | Multi-select, Contextual top bar, Share, Delete, Info, Play All, Mark as Played/Unplayed, Add to playlist, Move to group (manual overrides, migration v8) | ✅ merged, device-verified |
 | libVLC fallback | Custom Expo native module for exotic codecs (large native effort, parked) | 📋 backlog — parked |
 | Player: gesture-arena fix | RNGH pressable arena so double-tap side seek works with controls showing while chrome buttons win their own taps | ✅ merged, device-verified |
 | Player: gesture-wedge root fix | Chrome buttons rebuilt on raw `Gesture.Tap` (RNGH `Pressable` wedged the `blocksExternalGesture` arena after one press); VideoView kept out of touch dispatch | ✅ merged, device-verified via adb |
@@ -139,6 +139,8 @@ Nothing is in flight. The **player feel pack** ([spec](./superpowers/specs/2026-
 ## 7. Changelog
 
 > Append-only, newest first. One bullet per shipped feature. Keep only the latest ~5 here; archive older entries to [CHANGELOG.md](./CHANGELOG.md).
+
+- **Long-press context menu (same branch, device-verified)** — added a robust multi-selection state and a contextual top app bar (`ContextualAppBar`) overriding the pinned header. Supports Share, Delete (`MediaLibrary.Asset.delete` API from SDK 56), Info (bottom sheet), Play All (first item), Mark as Played/Unplayed (bulk progress writes + immediate local UI updates), Add to Playlist, and Move to Group. Move to Group introduces **Advanced Group Management** (migration v8, `manual_groups` table) allowing manual overrides of the automatic grouping engine. JS-only.
 
 - **Player chrome chips (same branch, device-verified)** — the last holdout joined the design language. `ChromeButton` (`chrome-button.tsx`) composes `PlayerPressableScale` with the header's dark artwork chip: back + top-bar actions on 40dp chips, play/pause on 72dp, prev/next on 52dp, aspect-mode chip + speed pill on `ON_ARTWORK.tonal`. Strictly visual — the chip styling rides the existing `style` prop onto the Animated.View *inside* the GestureDetector; the raw Tap handler and `blocksExternalGesture` relations were not touched, and the full wedge-history gesture regression passed on device. Player stays fixed-white/violet, outside Material You, by design.
 

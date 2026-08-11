@@ -45,6 +45,45 @@ export async function deleteProgressByIds(db: SQLiteDatabase, ids: string[]): Pr
   await db.runAsync(`DELETE FROM watch_progress WHERE video_id IN (${placeholders})`, ids);
 }
 
+export async function setVideosPlayedState(
+  db: SQLiteDatabase,
+  ids: string[],
+  played: boolean,
+  nowMs: number
+): Promise<void> {
+  if (ids.length === 0) return;
+  
+  if (!played) {
+    // To mark as unplayed, we just delete their progress entries
+    await deleteProgressByIds(db, ids);
+    return;
+  }
+  
+  // Mark as played: percent = 1, completed = 1, position_ms = duration?
+  // We don't have duration directly here. We can just set percent = 1, position = 0 (or leave it as is).
+  // The UI mostly relies on percent and completed flags.
+  const statements = ids.map((id) => ({
+    $id: id,
+    $nowMs: nowMs,
+  }));
+  
+  // SQLite doesn't easily support batch INSERT...ON CONFLICT with dynamic multiple rows 
+  // without a loop or a specific string builder. We can use a transaction for safety.
+  await db.withTransactionAsync(async () => {
+    for (const stmt of statements) {
+      await db.runAsync(
+        `INSERT INTO watch_progress (video_id, position_ms, percent, completed, last_played_at)
+         VALUES (?, 0, 1, 1, ?)
+         ON CONFLICT(video_id) DO UPDATE SET
+           percent = 1,
+           completed = 1,
+           last_played_at = ?`,
+        [stmt.$id, stmt.$nowMs, stmt.$nowMs]
+      );
+    }
+  });
+}
+
 export async function getDisplayMode(
   db: SQLiteDatabase,
   videoId: string,

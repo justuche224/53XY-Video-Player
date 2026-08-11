@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { AppText } from './app-text';
 import { DurationBadge } from './duration-badge';
@@ -28,6 +29,7 @@ export function MediaRow({
   trailing,
   onPress,
   onLongPress,
+  selected = false,
 }: {
   thumbnail: ReactNode;
   title: string;
@@ -39,6 +41,7 @@ export function MediaRow({
   trailing?: ReactNode;
   onPress?: () => void;
   onLongPress?: () => void;
+  selected?: boolean;
 }) {
   const { colors, spacing, radius, elevation } = useTheme();
   return (
@@ -55,9 +58,9 @@ export function MediaRow({
           borderRadius: radius.lg,
           // Matches MediaCard: the tonal step alone is too subtle against a dark
           // `background`, so the hairline outline carries the separation.
-          backgroundColor: elevation(2),
+          backgroundColor: selected ? colors.secondaryContainer : elevation(2),
           borderWidth: StyleSheet.hairlineWidth,
-          borderColor: colors.outlineVariant ?? 'transparent',
+          borderColor: selected ? colors.primary : (colors.outlineVariant ?? 'transparent'),
         },
       ]}>
       <View
@@ -82,6 +85,11 @@ export function MediaRow({
         {percent > 0 ? (
           <View style={styles.progress}>
             <ProgressBar percent={percent} tone="artwork" />
+          </View>
+        ) : null}
+        {selected ? (
+          <View style={styles.selectedOverlay}>
+            <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
           </View>
         ) : null}
       </View>
@@ -112,4 +120,10 @@ const styles = StyleSheet.create({
   thumbScrim: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '55%' },
   progress: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   body: { flex: 1, gap: 2 },
+  selectedOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

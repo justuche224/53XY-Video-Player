@@ -7,7 +7,19 @@ import { ThumbnailCollage } from './thumbnail-collage';
 import type { Group } from '@/library/types';
 import { useTheme } from '@/theme/theme-provider';
 
-export const GroupRow = memo(function GroupRow({ group, percent, onPress }: { group: Group; percent: number; onPress: () => void }) {
+export const GroupRow = memo(function GroupRow({
+  group,
+  percent,
+  onPress,
+  onLongPress,
+  selected,
+}: {
+  group: Group;
+  percent: number;
+  onPress?: () => void;
+  onLongPress?: () => void;
+  selected?: boolean;
+}) {
   const { colors, icon } = useTheme();
   const totalMs = group.items.reduce((acc, v) => acc + (v.durationMs ?? 0), 0);
   return (
@@ -19,7 +31,9 @@ export const GroupRow = memo(function GroupRow({ group, percent, onPress }: { gr
       percent={percent}
       durationMs={totalMs}
       onPress={onPress}
-      trailing={<Ionicons name="chevron-forward" size={icon.md} color={colors.onSurfaceVariant ?? colors.onSurface} />}
+      onLongPress={onLongPress}
+      selected={selected}
+      trailing={selected ? undefined : <Ionicons name="chevron-forward" size={icon.md} color={colors.onSurfaceVariant ?? colors.onSurface} />}
     />
   );
 });

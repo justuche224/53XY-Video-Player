@@ -16,13 +16,13 @@ export function useGroups(mode: 'name' | 'folder'): {
   loading: boolean;
   reload: () => void;
 } {
-  const { videos, status, reload } = useLibraryData();
+  const { videos, manualGroups, status, reload } = useLibraryData();
   const { filter } = useFilterSettings();
 
   const groups = useMemo(() => {
     const visible = applyFilters(videos, filter);
-    return mode === 'name' ? groupByName(visible) : groupByFolder(visible);
-  }, [videos, mode, filter]);
+    return mode === 'name' ? groupByName(visible, manualGroups) : groupByFolder(visible, manualGroups);
+  }, [videos, manualGroups, mode, filter]);
 
   return { groups, loading: status === 'loading', reload };
 }
