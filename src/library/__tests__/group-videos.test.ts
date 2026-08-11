@@ -23,7 +23,7 @@ describe('groupByName', () => {
       v({ id: '0', filename: 'Banshee S01E01 GalaxyTV.mkv' }),
       v({ id: '9', filename: 'Citadel S01E03.mp4' }),
     ];
-    const groups = groupByName(videos);
+    const groups = groupByName(videos, new Map());
     expect(groups.map((g) => g.title)).toEqual(['Banshee', 'Citadel']);
     const banshee = groups.find((g) => g.title === 'Banshee')!;
     expect(banshee.count).toBe(3);
@@ -31,7 +31,7 @@ describe('groupByName', () => {
   });
 
   it('keeps a standalone movie as its own group of one', () => {
-    const groups = groupByName([v({ id: 'm', filename: 'The Best Man Holiday 2013 1080p.mp4' })]);
+    const groups = groupByName([v({ id: 'm', filename: 'The Best Man Holiday 2013 1080p.mp4' })], new Map());
     expect(groups).toHaveLength(1);
     expect(groups[0].title).toBe('The Best Man Holiday');
     expect(groups[0].count).toBe(1);
@@ -45,7 +45,7 @@ describe('groupByName', () => {
       v({ id: 'd', filename: 'Boston Legal 301 Cant We All.mkv' }), // infix number + episode title
       v({ id: 'e', filename: '127 Hours 1080p.mkv' }), // movie: no anchor -> stays
     ];
-    const groups = groupByName(videos);
+    const groups = groupByName(videos, new Map());
     expect(groups.map((g) => g.title)).toEqual(['127 Hours', 'Boston Legal']);
     const boston = groups.find((g) => g.title === 'Boston Legal')!;
     expect(boston.count).toBe(4);
@@ -57,7 +57,7 @@ describe('groupByName', () => {
       v({ id: 'x', filename: '201 Mystery.mkv' }),
       v({ id: 'y', filename: '202 Mystery.mkv' }),
     ];
-    const groups = groupByName(videos);
+    const groups = groupByName(videos, new Map());
     expect(groups).toHaveLength(2);
   });
 });
@@ -69,7 +69,7 @@ describe('groupByFolder', () => {
       v({ id: 'b', filename: 'e1.mkv', folder: '/storage/emulated/0/Movies/Banshee' }),
       v({ id: 'c', filename: 'clip.mp4', folder: '/storage/emulated/0/DCIM/Camera' }),
     ];
-    const groups = groupByFolder(videos);
+    const groups = groupByFolder(videos, new Map());
     expect(groups.map((g) => g.title)).toEqual(['Banshee', 'Camera']);
     const banshee = groups.find((g) => g.title === 'Banshee')!;
     expect(banshee.key).toBe('/storage/emulated/0/Movies/Banshee');

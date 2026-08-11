@@ -1,15 +1,12 @@
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from './app-text';
 import type { LibraryVideo } from '@/library/types';
 import { useTheme } from '@/theme/theme-provider';
 
-function formatBytes(bytes: number) {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+function formatDate(ms: number | null) {
+  if (!ms) return null;
+  return new Date(ms).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 function formatDuration(ms: number | null) {
@@ -34,10 +31,6 @@ export function VideoInfoSheet({
   const { colors, radius, spacing } = useTheme();
 
   if (!video) return null;
-
-  // Attempt to fetch file size. We don't have it directly on LibraryVideo type
-  // Wait, does LibraryVideo have size? Let's check types.ts
-  // LibraryVideo only has durationMs, width, height, addedAt, modifiedAt.
 
   const renderRow = (label: string, value: string | number | null) => {
     if (value == null) return null;
@@ -70,6 +63,8 @@ export function VideoInfoSheet({
           {renderRow('Folder', video.folder)}
           {renderRow('Duration', formatDuration(video.durationMs))}
           {renderRow('Resolution', video.width && video.height ? `${video.width} x ${video.height}` : null)}
+          {renderRow('Added', formatDate(video.createdAt))}
+          {renderRow('Modified', formatDate(video.modifiedAt))}
           {renderRow('Path', video.uri)}
         </Pressable>
       </Pressable>

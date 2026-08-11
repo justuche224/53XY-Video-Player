@@ -7,20 +7,20 @@ import { FolderIgnoreList, type FolderEntry } from '@/components/folder-ignore-l
 import { Screen } from '@/components/screen';
 import { useFilterSettings } from '@/library/filter-settings';
 import { groupByFolder } from '@/library/group-videos';
-import { useAllVideos } from '@/library/use-all-videos';
+import { useLibraryData } from '@/library/library-provider';
 import { useTheme } from '@/theme/theme-provider';
 
 export default function HiddenFoldersScreen() {
   const router = useRouter();
   const { spacing } = useTheme();
   const { filter, toggleFolder } = useFilterSettings();
-  const allVideos = useAllVideos();
+  const { videos: allVideos, manualGroups } = useLibraryData();
   const folderEntries = useMemo<FolderEntry[]>(
     () =>
-      groupByFolder(allVideos)
+      groupByFolder(allVideos, manualGroups)
         .map((g) => ({ path: g.key, name: g.title, count: g.count }))
         .sort((a, b) => a.name.localeCompare(b.name)),
-    [allVideos],
+    [allVideos, manualGroups],
   );
 
   return (

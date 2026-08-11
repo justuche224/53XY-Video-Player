@@ -52,7 +52,7 @@ export function EditGroupSheet({
           onPress={() => {}}>
           <View style={styles.header}>
             <AppText variant="headline" style={{ flex: 1 }}>Move to Group</AppText>
-            <IconButton name="close" onPress={onClose} />
+            <IconButton name="close" accessibilityLabel="Close" onPress={onClose} />
           </View>
           
           <AppText variant="body" style={{ color: colors.onSurfaceVariant, marginBottom: spacing.md }}>

@@ -68,9 +68,9 @@ export function AddToPlaylistSheet({
           <View style={styles.header}>
             <AppText variant="headline" style={{ flex: 1 }}>Add to Playlist</AppText>
             {creating ? (
-              <IconButton name="close" onPress={() => setCreating(false)} />
+              <IconButton name="close" accessibilityLabel="Cancel new playlist" onPress={() => setCreating(false)} />
             ) : (
-              <IconButton name="add" onPress={() => setCreating(true)} />
+              <IconButton name="add" accessibilityLabel="Create new playlist" onPress={() => setCreating(true)} />
             )}
           </View>
 
@@ -119,7 +119,11 @@ export function AddToPlaylistSheet({
                       {item.itemCount} item{item.itemCount === 1 ? '' : 's'}
                     </AppText>
                   </View>
-                  <IconButton name="add-circle-outline" onPress={() => handleSelect(item.id)} />
+                  <IconButton
+                    name="add-circle-outline"
+                    accessibilityLabel={`Add to ${item.name}`}
+                    onPress={() => handleSelect(item.id)}
+                  />
                 </Pressable>
               )}
             />

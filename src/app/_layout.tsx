@@ -18,6 +18,9 @@ SplashScreen.preventAutoHideAsync();
 
 async function onDbInit(db: SQLiteDatabase) {
   await db.execAsync('PRAGMA journal_mode = WAL');
+  // Must be set outside a transaction — SQLite ignores it once one is open.
+  // manual_groups relies on ON DELETE CASCADE when a video is removed.
+  await db.execAsync('PRAGMA foreign_keys = ON');
   await db.withTransactionAsync(async () => {
     await runMigrations(db, MIGRATIONS);
   });

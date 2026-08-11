@@ -33,6 +33,13 @@ describe('schema migrations', () => {
     expect(m7!.up).toContain('ALTER TABLE videos ADD COLUMN thumb_attempts INTEGER NOT NULL DEFAULT 0');
     expect(m7!.up).toContain('ALTER TABLE videos ADD COLUMN thumb_time_ms INTEGER');
     expect(m7!.up).toContain('UPDATE videos SET thumb_uri = NULL');
-    expect(LATEST_VERSION).toBe(7);
+  });
+
+  it('migration 8 creates manual_groups keyed by video_id', () => {
+    const m8 = MIGRATIONS.find((m) => m.version === 8);
+    expect(m8).toBeDefined();
+    expect(m8!.up).toContain('CREATE TABLE IF NOT EXISTS manual_groups');
+    expect(m8!.up).toMatch(/video_id TEXT PRIMARY KEY/);
+    expect(LATEST_VERSION).toBe(8);
   });
 });
