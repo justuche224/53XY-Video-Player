@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { AppText } from '@/components/app-text';
-import { ContextualAppBar } from '@/components/contextual-app-bar';
+import { ContextualAppBar, type OverflowAction } from '@/components/contextual-app-bar';
 import { EpisodeRow } from '@/components/episode-row';
 import { GroupHero } from '@/components/group-hero';
 import { IconButton } from '@/components/icon-button';
@@ -23,6 +23,7 @@ import { resolveLastPlayed } from '@/player/resume-last';
 import { useGroups } from '@/library/use-groups';
 import { useLibraryData } from '@/library/library-provider';
 import { deleteVideos, shareVideos } from '@/library/media-actions';
+import { resolveWatchToggle } from '@/library/watch-toggle';
 import type { LibraryVideo } from '@/library/types';
 import { useTheme } from '@/theme/theme-provider';
 
@@ -74,6 +75,8 @@ export default function GroupDetailScreen() {
     },
     [router, key, mode],
   );
+
+  const watchToggle = resolveWatchToggle(Array.from(selectedIds), progress);
 
   return (
     <Screen edges={['left', 'right']}>
@@ -143,41 +146,10 @@ export default function GroupDetailScreen() {
           selectedCount={selectedIds.size}
           onClearSelection={() => setSelectedIds(new Set())}
           onPlay={() => {
-            const selectedVideos = group?.items.filter(v => selectedIds.has(v.id)) ?? [];
-            if (selectedVideos.length === 0) return;
-            const first = selectedVideos[0];
+            const first = group?.items.find((v) => selectedIds.has(v.id));
+            if (!first) return;
             openVideo(first);
             setSelectedIds(new Set());
-          }}
-          onMarkPlayed={async () => {
-            const ids = Array.from(selectedIds);
-            await setVideosPlayedState(db, ids, true, Date.now());
-            setSelectedIds(new Set());
-            const newProgress = new Map(progress);
-            for (const id of ids) {
-              newProgress.set(id, { percent: 1, positionMs: 0 });
-            }
-            setProgress(newProgress);
-          }}
-          onMarkUnplayed={async () => {
-            const ids = Array.from(selectedIds);
-            await setVideosPlayedState(db, ids, false, Date.now());
-            setSelectedIds(new Set());
-            const newProgress = new Map(progress);
-            for (const id of ids) {
-              newProgress.delete(id);
-            }
-            setProgress(newProgress);
-          }}
-          onAddToPlaylist={() => {
-            if (selectedIds.size > 0) {
-              setPlaylistVideoIds(Array.from(selectedIds));
-            }
-          }}
-          onUngroup={() => {
-            if (selectedIds.size > 0) {
-              setUngroupVideoIds(Array.from(selectedIds));
-            }
           }}
           onShare={() => {
             const uris = group?.items.filter(v => selectedIds.has(v.id)).map(v => v.uri) ?? [];
@@ -190,11 +162,48 @@ export default function GroupDetailScreen() {
               reload();
             });
           }}
-          onInfo={() => {
-            if (selectedIds.size === 1) {
-              setInfoVideoId(Array.from(selectedIds)[0]);
-            }
-          }}
+          overflowActions={[
+            ...(selectedIds.size === 1
+              ? ([
+                  {
+                    icon: 'information-circle-outline',
+                    label: 'View info',
+                    onPress: () => setInfoVideoId(Array.from(selectedIds)[0]),
+                  },
+                ] satisfies OverflowAction[])
+              : []),
+            {
+              icon: watchToggle.markPlayed ? 'checkmark-done-circle-outline' : 'ellipse-outline',
+              label: watchToggle.label,
+              onPress: async () => {
+                const ids = Array.from(selectedIds);
+                await setVideosPlayedState(db, ids, watchToggle.markPlayed, Date.now());
+                setSelectedIds(new Set());
+                setProgress((prev) => {
+                  const next = new Map(prev);
+                  for (const id of ids) {
+                    if (watchToggle.markPlayed) next.set(id, { percent: 1, positionMs: 0 });
+                    else next.delete(id);
+                  }
+                  return next;
+                });
+              },
+            },
+            {
+              icon: 'list-outline',
+              label: 'Add to playlist',
+              onPress: () => {
+                if (selectedIds.size > 0) setPlaylistVideoIds(Array.from(selectedIds));
+              },
+            },
+            {
+              icon: 'folder-open-outline',
+              label: 'Move to group',
+              onPress: () => {
+                if (selectedIds.size > 0) setUngroupVideoIds(Array.from(selectedIds));
+              },
+            },
+          ]}
         />
       )}
 

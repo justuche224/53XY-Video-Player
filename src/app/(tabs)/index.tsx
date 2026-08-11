@@ -29,6 +29,7 @@ import { filterGroups } from '@/library/filter-groups';
 import { sortGroups, SORT_KEYS, type SortDir, type SortKey } from '@/library/sort-groups';
 import { useLibrary } from '@/library/use-library';
 import { deleteVideos, shareVideos } from '@/library/media-actions';
+import { resolveWatchToggle } from '@/library/watch-toggle';
 import { setVideosPlayedState } from '@/db/progress-repo';
 import { useLibraryData } from '@/library/library-provider';
 import type { Group, LibraryVideo } from '@/library/types';
@@ -288,52 +289,53 @@ export default function LibraryScreen() {
     () => groups.filter((g) => selectedKeys.has(g.key)),
     [groups, selectedKeys]
   );
+  const selectedVideoIds = useMemo(
+    () => selectedGroups.flatMap((g) => g.items.map((i) => i.id)),
+    [selectedGroups],
+  );
+  const watchToggle = resolveWatchToggle(selectedVideoIds, progress);
 
   const handleDelete = useCallback(() => {
-    const ids = selectedGroups.flatMap((g) => g.items.map((i) => i.id));
+    const ids = selectedVideoIds;
     deleteVideos(ids, () => {
       setSelectedKeys(new Set());
       reload();
     });
-  }, [selectedGroups, reload]);
+  }, [selectedVideoIds, reload]);
 
   const handleShare = useCallback(() => {
     const uris = selectedGroups.flatMap((g) => g.items.map((i) => i.uri));
     shareVideos(uris);
   }, [selectedGroups]);
 
+  // Only meaningful for exactly one selected group — the bar hides the Play
+  // icon otherwise (see ContextualAppBar's onPlay usage below).
   const handlePlay = useCallback(() => {
-    // In a real implementation we would queue all these videos.
-    // For now we just open the first video of the first selected group.
-    const firstGroup = selectedGroups.find(g => g.items.length > 0);
-    if (!firstGroup) return;
-    openGroup(firstGroup);
+    if (selectedGroups.length !== 1) return;
+    const group = selectedGroups[0];
+    const v = group.items[0];
+    if (!v) return;
+    const params =
+      group.count > 1
+        ? { videoId: v.id, uri: v.uri, title: v.filename, groupKey: group.key, mode }
+        : { videoId: v.id, uri: v.uri, title: v.filename };
+    router.push({ pathname: '/player', params });
     setSelectedKeys(new Set());
-  }, [selectedGroups, openGroup]);
+  }, [selectedGroups, mode, router]);
 
-  const handleMarkPlayed = useCallback(async () => {
-    const ids = selectedGroups.flatMap((g) => g.items.map((i) => i.id));
-    await setVideosPlayedState(db, ids, true, Date.now());
+  const handleToggleWatched = useCallback(async () => {
+    const ids = selectedVideoIds;
+    await setVideosPlayedState(db, ids, watchToggle.markPlayed, Date.now());
     setSelectedKeys(new Set());
-    
-    setProgress(prev => {
+    setProgress((prev) => {
       const next = new Map(prev);
-      for (const id of ids) next.set(id, { percent: 1, positionMs: 0 });
+      for (const id of ids) {
+        if (watchToggle.markPlayed) next.set(id, { percent: 1, positionMs: 0 });
+        else next.delete(id);
+      }
       return next;
     });
-  }, [selectedGroups, db]);
-
-  const handleMarkUnplayed = useCallback(async () => {
-    const ids = selectedGroups.flatMap((g) => g.items.map((i) => i.id));
-    await setVideosPlayedState(db, ids, false, Date.now());
-    setSelectedKeys(new Set());
-    
-    setProgress(prev => {
-      const next = new Map(prev);
-      for (const id of ids) next.delete(id);
-      return next;
-    });
-  }, [selectedGroups, db]);
+  }, [selectedVideoIds, watchToggle, db]);
 
   return (
     <Screen edges={['left', 'right']}>
@@ -409,23 +411,30 @@ export default function LibraryScreen() {
         <ContextualAppBar
           selectedCount={selectedKeys.size}
           onClearSelection={() => setSelectedKeys(new Set())}
-          onPlay={handlePlay}
-          onMarkPlayed={handleMarkPlayed}
-          onMarkUnplayed={handleMarkUnplayed}
-          onAddToPlaylist={() => {
-            const ids = selectedGroups.flatMap((g) => g.items.map((i) => i.id));
-            if (ids.length > 0) {
-              setPlaylistVideoIds(ids);
-            }
-          }}
-          onUngroup={() => {
-            const ids = selectedGroups.flatMap((g) => g.items.map((i) => i.id));
-            if (ids.length > 0) {
-              setUngroupVideoIds(ids);
-            }
-          }}
+          onPlay={selectedGroups.length === 1 ? handlePlay : undefined}
           onShare={handleShare}
           onDelete={handleDelete}
+          overflowActions={[
+            {
+              icon: watchToggle.markPlayed ? 'checkmark-done-circle-outline' : 'ellipse-outline',
+              label: watchToggle.label,
+              onPress: handleToggleWatched,
+            },
+            {
+              icon: 'list-outline',
+              label: 'Add to playlist',
+              onPress: () => {
+                if (selectedVideoIds.length > 0) setPlaylistVideoIds(selectedVideoIds);
+              },
+            },
+            {
+              icon: 'folder-open-outline',
+              label: 'Move to group',
+              onPress: () => {
+                if (selectedVideoIds.length > 0) setUngroupVideoIds(selectedVideoIds);
+              },
+            },
+          ]}
         />
       )}
 
