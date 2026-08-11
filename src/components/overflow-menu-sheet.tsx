@@ -1,4 +1,5 @@
 import { Modal, Pressable, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { AppText } from './app-text';
@@ -27,6 +28,7 @@ export function OverflowMenuSheet({
   onClose: () => void;
 }) {
   const { colors, radius, spacing } = useTheme();
+  const insets = useSafeAreaInsets();
 
   if (!visible) return null;
 
@@ -40,7 +42,8 @@ export function OverflowMenuSheet({
               backgroundColor: colors.surface ?? '#1b1b1b',
               borderTopLeftRadius: radius.xl,
               borderTopRightRadius: radius.xl,
-              paddingVertical: spacing.sm,
+              paddingTop: spacing.sm,
+              paddingBottom: spacing.sm + insets.bottom,
               paddingHorizontal: spacing.lg,
             },
           ]}
@@ -50,11 +53,18 @@ export function OverflowMenuSheet({
               key={action.label}
               style={({ pressed }) => [
                 styles.row,
-                { gap: spacing.md, paddingVertical: spacing.md, opacity: pressed ? 0.6 : 1 },
+                {
+                  gap: spacing.md,
+                  paddingVertical: spacing.md,
+                  minHeight: 48,
+                  opacity: pressed ? 0.6 : 1,
+                },
               ]}
+              accessibilityRole="button"
+              accessibilityLabel={action.label}
               onPress={() => {
                 onClose();
-                action.onPress();
+                requestAnimationFrame(action.onPress);
               }}>
               <Ionicons name={action.icon} size={22} color={colors.onSurface} />
               <AppText variant="body">{action.label}</AppText>
