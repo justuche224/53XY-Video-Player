@@ -46,5 +46,6 @@ example
 modules/*/android/build/
 build-*.apk
 build-*.aab
+53XY-production.apk
 
 bundletool-all-1.18.3.jar
