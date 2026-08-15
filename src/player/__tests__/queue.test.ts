@@ -1,4 +1,4 @@
-import { selectionQueueIds, resolveQueueItems } from '../queue';
+import { selectionQueueIds, resolveQueueItems, activeQueue } from '../queue';
 import type { Group, LibraryVideo } from '@/library/types';
 
 const vid = (id: string): LibraryVideo => ({
@@ -53,5 +53,36 @@ describe('resolveQueueItems', () => {
 
   it('returns an empty array for an empty queue', () => {
     expect(resolveQueueItems([], byId([vid('a')]))).toEqual([]);
+  });
+});
+
+describe('activeQueue', () => {
+  const q = (...ids: string[]) => ids.map(vid);
+
+  it('uses the first candidate that contains the current video', () => {
+    const result = activeQueue([q('a', 'b', 'c'), q('x', 'b', 'y')], 'b');
+    expect(result?.prev?.id).toBe('a');
+    expect(result?.next?.id).toBe('c');
+  });
+
+  it('skips empty and null candidates', () => {
+    const result = activeQueue([[], null, q('a', 'b')], 'a');
+    expect(result?.next?.id).toBe('b');
+  });
+
+  it('falls through to the next candidate when the current video is absent', () => {
+    const result = activeQueue([q('x', 'y'), q('a', 'b')], 'b');
+    expect(result?.prev?.id).toBe('a');
+  });
+
+  it('nulls prev at the head and next at the tail of the active queue', () => {
+    expect(activeQueue([q('a', 'b')], 'a')?.prev).toBeNull();
+    expect(activeQueue([q('a', 'b')], 'b')?.next).toBeNull();
+  });
+
+  // The null return is what hides the prev/next chrome, so single-video
+  // playback must be distinguishable from "in a queue, but at its edge".
+  it('returns null when no candidate applies', () => {
+    expect(activeQueue([null, [], q('x')], 'a')).toBeNull();
   });
 });

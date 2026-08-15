@@ -22,7 +22,6 @@ import {
   type DisplayMode, type ZoomState,
 } from '@/player/zoom';
 import { shouldResume } from '@/player/resume';
-import { neighbors } from '@/player/playlist';
 import { seekTarget, tapZone } from '@/player/seek';
 import { doubleTapAction } from '@/player/double-tap';
 import { panAxis, panHalf, clamp01, scrubDeltaSec } from '@/player/pan';
@@ -37,7 +36,7 @@ import { parseEpisode } from '@/library/parse-episode';
 import { formatEpisodeLabel } from '@/library/episode-label';
 import { getPlaylistItems } from '@/db/playlists-repo';
 import { resolvePlaylistItems } from '@/playlists/resolve-items';
-import { resolveQueueItems } from '@/player/queue';
+import { activeQueue, resolveQueueItems } from '@/player/queue';
 import { getQueue } from '@/player/queue-store';
 import { useLibraryData } from '@/library/library-provider';
 import type { LibraryVideo } from '@/library/types';
@@ -111,21 +110,18 @@ export default function PlayerScreen() {
     return resolveQueueItems(ids, new Map(videos.map((v) => [v.id, v])));
   }, [queueToken, videos]);
 
-  const queueNeighbors = useMemo(() => {
-    if (queueItems.length === 0) return null;
-    const n = neighbors(queueItems, videoId);
-    // Current video outside its own queue shouldn't strand prev/next — fall
-    // through to the group instead of pinning both to null.
-    return n.index === -1 ? null : n;
-  }, [queueItems, videoId]);
+  // One resolution for both the neighbors and whether prev/next chrome shows
+  // at all — null means single-video playback, anything else means a queue.
+  const queue = useMemo(
+    () =>
+      activeQueue(
+        [queueItems, playlistId ? playlistItems : null, group?.items ?? null],
+        videoId,
+      ),
+    [queueItems, playlistId, playlistItems, group, videoId],
+  );
 
-  const playlistNeighbors =
-    playlistId && playlistItems.length > 0 ? neighbors(playlistItems, videoId) : null;
-
-  const { prev, next } =
-    queueNeighbors ??
-    playlistNeighbors ??
-    (group ? neighbors(group.items, videoId) : { prev: null, next: null });
+  const { prev, next } = queue ?? { prev: null, next: null };
 
   // ── Video player ─────────────────────────────────────────────────────────
   // Source metadata feeds the system now-playing notification / MediaSession
@@ -991,14 +987,14 @@ export default function PlayerScreen() {
                 isEnded={!playing && durationSec > 0 && positionSec >= durationSec - 0.5}
                 onToggle={handleTogglePlay}
                 onPrev={
-                  (playlistId || group)
+                  queue
                     ? () => {
                         if (prev) void handleNavigateTo(prev);
                       }
                     : undefined
                 }
                 onNext={
-                  (playlistId || group)
+                  queue
                     ? () => {
                         if (next) void handleNavigateTo(next);
                       }
