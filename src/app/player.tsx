@@ -37,6 +37,8 @@ import { parseEpisode } from '@/library/parse-episode';
 import { formatEpisodeLabel } from '@/library/episode-label';
 import { getPlaylistItems } from '@/db/playlists-repo';
 import { resolvePlaylistItems } from '@/playlists/resolve-items';
+import { resolveQueueItems } from '@/player/queue';
+import { getQueue } from '@/player/queue-store';
 import { useLibraryData } from '@/library/library-provider';
 import type { LibraryVideo } from '@/library/types';
 import { useGroups } from '@/library/use-groups';
@@ -61,13 +63,14 @@ import { SystemVolume } from '@/native/system-volume';
 const VERTICAL_GAIN = 2;
 
 export default function PlayerScreen() {
-  const { videoId, uri, title, groupKey, mode, playlistId } = useLocalSearchParams<{
+  const { videoId, uri, title, groupKey, mode, playlistId, queueToken } = useLocalSearchParams<{
     videoId: string;
     uri: string;
     title: string;
     groupKey?: string;
     mode?: string;
     playlistId?: string;
+    queueToken?: string;
   }>();
   const router = useRouter();
 
@@ -96,10 +99,31 @@ export default function PlayerScreen() {
     });
   }, [db, playlistId, videos]);
 
+  // Ad-hoc queue from a contextual-bar multi-selection: play exactly those
+  // items and stop, instead of letting autoplay run on through the group. The
+  // ids are stashed in memory and referenced by token (see queue-store); a
+  // token the store no longer knows resolves to nothing and we fall through to
+  // the groupKey queue, which is the pre-queue behaviour.
+  const queueItems = useMemo(() => {
+    if (!queueToken) return [];
+    const ids = getQueue(queueToken);
+    if (!ids) return [];
+    return resolveQueueItems(ids, new Map(videos.map((v) => [v.id, v])));
+  }, [queueToken, videos]);
+
+  const queueNeighbors = useMemo(() => {
+    if (queueItems.length === 0) return null;
+    const n = neighbors(queueItems, videoId);
+    // Current video outside its own queue shouldn't strand prev/next — fall
+    // through to the group instead of pinning both to null.
+    return n.index === -1 ? null : n;
+  }, [queueItems, videoId]);
+
   const playlistNeighbors =
     playlistId && playlistItems.length > 0 ? neighbors(playlistItems, videoId) : null;
 
   const { prev, next } =
+    queueNeighbors ??
     playlistNeighbors ??
     (group ? neighbors(group.items, videoId) : { prev: null, next: null });
 

@@ -17,4 +17,4 @@ chat history. Update it as decisions are made and work progresses.
 - [plans/2026-06-17-foundation.md](./plans/2026-06-17-foundation.md) — Plan 1: Foundation.
 
 ## Status
-- v1 + v2 shipped (Foundation, Library, Player, filters/sort, History, Resume, Playlists, bottom tab bar) and the **Visual Cohesion design-system overhaul (Phases 1–5)** is merged. See [HANDOFF.md](./HANDOFF.md) for current state + next candidates. 262 tests passing, tsc clean.
+- v1 + v2 shipped (Foundation, Library, Player, filters/sort, History, Resume, Playlists, bottom tab bar) and the **Visual Cohesion design-system overhaul (Phases 1–5)** is merged. See [HANDOFF.md](./HANDOFF.md) for current state + next candidates. 279 tests passing, tsc clean.

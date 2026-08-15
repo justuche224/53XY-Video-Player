@@ -20,6 +20,7 @@ import { getHistory } from '@/db/history-repo';
 import { getProgressMap, setVideosPlayedState, type ProgressMap } from '@/db/progress-repo';
 import { setManualGroup } from '@/db/manual-groups-repo';
 import { resolveLastPlayed } from '@/player/resume-last';
+import { stashQueue } from '@/player/queue-store';
 import { useGroups } from '@/library/use-groups';
 import { useLibraryData } from '@/library/library-provider';
 import { deleteVideos, shareVideos } from '@/library/media-actions';
@@ -75,6 +76,32 @@ export default function GroupDetailScreen() {
     },
     [router, key, mode],
   );
+
+  // Play the selection exactly: 2+ episodes queue as an ad-hoc list that ends
+  // after the last one. A single episode keeps group continuation, so the
+  // familiar long-press → Play still autoplays through the rest of the show.
+  const handlePlay = useCallback(() => {
+    const selected = group?.items.filter((v) => selectedIds.has(v.id)) ?? [];
+    const first = selected[0];
+    if (!first) return;
+    if (selected.length === 1) {
+      openVideo(first);
+    } else {
+      const queueToken = stashQueue(selected.map((v) => v.id));
+      router.push({
+        pathname: '/player',
+        params: {
+          videoId: first.id,
+          uri: first.uri,
+          title: first.filename,
+          groupKey: key,
+          mode,
+          queueToken,
+        },
+      });
+    }
+    setSelectedIds(new Set());
+  }, [group, selectedIds, openVideo, router, key, mode]);
 
   const watchToggle = resolveWatchToggle(Array.from(selectedIds), progress);
 
@@ -145,12 +172,7 @@ export default function GroupDetailScreen() {
         <ContextualAppBar
           selectedCount={selectedIds.size}
           onClearSelection={() => setSelectedIds(new Set())}
-          onPlay={() => {
-            const first = group?.items.find((v) => selectedIds.has(v.id));
-            if (!first) return;
-            openVideo(first);
-            setSelectedIds(new Set());
-          }}
+          onPlay={handlePlay}
           onShare={() => {
             const uris = group?.items.filter(v => selectedIds.has(v.id)).map(v => v.uri) ?? [];
             shareVideos(uris);

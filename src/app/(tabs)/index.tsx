@@ -24,6 +24,8 @@ import { getSetting, setSetting } from '@/db/settings-repo';
 import { getHistory } from '@/db/history-repo';
 import { setManualGroup } from '@/db/manual-groups-repo';
 import { resolveLastPlayed } from '@/player/resume-last';
+import { selectionQueueIds } from '@/player/queue';
+import { stashQueue } from '@/player/queue-store';
 import { TAB_BAR_CLEARANCE } from '@/components/tab-bar';
 import { filterGroups } from '@/library/filter-groups';
 import { sortGroups, SORT_KEYS, type SortDir, type SortKey } from '@/library/sort-groups';
@@ -308,20 +310,33 @@ export default function LibraryScreen() {
     shareVideos(uris);
   }, [selectedGroups]);
 
-  // Only meaningful for exactly one selected group — the bar hides the Play
-  // icon otherwise (see ContextualAppBar's onPlay usage below).
+  // Play the selection exactly: 2+ videos (within one group or across several)
+  // queue as an ad-hoc list that ends after the last one, in on-screen order.
+  // A lone video keeps group continuation — but a single selected group of one
+  // video only ever had itself to play, so both branches agree there.
   const handlePlay = useCallback(() => {
-    if (selectedGroups.length !== 1) return;
-    const group = selectedGroups[0];
-    const v = group.items[0];
-    if (!v) return;
-    const params =
-      group.count > 1
-        ? { videoId: v.id, uri: v.uri, title: v.filename, groupKey: group.key, mode }
-        : { videoId: v.id, uri: v.uri, title: v.filename };
-    router.push({ pathname: '/player', params });
+    const ids = selectionQueueIds(visible, selectedKeys);
+    if (ids.length === 0) return;
+    const byId = new Map(videos.map((v) => [v.id, v]));
+    const first = byId.get(ids[0]);
+    if (!first) return;
+    if (ids.length === 1) {
+      openVideo(first);
+    } else {
+      const queueToken = stashQueue(ids);
+      router.push({
+        pathname: '/player',
+        params: {
+          videoId: first.id,
+          uri: first.uri,
+          title: first.filename,
+          mode,
+          queueToken,
+        },
+      });
+    }
     setSelectedKeys(new Set());
-  }, [selectedGroups, mode, router]);
+  }, [visible, selectedKeys, videos, openVideo, mode, router]);
 
   const handleToggleWatched = useCallback(async () => {
     const ids = selectedVideoIds;
@@ -411,7 +426,7 @@ export default function LibraryScreen() {
         <ContextualAppBar
           selectedCount={selectedKeys.size}
           onClearSelection={() => setSelectedKeys(new Set())}
-          onPlay={selectedGroups.length === 1 ? handlePlay : undefined}
+          onPlay={handlePlay}
           onShare={handleShare}
           onDelete={handleDelete}
           overflowActions={[
