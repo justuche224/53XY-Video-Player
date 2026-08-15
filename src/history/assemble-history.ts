@@ -22,7 +22,12 @@ export function assembleHistory(
       index.set(b.key, section);
       sections.push(section);
     }
-    section.data.push({ video, percent: r.percent, lastPlayedAt: r.lastPlayedAt });
+    section.data.push({
+      video,
+      percent: r.percent,
+      completed: r.completed,
+      lastPlayedAt: r.lastPlayedAt,
+    });
   }
 
   return sections;

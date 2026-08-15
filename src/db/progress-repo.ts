@@ -4,6 +4,12 @@ import type { ProgressWrite } from '@/player/progress-writer';
 export interface ProgressEntry {
   positionMs: number;
   percent: number;
+  /**
+   * Reached the end at least once (or was marked played). Sticky: unlike
+   * `percent`, re-watching does not clear it — only Mark as unplayed, which
+   * deletes the row outright.
+   */
+  completed: boolean;
 }
 export type ProgressMap = Map<string, ProgressEntry>;
 
@@ -11,14 +17,21 @@ interface ProgressRow {
   video_id: string;
   position_ms: number;
   percent: number;
+  completed: number;
 }
 
 export async function getProgressMap(db: SQLiteDatabase): Promise<ProgressMap> {
   const rows = await db.getAllAsync<ProgressRow>(
-    'SELECT video_id, position_ms, percent FROM watch_progress',
+    'SELECT video_id, position_ms, percent, completed FROM watch_progress',
   );
   const map: ProgressMap = new Map();
-  for (const r of rows) map.set(r.video_id, { positionMs: r.position_ms, percent: r.percent });
+  for (const r of rows) {
+    map.set(r.video_id, {
+      positionMs: r.position_ms,
+      percent: r.percent,
+      completed: r.completed === 1,
+    });
+  }
   return map;
 }
 
@@ -33,7 +46,11 @@ export async function upsertProgress(
      ON CONFLICT(video_id) DO UPDATE SET
        position_ms = excluded.position_ms,
        percent = excluded.percent,
-       completed = excluded.completed,
+       -- Sticky: re-watching a finished video walks percent back to ~0, and
+       -- taking excluded.completed here would erase the fact that it was ever
+       -- watched on the very first write of the replay. Mark as unplayed
+       -- (which deletes the row) is the only way back.
+       completed = MAX(watch_progress.completed, excluded.completed),
        last_played_at = excluded.last_played_at`,
     [videoId, w.positionMs, w.percent, w.completed ? 1 : 0, w.lastPlayedAt],
   );

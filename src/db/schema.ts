@@ -95,6 +95,14 @@ export const MIGRATIONS: Migration[] = [
       );
     `,
   },
+  {
+    version: 9,
+    // Backfill the watched flag. It has existed since v1 but was overwritten
+    // with excluded.completed on every progress write, so any video that was
+    // re-opened after finishing lost the mark. Percent still records how far
+    // the last session got, so it can reconstruct the flag one time.
+    up: `UPDATE watch_progress SET completed = 1 WHERE percent >= 0.95;`,
+  },
 ];
 
-export const LATEST_VERSION = 8;
+export const LATEST_VERSION = 9;

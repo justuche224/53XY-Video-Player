@@ -136,6 +136,7 @@ export default function GroupDetailScreen() {
             <EpisodeRow
               video={item}
               percent={progress.get(item.id)?.percent ?? 0}
+              watched={progress.get(item.id)?.completed ?? false}
               onPress={handlePress}
               onLongPress={handleLongPress}
               selected={selected}
@@ -205,7 +206,8 @@ export default function GroupDetailScreen() {
                 setProgress((prev) => {
                   const next = new Map(prev);
                   for (const id of ids) {
-                    if (watchToggle.markPlayed) next.set(id, { percent: 1, positionMs: 0 });
+                    if (watchToggle.markPlayed)
+                      next.set(id, { percent: 1, positionMs: 0, completed: true });
                     else next.delete(id);
                   }
                   return next;

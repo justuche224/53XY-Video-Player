@@ -40,6 +40,15 @@ describe('schema migrations', () => {
     expect(m8).toBeDefined();
     expect(m8!.up).toContain('CREATE TABLE IF NOT EXISTS manual_groups');
     expect(m8!.up).toMatch(/video_id TEXT PRIMARY KEY/);
-    expect(LATEST_VERSION).toBe(8);
+  });
+
+  // The completed column has existed since v1 but was overwritten on every
+  // progress write, so anything re-opened after finishing lost the flag.
+  // Percent still records the last session, so it reconstructs the flag once.
+  it('migration 9 backfills the watched flag from percent', () => {
+    const m9 = MIGRATIONS.find((m) => m.version === 9);
+    expect(m9).toBeDefined();
+    expect(m9!.up).toMatch(/UPDATE watch_progress SET completed = 1 WHERE percent >= 0\.95/);
+    expect(LATEST_VERSION).toBe(9);
   });
 });

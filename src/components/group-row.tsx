@@ -13,12 +13,14 @@ export const GroupRow = memo(function GroupRow({
   onPress,
   onLongPress,
   selected,
+  watched,
 }: {
   group: Group;
   percent: number;
   onPress?: () => void;
   onLongPress?: () => void;
   selected?: boolean;
+  watched?: boolean;
 }) {
   const { colors, icon } = useTheme();
   const totalMs = group.items.reduce((acc, v) => acc + (v.durationMs ?? 0), 0);
@@ -33,6 +35,7 @@ export const GroupRow = memo(function GroupRow({
       onPress={onPress}
       onLongPress={onLongPress}
       selected={selected}
+      watched={watched}
       trailing={selected ? undefined : <Ionicons name="chevron-forward" size={icon.md} color={colors.onSurfaceVariant ?? colors.onSurface} />}
     />
   );

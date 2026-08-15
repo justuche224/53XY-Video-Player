@@ -33,6 +33,7 @@ import { sortGroups, SORT_KEYS, type SortDir, type SortKey } from '@/library/sor
 import { useLibrary } from '@/library/use-library';
 import { deleteVideos, shareVideos } from '@/library/media-actions';
 import { resolveWatchToggle } from '@/library/watch-toggle';
+import { groupWatched } from '@/library/watch-state';
 import { setVideosPlayedState } from '@/db/progress-repo';
 import { useLibraryData } from '@/library/library-provider';
 import type { Group, LibraryVideo } from '@/library/types';
@@ -43,11 +44,12 @@ type Mode = 'name' | 'folder';
 type Layout = 'grid' | 'list';
 
 function groupPercent(group: Group, progress: ProgressMap): number {
-  // Show the most-recently-watched item's progress on the group.
+  // Show the most-recently-watched item's progress on the group. Finished items
+  // are excluded — they're represented by the watched check, not the bar.
   let best = 0;
   for (const item of group.items) {
     const p = progress.get(item.id);
-    if (p && p.percent > 0 && p.percent < 0.99) best = Math.max(best, p.percent);
+    if (p && p.percent > 0 && !p.completed) best = Math.max(best, p.percent);
   }
   return best;
 }
@@ -245,6 +247,7 @@ export default function LibraryScreen() {
           onPress={handlePress}
           onLongPress={handleLongPress}
           selected={selected}
+          watched={groupWatched(item.items, progress)}
         />
       ) : (
         <GroupRow
@@ -253,6 +256,7 @@ export default function LibraryScreen() {
           onPress={handlePress}
           onLongPress={handleLongPress}
           selected={selected}
+          watched={groupWatched(item.items, progress)}
         />
       );
     },
@@ -348,7 +352,7 @@ export default function LibraryScreen() {
     setProgress((prev) => {
       const next = new Map(prev);
       for (const id of ids) {
-        if (watchToggle.markPlayed) next.set(id, { percent: 1, positionMs: 0 });
+        if (watchToggle.markPlayed) next.set(id, { percent: 1, positionMs: 0, completed: true });
         else next.delete(id);
       }
       return next;

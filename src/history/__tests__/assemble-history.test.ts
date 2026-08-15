@@ -17,10 +17,11 @@ const vid = (id: string, filename = `${id}.mp4`): LibraryVideo => ({
   modifiedAt: null,
 });
 
-const row = (videoId: string, lastPlayedAt: number, percent = 0.4) => ({
+const row = (videoId: string, lastPlayedAt: number, percent = 0.4, completed = false) => ({
   videoId,
   positionMs: 100,
   percent,
+  completed,
   lastPlayedAt,
 });
 
@@ -36,6 +37,14 @@ describe('assembleHistory', () => {
     expect(sections.map((s) => s.title)).toEqual(['Today', 'Yesterday', 'Jun 19']);
     expect(sections[0].data[0].video.id).toBe('a');
     expect(sections[0].data[0].percent).toBe(0.4);
+  });
+
+  // The watched badge reads this flag, not the percent — a finished video being
+  // re-watched sits at a low percent and must still come through as completed.
+  it('carries the completed flag through to the item', () => {
+    const rows = [row('a', at(2026, 5, 21, 14), 0.02, true)];
+    const sections = assembleHistory(rows, [vid('a')], now);
+    expect(sections[0].data[0].completed).toBe(true);
   });
 
   it('groups multiple entries from the same day into one section in order', () => {
@@ -60,11 +69,11 @@ describe('assembleHistory', () => {
 describe('filterHistory', () => {
   const sections = [
     { key: '1', title: 'Today', data: [
-      { video: vid('a', 'Inception.mp4'), percent: 0.1, lastPlayedAt: 1 },
-      { video: vid('b', 'Tenet.mkv'), percent: 0.2, lastPlayedAt: 2 },
+      { video: vid('a', 'Inception.mp4'), percent: 0.1, completed: false, lastPlayedAt: 1 },
+      { video: vid('b', 'Tenet.mkv'), percent: 0.2, completed: false, lastPlayedAt: 2 },
     ] },
     { key: '2', title: 'Yesterday', data: [
-      { video: vid('c', 'Dunkirk.mp4'), percent: 0.3, lastPlayedAt: 3 },
+      { video: vid('c', 'Dunkirk.mp4'), percent: 0.3, completed: false, lastPlayedAt: 3 },
     ] },
   ];
 

@@ -7,6 +7,7 @@ import { DurationBadge } from './duration-badge';
 import { CLEAR, Gradient } from './gradient';
 import { PressableScale } from './pressable-scale';
 import { ProgressBar } from './progress-bar';
+import { WatchedBadge } from './watched-badge';
 import { RADIUS } from '@/theme/resolve-theme';
 import { useTheme } from '@/theme/theme-provider';
 
@@ -30,6 +31,7 @@ export function MediaRow({
   onPress,
   onLongPress,
   selected = false,
+  watched = false,
 }: {
   thumbnail: ReactNode;
   title: string;
@@ -42,6 +44,7 @@ export function MediaRow({
   onPress?: () => void;
   onLongPress?: () => void;
   selected?: boolean;
+  watched?: boolean;
 }) {
   const { colors, spacing, radius, elevation } = useTheme();
   return (
@@ -82,7 +85,9 @@ export function MediaRow({
           ]}
         />
         <DurationBadge ms={durationMs} />
-        {percent > 0 ? (
+        {watched ? <WatchedBadge /> : null}
+        {/* Full bar under a check says the same thing twice. */}
+        {percent > 0 && !watched ? (
           <View style={styles.progress}>
             <ProgressBar percent={percent} tone="artwork" />
           </View>

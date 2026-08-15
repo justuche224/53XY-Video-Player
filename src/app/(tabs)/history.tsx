@@ -87,6 +87,7 @@ export default function HistoryScreen() {
           <HistoryRow
             video={item.video}
             percent={item.percent}
+            watched={item.completed}
             onPress={() => openVideo(item)}
             onRemove={() => onRemove(item.video.id)}
           />

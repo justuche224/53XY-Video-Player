@@ -174,6 +174,7 @@ export default function PlaylistScreen() {
           <PlaylistItemRow
             video={item}
             percent={progress.get(item.id)?.percent ?? 0}
+            watched={progress.get(item.id)?.completed ?? false}
             onPress={() =>
               router.push({
                 pathname: '/player',

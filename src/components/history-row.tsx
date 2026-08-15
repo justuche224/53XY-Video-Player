@@ -11,11 +11,13 @@ import { useTheme } from '@/theme/theme-provider';
 export const HistoryRow = memo(function HistoryRow({
   video,
   percent,
+  watched,
   onPress,
   onRemove,
 }: {
   video: LibraryVideo;
   percent: number;
+  watched?: boolean;
   onPress: () => void;
   onRemove: () => void;
 }) {
@@ -34,6 +36,7 @@ export const HistoryRow = memo(function HistoryRow({
         title={video.filename}
         meta={video.folder}
         percent={percent}
+        watched={watched}
         durationMs={video.durationMs}
         onPress={onPress}
       />

@@ -6,6 +6,7 @@ import { DurationBadge } from './duration-badge';
 import { CLEAR, Gradient } from './gradient';
 import { PressableScale } from './pressable-scale';
 import { ProgressBar } from './progress-bar';
+import { WatchedBadge } from './watched-badge';
 import { RADIUS } from '@/theme/resolve-theme';
 import { useTheme } from '@/theme/theme-provider';
 
@@ -26,6 +27,7 @@ export function MediaCard({
   onPress,
   onLongPress,
   selected = false,
+  watched = false,
 }: {
   thumbnail: ReactNode;
   title: string;
@@ -35,6 +37,7 @@ export function MediaCard({
   onPress?: () => void;
   onLongPress?: () => void;
   selected?: boolean;
+  watched?: boolean;
 }) {
   const { colors, spacing, radius, elevation, shadow } = useTheme();
   return (
@@ -73,7 +76,10 @@ export function MediaCard({
           ]}
         />
         <DurationBadge ms={durationMs} />
-        {percent > 0 ? (
+        {watched ? <WatchedBadge /> : null}
+        {/* The bar's job is "you're partway in" — once watched it would just
+            sit full under the check, saying the same thing twice. */}
+        {percent > 0 && !watched ? (
           <View style={styles.progress}>
             <ProgressBar percent={percent} tone="artwork" />
           </View>

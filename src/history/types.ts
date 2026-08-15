@@ -3,6 +3,7 @@ import type { LibraryVideo } from '@/library/types';
 export interface HistoryItem {
   video: LibraryVideo;
   percent: number;
+  completed: boolean;
   lastPlayedAt: number;
 }
 

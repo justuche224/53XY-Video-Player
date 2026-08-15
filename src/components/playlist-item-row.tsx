@@ -10,6 +10,7 @@ import { useTheme } from '@/theme/theme-provider';
 export function PlaylistItemRow({
   video,
   percent,
+  watched,
   onPress,
   onMoveUp,
   onMoveDown,
@@ -19,6 +20,7 @@ export function PlaylistItemRow({
 }: {
   video: LibraryVideo;
   percent: number;
+  watched?: boolean;
   onPress: () => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
@@ -50,6 +52,7 @@ export function PlaylistItemRow({
         thumbnail={<VideoThumbnail video={video} style={styles.fill} />}
         title={video.filename}
         percent={percent}
+        watched={watched}
         durationMs={video.durationMs}
         onPress={onPress}
         trailing={handle}

@@ -19,6 +19,7 @@ const row = (videoId: string, lastPlayedAt: number): HistoryRow => ({
   videoId,
   positionMs: 0,
   percent: 0,
+  completed: false,
   lastPlayedAt,
 });
 

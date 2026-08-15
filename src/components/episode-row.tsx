@@ -12,12 +12,14 @@ export function EpisodeRow({
   onPress,
   onLongPress,
   selected,
+  watched,
 }: {
   video: LibraryVideo;
   percent: number;
   onPress?: () => void;
   onLongPress?: () => void;
   selected?: boolean;
+  watched?: boolean;
 }) {
   const { season, episode } = parseEpisode(video.filename);
   const label = formatEpisodeLabel(season, episode);
@@ -31,6 +33,7 @@ export function EpisodeRow({
       onPress={onPress}
       onLongPress={onLongPress}
       selected={selected}
+      watched={watched}
     />
   );
 }

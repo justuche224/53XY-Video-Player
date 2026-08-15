@@ -4,6 +4,7 @@ export interface HistoryRow {
   videoId: string;
   positionMs: number;
   percent: number;
+  completed: boolean;
   lastPlayedAt: number;
 }
 
@@ -11,12 +12,13 @@ interface HistoryDbRow {
   video_id: string;
   position_ms: number;
   percent: number;
+  completed: number;
   last_played_at: number;
 }
 
 export async function getHistory(db: SQLiteDatabase): Promise<HistoryRow[]> {
   const rows = await db.getAllAsync<HistoryDbRow>(
-    `SELECT video_id, position_ms, percent, last_played_at
+    `SELECT video_id, position_ms, percent, completed, last_played_at
      FROM watch_progress
      ORDER BY last_played_at DESC`,
   );
@@ -24,6 +26,7 @@ export async function getHistory(db: SQLiteDatabase): Promise<HistoryRow[]> {
     videoId: r.video_id,
     positionMs: r.position_ms,
     percent: r.percent,
+    completed: r.completed === 1,
     lastPlayedAt: r.last_played_at,
   }));
 }

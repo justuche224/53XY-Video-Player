@@ -11,12 +11,14 @@ export const GroupCard = memo(function GroupCard({
   onPress,
   onLongPress,
   selected,
+  watched,
 }: {
   group: Group;
   percent: number;
   onPress?: () => void;
   onLongPress?: () => void;
   selected?: boolean;
+  watched?: boolean;
 }) {
   const totalMs = group.items.reduce((acc, v) => acc + (v.durationMs ?? 0), 0);
   return (
@@ -29,6 +31,7 @@ export const GroupCard = memo(function GroupCard({
       onPress={onPress}
       onLongPress={onLongPress}
       selected={selected}
+      watched={watched}
     />
   );
 });
