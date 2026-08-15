@@ -13,7 +13,8 @@ import { AppText } from '@/components/app-text';
 import { GroupCard } from '@/components/group-card';
 import { GroupRow } from '@/components/group-row';
 import { HomeHeader } from '@/components/home-header';
-import { ContextualAppBar } from '@/components/contextual-app-bar';
+import { ContextualAppBar, type OverflowAction } from '@/components/contextual-app-bar';
+import { VideoInfoSheet } from '@/components/video-info-sheet';
 import { HomeHero, HomeHeroPlaceholder, type HeroKind } from '@/components/home-hero';
 import { Screen } from '@/components/screen';
 import { SortSheet } from '@/components/sort-sheet';
@@ -79,6 +80,7 @@ export default function LibraryScreen() {
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [playlistVideoIds, setPlaylistVideoIds] = useState<string[]>([]);
   const [ungroupVideoIds, setUngroupVideoIds] = useState<string[]>([]);
+  const [infoVideoId, setInfoVideoId] = useState<string | null>(null);
 
   // Clear selection on back press
   useEffect(() => {
@@ -431,6 +433,17 @@ export default function LibraryScreen() {
           onShare={handleShare}
           onDelete={handleDelete}
           overflowActions={[
+            // Info is per-file, so it only applies when the selected groups
+            // resolve to exactly one video.
+            ...(selectedVideoIds.length === 1
+              ? ([
+                  {
+                    icon: 'information-circle-outline',
+                    label: 'View info',
+                    onPress: () => setInfoVideoId(selectedVideoIds[0]),
+                  },
+                ] satisfies OverflowAction[])
+              : []),
             {
               icon: watchToggle.markPlayed ? 'checkmark-done-circle-outline' : 'ellipse-outline',
               label: watchToggle.label,
@@ -453,6 +466,12 @@ export default function LibraryScreen() {
           ]}
         />
       )}
+
+      <VideoInfoSheet
+        video={videos.find((v) => v.id === infoVideoId) ?? null}
+        visible={infoVideoId !== null}
+        onClose={() => setInfoVideoId(null)}
+      />
 
       <SortSheet
         visible={sortOpen}
