@@ -1,28 +1,30 @@
-import * as Sharing from 'expo-sharing';
 import * as MediaLibrary from 'expo-media-library';
 import { Alert, ToastAndroid } from 'react-native';
 
-export async function shareVideos(uris: string[]) {
-  if (uris.length === 0) return;
+import { ShareMedia } from '@/native/share-media';
+import { resolveShare, SHARE_CAP } from './share-policy';
 
-  if (uris.length > 1) {
+/**
+ * Share videos by asset id. On Android those ids are already MediaStore
+ * content:// URIs, which is exactly what the share intent wants.
+ */
+export function shareVideos(ids: string[]) {
+  const decision = resolveShare(ids);
+  if (decision.kind === 'empty') return;
+
+  if (decision.kind === 'too-many') {
     Alert.alert(
-      'Sharing limit',
-      'Currently, only 1 file can be shared at a time.',
+      'Too many to share',
+      `Sharing is limited to ${SHARE_CAP} videos at a time — you selected ${decision.count}.`,
     );
     return;
   }
 
-  const isAvailable = await Sharing.isAvailableAsync();
-  if (!isAvailable) {
-    Alert.alert('Error', 'Sharing is not available on this device.');
-    return;
-  }
-
   try {
-    await Sharing.shareAsync(uris[0]);
+    ShareMedia.shareMedia(decision.ids, 'Share videos');
   } catch (err) {
-    console.error('Failed to share video:', err);
+    console.error('Failed to share videos:', err);
+    Alert.alert('Error', 'Could not open the share sheet.');
   }
 }
 

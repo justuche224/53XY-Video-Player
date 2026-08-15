@@ -305,10 +305,11 @@ export default function LibraryScreen() {
     });
   }, [selectedVideoIds, reload]);
 
+  // Asset ids, not file uris: on Android the id is already a MediaStore
+  // content:// uri, which is what the share intent needs.
   const handleShare = useCallback(() => {
-    const uris = selectedGroups.flatMap((g) => g.items.map((i) => i.uri));
-    shareVideos(uris);
-  }, [selectedGroups]);
+    shareVideos(selectedVideoIds);
+  }, [selectedVideoIds]);
 
   // Play the selection exactly: 2+ videos (within one group or across several)
   // queue as an ad-hoc list that ends after the last one, in on-screen order.

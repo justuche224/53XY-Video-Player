@@ -174,8 +174,9 @@ export default function GroupDetailScreen() {
           onClearSelection={() => setSelectedIds(new Set())}
           onPlay={handlePlay}
           onShare={() => {
-            const uris = group?.items.filter(v => selectedIds.has(v.id)).map(v => v.uri) ?? [];
-            shareVideos(uris);
+            // Asset ids are already MediaStore content:// uris on Android.
+            const ids = group?.items.filter((v) => selectedIds.has(v.id)).map((v) => v.id) ?? [];
+            shareVideos(ids);
           }}
           onDelete={() => {
             const ids = Array.from(selectedIds);
