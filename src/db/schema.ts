@@ -103,6 +103,13 @@ export const MIGRATIONS: Migration[] = [
     // the last session got, so it can reconstruct the flag one time.
     up: `UPDATE watch_progress SET completed = 1 WHERE percent >= 0.95;`,
   },
+  {
+    version: 10,
+    up: `
+      ALTER TABLE watch_progress ADD COLUMN subtitle_uri TEXT;
+      ALTER TABLE watch_progress ADD COLUMN subtitle_delay_ms INTEGER NOT NULL DEFAULT 0;
+    `,
+  },
 ];
 
-export const LATEST_VERSION = 9;
+export const LATEST_VERSION = 10;

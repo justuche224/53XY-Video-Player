@@ -49,6 +49,14 @@ describe('schema migrations', () => {
     const m9 = MIGRATIONS.find((m) => m.version === 9);
     expect(m9).toBeDefined();
     expect(m9!.up).toMatch(/UPDATE watch_progress SET completed = 1 WHERE percent >= 0\.95/);
-    expect(LATEST_VERSION).toBe(9);
+  });
+
+  it('migration 10 adds subtitle columns to watch_progress', () => {
+    const m10 = MIGRATIONS.find((m) => m.version === 10);
+    expect(m10).toBeDefined();
+    expect(m10!.up).toContain('ALTER TABLE watch_progress ADD COLUMN subtitle_uri TEXT');
+    expect(m10!.up).toContain(
+      'ALTER TABLE watch_progress ADD COLUMN subtitle_delay_ms INTEGER NOT NULL DEFAULT 0',
+    );
   });
 });

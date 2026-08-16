@@ -128,3 +128,41 @@ export async function setDisplayMode(
     [videoId, nowMs, mode],
   );
 }
+
+export interface SubtitlePrefs {
+  /** file:// URI of the external subtitle, or null when none is chosen. */
+  uri: string | null;
+  /** Positive = subtitles appear later. */
+  delayMs: number;
+}
+
+export async function getSubtitlePrefs(
+  db: SQLiteDatabase,
+  videoId: string,
+): Promise<SubtitlePrefs> {
+  const row = await db.getFirstAsync<{
+    subtitle_uri: string | null;
+    subtitle_delay_ms: number | null;
+  }>('SELECT subtitle_uri, subtitle_delay_ms FROM watch_progress WHERE video_id = ?', [videoId]);
+  return { uri: row?.subtitle_uri ?? null, delayMs: row?.subtitle_delay_ms ?? 0 };
+}
+
+// Upsert with the same shape as setDisplayMode: a fresh video may have no
+// progress row yet. Naming only the subtitle columns in ON CONFLICT keeps
+// progress writes and subtitle writes from clobbering each other.
+export async function setSubtitlePrefs(
+  db: SQLiteDatabase,
+  videoId: string,
+  uri: string | null,
+  delayMs: number,
+  nowMs: number,
+): Promise<void> {
+  await db.runAsync(
+    `INSERT INTO watch_progress (video_id, position_ms, percent, completed, last_played_at, subtitle_uri, subtitle_delay_ms)
+     VALUES (?, 0, 0, 0, ?, ?, ?)
+     ON CONFLICT(video_id) DO UPDATE SET
+       subtitle_uri = excluded.subtitle_uri,
+       subtitle_delay_ms = excluded.subtitle_delay_ms`,
+    [videoId, nowMs, uri, delayMs],
+  );
+}
