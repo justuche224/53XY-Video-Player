@@ -59,6 +59,7 @@ import { ChromeButton } from '@/components/player/chrome-button';
 import { SystemVolume } from '@/native/system-volume';
 import { useSubtitles } from '@/subtitles/use-subtitles';
 import { SubtitleOverlay } from '@/components/player/subtitle-overlay';
+import { SubtitleDelayBar } from '@/components/player/subtitle-delay-bar';
 
 // Vertical-swipe sensitivity: a drag of ~(screen height / VERTICAL_GAIN) spans
 // the full 0→1 brightness/volume range.
@@ -1088,6 +1089,19 @@ export default function PlayerScreen() {
                   }}
                 />
               </View>
+            )}
+
+            {/* Subtitle delay bar: same placement rationale as the autoplay
+                card above — inside PlayerGestures so its slider and nudge
+                buttons get the gesture-arena relation (blocksExternalGesture),
+                but outside ControlsOverlay so it stays up while the chrome
+                auto-hides during playback. */}
+            {delayBarVisible && subtitles.active && (
+              <SubtitleDelayBar
+                delayMs={subtitles.delayMs}
+                onChange={subtitles.setDelayMs}
+                onClose={() => setDelayBarVisible(false)}
+              />
             )}
           </PlayerGestures>
 
