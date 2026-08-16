@@ -446,10 +446,13 @@ export default function PlayerScreen() {
   }, []);
 
   // Surface external-subtitle loader errors (e.g. "Could not read Movie.srt")
-  // through the same toast the rest of the player uses.
+  // through the same toast the rest of the player uses. Routed through
+  // showToast (not a bare setToast) so it arms the same 3s clear timer as
+  // every other toast call site — otherwise the message would sit on screen
+  // until an unrelated toast happened to overwrite it.
   useEffect(() => {
-    if (subtitles.error) setToast(subtitles.error);
-  }, [subtitles.error]);
+    if (subtitles.error) showToast(subtitles.error);
+  }, [subtitles.error, showToast]);
 
   // ── End of video: end-of-video sleep timer wins; else autoplay countdown ─
   useEffect(() => {
