@@ -22,6 +22,7 @@ import {
   type DisplayMode, type ZoomState,
 } from '@/player/zoom';
 import { shouldResume } from '@/player/resume';
+import { isReleasedObjectError } from '@/player/released-object';
 import { seekTarget, tapZone } from '@/player/seek';
 import { doubleTapAction } from '@/player/double-tap';
 import { panAxis, panHalf, clamp01, scrubDeltaSec } from '@/player/pan';
@@ -672,9 +673,20 @@ export default function PlayerScreen() {
   const handleBoostEnd = useCallback(() => {
     if (!boostingRef.current) return;
     boostingRef.current = false;
-    player.playbackRate = boostPrevRateRef.current;
+    // Clear the UI before touching the player: the restore below can fail, and
+    // a stranded 2× badge over a video playing at 1× is worse than no restore.
     setBoostActive(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      player.playbackRate = boostPrevRateRef.current;
+    } catch (err) {
+      // A long-press can still be held when the player is released — the video
+      // switches (uri change) or the screen is left mid-hold, and RNGH's
+      // onFinalize → scheduleOnRN hop lands the callback after the release.
+      // Restoring a rate on a dead player is a no-op worth swallowing; the
+      // replacement player starts at its own rate anyway.
+      if (!isReleasedObjectError(err)) throw err;
+    }
   }, [player]);
 
   const handleAutoHide = useCallback(() => setControlsVisible(false), []);
