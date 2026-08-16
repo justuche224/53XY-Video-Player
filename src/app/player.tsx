@@ -57,6 +57,8 @@ import { SleepSheet } from '@/components/player/sleep-sheet';
 import { PlayerToast } from '@/components/player/player-toast';
 import { ChromeButton } from '@/components/player/chrome-button';
 import { SystemVolume } from '@/native/system-volume';
+import { useSubtitles } from '@/subtitles/use-subtitles';
+import { SubtitleOverlay } from '@/components/player/subtitle-overlay';
 
 // Vertical-swipe sensitivity: a drag of ~(screen height / VERTICAL_GAIN) spans
 // the full 0→1 brightness/volume range.
@@ -174,6 +176,14 @@ export default function PlayerScreen() {
   const [activeSubtitle, setActiveSubtitle] = useState<SubtitleTrack | null>(null);
   const [activeAudio, setActiveAudio] = useState<AudioTrack | null>(null);
   const [tracksSheetVisible, setTracksSheetVisible] = useState(false);
+
+  // ── External subtitles ───────────────────────────────────────────────────
+  const subtitles = useSubtitles({
+    player,
+    videoId,
+    videoUri: uri,
+    embeddedActive: activeSubtitle !== null,
+  });
 
   // ── Controls visibility (lifted from ControlsOverlay) ───────────────────
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -434,6 +444,12 @@ export default function PlayerScreen() {
   useEffect(() => () => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
   }, []);
+
+  // Surface external-subtitle loader errors (e.g. "Could not read Movie.srt")
+  // through the same toast the rest of the player uses.
+  useEffect(() => {
+    if (subtitles.error) setToast(subtitles.error);
+  }, [subtitles.error]);
 
   // ── End of video: end-of-video sleep timer wins; else autoplay countdown ─
   useEffect(() => {
@@ -961,6 +977,15 @@ export default function PlayerScreen() {
           startsPictureInPictureAutomatically={pictureInPicture}
         />
       </Animated.View>
+
+      {/* Layer 1.5: External-subtitle text — above the video, below all chrome,
+          and rendered outside the locked/unlocked split below so it stays
+          visible while the screen is locked. */}
+      <SubtitleOverlay
+        text={subtitles.activeText}
+        sizeKey="m"
+        lifted={controlsVisible && !locked}
+      />
 
       {locked ? (
         /* Locked: hide all chrome and gestures; only show the unlock overlay */
