@@ -35,13 +35,15 @@ export async function loadSubtitle(uri: string, name: string): Promise<LoadedSub
     // No usable extension — e.g. an opaque SAF document id from the
     // Downloads provider (content://.../msf%3A123). Sniffing the whole file
     // requires decoding it first, and pickFromFile's mime filter is '*/*',
-    // so a mispicked video or image would otherwise pay for a full decode
-    // (a JS string/number[] proportional to file size — worth avoiding for
-    // an 80+ MB file) before being rejected. Decoding just a small prefix
-    // first bails out in microseconds instead. This is decoded
-    // independently from the full-file decode below, not by slicing the
-    // decoded string: the signatures this looks for are plain ASCII, so a
-    // prefix cut mid multi-byte sequence is harmless for sniffing purposes.
+    // so a mispicked photo or PDF (anything up to the MAX_SUBTITLE_BYTES cap
+    // above — a file over that is already rejected before this point, so
+    // this is not about huge files) would otherwise pay for a full decode
+    // (a JS string/number[] proportional to file size) before being
+    // rejected. Decoding just a small prefix first bails out in
+    // microseconds instead. This is decoded independently from the
+    // full-file decode below, not by slicing the decoded string: the
+    // signatures this looks for are plain ASCII, so a prefix cut mid
+    // multi-byte sequence is harmless for sniffing purposes.
     const prefix = bytes.subarray(0, Math.min(bytes.length, SNIFF_PREFIX_BYTES));
     if (!sniffSubtitleFormat(decodeSubtitleBytes(prefix))) {
       return { uri, name, cues: [] };

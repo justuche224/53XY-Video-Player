@@ -235,6 +235,20 @@ export function useSubtitles({
   // ── On video change: reset, restore prefs, then auto-detect ───────────
   useEffect(() => {
     let cancelled = false;
+    // Unconditional: loadSeqRef only advances where a call site actually
+    // starts a new load, and this effect frequently doesn't — no
+    // videoId/videoUri, no remembered prefs.uri, an embedded track already
+    // active, or pickAutoLoad finding nothing to auto-load all return
+    // without ever bumping. If a load for the OUTGOING video is still in
+    // flight when that happens, its sequence number would still match and
+    // it would go on to commit its (now stale) subtitles onto this new,
+    // subtitle-less video — silently, since nothing later would clear them.
+    // Bumping here, unconditionally, at the very top, invalidates every
+    // load in flight for the previous video regardless of what this one
+    // does, including loads started imperatively by selectCandidate/
+    // pickFromFile (their own per-call bump is not enough on its own to
+    // protect against this — only a bump on every video change is).
+    loadSeqRef.current += 1;
     setCues(null);
     setActive(null);
     setActiveText('');
@@ -443,12 +457,15 @@ export function useSubtitles({
       const seq = ++loadSeqRef.current;
       await applyLoad(result.uri, result.name, true, () => loadSeqRef.current !== seq);
     } catch {
-      // In practice unreachable: File.pickFileAsync catches every error
-      // internally and resolves with { canceled: true, result: null } (see
-      // node_modules/expo-file-system/src/File.ts), so a genuine native
-      // failure and a user cancelling the picker are indistinguishable at
-      // this call site — both come back as a normal, non-throwing result.
-      // Kept only as a last-resort guard.
+      // File.pickFileAsync itself will not land here: it catches every
+      // error internally and resolves with { canceled: true, result: null }
+      // (see node_modules/expo-file-system/src/File.ts) rather than
+      // throwing, so cancellation and a genuine picker failure are
+      // indistinguishable at that call — both come back as a normal,
+      // non-throwing result. This block IS reachable, though: applyLoad's
+      // narrowed rethrow (a non-release error touching the player, or
+      // setSubtitlePrefs failing) can still escape the `await applyLoad`
+      // above, and this silently swallows that too rather than toasting it.
     }
   }, [applyLoad]);
 
