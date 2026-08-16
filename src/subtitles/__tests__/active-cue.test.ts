@@ -50,13 +50,26 @@ describe('activeCues', () => {
     expect(activeCues(overlapping, 2500, 0).map((c) => c.text)).toEqual(['Sign', 'Dialogue']);
   });
 
+  it('finds a long cue that started many cues earlier', () => {
+    // A 30s ASS sign, then 100 rapid dialogue lines underneath it.
+    const sign: Cue = { startMs: 0, endMs: 30000, text: 'Sign' };
+    const chatter: Cue[] = Array.from({ length: 100 }, (_, i) => ({
+      startMs: 1000 + i * 200,
+      endMs: 1000 + i * 200 + 150,
+      text: `line${i}`,
+    }));
+    const cues = [sign, ...chatter];
+    // At 20900ms the sign is still up and line99 is on screen.
+    expect(activeCues(cues, 20900, 0).map((c) => c.text)).toEqual(['Sign', 'line99']);
+  });
+
   it('caps the number of simultaneous cues', () => {
     const many: Cue[] = [0, 1, 2, 3, 4].map((i) => ({
       startMs: i * 10,
       endMs: 100000,
       text: `c${i}`,
     }));
-    expect(activeCues(many, 500, 0)).toHaveLength(3);
+    expect(activeCues(many, 500, 0).map((c) => c.text)).toEqual(['c2', 'c3', 'c4']);
   });
 });
 

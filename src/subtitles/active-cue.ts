@@ -1,7 +1,7 @@
 import type { Cue } from './types';
 
-/** How far back to walk looking for a long cue that is still on screen. */
-const MAX_LOOKBACK = 32;
+/** How far back to walk looking for a long cue that is still on screen. Generous enough to handle a persistent sign (e.g. 30s ASS) over dense rapid-fire dialogue or karaoke. */
+const MAX_LOOKBACK = 512;
 
 /**
  * Cues active at `timeMs`, given a delay offset. `cues` must be sorted by
