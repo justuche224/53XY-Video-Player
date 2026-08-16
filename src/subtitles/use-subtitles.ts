@@ -26,7 +26,10 @@ export interface UseSubtitles {
   /** Text to display right now; '' when nothing is active. */
   activeText: string;
   candidates: SubtitleCandidate[];
-  active: { uri: string; name: string } | null;
+  /** relativePath is null for a manually-picked file, which has no path
+   *  relative to the video's folder — used to disambiguate two candidates
+   *  that share a basename (e.g. `Movie.en.srt` and `Subs/Movie.en.srt`). */
+  active: { uri: string; name: string; relativePath: string | null } | null;
   delayMs: number;
   /** True when auto-detect could not read the folder. */
   needsPermission: boolean;
@@ -82,7 +85,11 @@ export function useSubtitles({
   const db = useSQLiteContext();
 
   const [cues, setCues] = useState<Cue[] | null>(null);
-  const [active, setActive] = useState<{ uri: string; name: string } | null>(null);
+  const [active, setActive] = useState<{
+    uri: string;
+    name: string;
+    relativePath: string | null;
+  } | null>(null);
   const [candidates, setCandidates] = useState<SubtitleCandidate[]>([]);
   const [delayMs, setDelayMsState] = useState(0);
   const [needsPermission, setNeedsPermission] = useState(false);
@@ -192,7 +199,13 @@ export function useSubtitles({
   // one video resolve in whichever order they resolve, but only the one
   // that bumped the sequence last is allowed to commit.
   const applyLoad = useCallback(
-    async (uri: string, name: string, persist: boolean, isCancelled: () => boolean) => {
+    async (
+      uri: string,
+      name: string,
+      persist: boolean,
+      relativePath: string | null,
+      isCancelled: () => boolean,
+    ) => {
       let loaded;
       try {
         loaded = await loadSubtitle(uri, name);
@@ -209,7 +222,7 @@ export function useSubtitles({
         return;
       }
       setCues(loaded.cues);
-      setActive({ uri: loaded.uri, name: loaded.name });
+      setActive({ uri: loaded.uri, name: loaded.name, relativePath });
       // Mutually exclusive with embedded tracks. `useVideoPlayer` releases
       // the previous player during the commit in which `uri` changes, which
       // can land while this function was parked on the `loadSubtitle` await
@@ -274,7 +287,21 @@ export function useSubtitles({
         try {
           if (new File(prefs.uri).exists) {
             const seq = ++loadSeqRef.current;
-            await applyLoad(prefs.uri, name, false, () => loadSeqRef.current !== seq);
+            // Resolve the stored URI back to a scanned candidate so the
+            // right row shows checked on restore. The remembered file can
+            // live outside the scanned folders (e.g. a manual pick from
+            // elsewhere), in which case no candidate matches and
+            // relativePath stays null — same as a fresh manual pick.
+            const matched = folderUri
+              ? found.find((c) => joinUri(folderUri, c.relativePath) === prefs.uri)
+              : undefined;
+            await applyLoad(
+              prefs.uri,
+              name,
+              false,
+              matched?.relativePath ?? null,
+              () => loadSeqRef.current !== seq,
+            );
             return;
           }
         } catch {
@@ -287,7 +314,13 @@ export function useSubtitles({
       const pick = pickAutoLoad(found, deviceLanguage());
       if (pick) {
         const seq = ++loadSeqRef.current;
-        await applyLoad(joinUri(folderUri, pick.relativePath), pick.name, false, () => loadSeqRef.current !== seq);
+        await applyLoad(
+          joinUri(folderUri, pick.relativePath),
+          pick.name,
+          false,
+          pick.relativePath,
+          () => loadSeqRef.current !== seq,
+        );
       }
     })().catch(() => {
       // applyLoad only throws for something genuinely unexpected (a
@@ -356,7 +389,13 @@ export function useSubtitles({
         if (pick) {
           const seq = ++loadSeqRef.current;
           const isCancelled = () => loadSeqRef.current !== seq;
-          void applyLoad(joinUri(folderUri, pick.relativePath), pick.name, false, isCancelled).catch(() => {
+          void applyLoad(
+            joinUri(folderUri, pick.relativePath),
+            pick.name,
+            false,
+            pick.relativePath,
+            isCancelled,
+          ).catch(() => {
             if (isCancelled()) return;
             setError('Could not load subtitles');
           });
@@ -423,6 +462,7 @@ export function useSubtitles({
         joinUri(folderUri, candidate.relativePath),
         candidate.name,
         true,
+        candidate.relativePath,
         () => loadSeqRef.current !== seq,
       );
     },
@@ -455,7 +495,7 @@ export function useSubtitles({
       // a genuinely unparseable file still surfaces the truthful "No
       // subtitles found in <name>" message.
       const seq = ++loadSeqRef.current;
-      await applyLoad(result.uri, result.name, true, () => loadSeqRef.current !== seq);
+      await applyLoad(result.uri, result.name, true, null, () => loadSeqRef.current !== seq);
     } catch {
       // File.pickFileAsync itself will not land here: it catches every
       // error internally and resolves with { canceled: true, result: null }

@@ -73,7 +73,10 @@ export function TracksSheet({
               <TrackRow
                 key={candidate.relativePath}
                 label={candidate.name}
-                isActive={subtitles.active?.name === candidate.name}
+                isActive={
+                  subtitles.active?.relativePath != null &&
+                  subtitles.active.relativePath === candidate.relativePath
+                }
                 onPress={() => {
                   void subtitles.selectCandidate(candidate);
                   onClose();
@@ -270,9 +273,5 @@ const styles = StyleSheet.create({
   },
   checkmark: {
     fontSize: 16,
-  },
-  noTracksText: {
-    fontSize: 14,
-    textAlign: 'center',
   },
 });
