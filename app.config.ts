@@ -44,6 +44,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'android.permission.ACCESS_MEDIA_LOCATION',
       'android.permission.READ_MEDIA_IMAGES',
       'android.permission.READ_MEDIA_AUDIO',
+      // Android treats .srt/.ass as non-media files, so READ_MEDIA_VIDEO does not
+      // cover them. All-files access is what VLC and MX Player use for the same
+      // reason. 53XY ships as a side-loaded APK, so Play Store policy review is
+      // not a constraint here.
+      'android.permission.MANAGE_EXTERNAL_STORAGE',
     ],
     package: getUniqueIdentifier(),
   },
