@@ -106,23 +106,30 @@ export function useSubtitles({
   }, [cues]);
   const shownRef = useRef('');
 
-  // embeddedActive/videoId read through refs, kept fresh via effect (never
-  // written during render — a render that is interrupted or thrown away
-  // before committing must not be able to leave a ref holding a value that
-  // was never actually part of a committed render). embeddedActiveRef backs
-  // the per-video reset effect and the AppState handler, both of which
-  // deliberately exclude `embeddedActive` from their dependency arrays (see
-  // the comments at each). videoIdRef lets imperative actions
-  // (selectCandidate, pickFromFile) whose in-flight promise resolves after
-  // the video has already changed again tell that they are now stale.
+  // embeddedActive read through a ref, kept fresh via effect (never written
+  // during render — a render that is interrupted or thrown away before
+  // committing must not be able to leave a ref holding a value that was
+  // never actually part of a committed render). Backs the per-video reset
+  // effect and the AppState handler, both of which deliberately exclude
+  // `embeddedActive` from their dependency arrays (see the comments at
+  // each).
   const embeddedActiveRef = useRef(embeddedActive);
   useEffect(() => {
     embeddedActiveRef.current = embeddedActive;
   }, [embeddedActive]);
-  const videoIdRef = useRef(videoId);
-  useEffect(() => {
-    videoIdRef.current = videoId;
-  }, [videoId]);
+
+  // A single staleness definition shared by every applyLoad call site (the
+  // reset effect's two loads, the AppState re-probe, selectCandidate and
+  // pickFromFile): each bumps this immediately before calling applyLoad and
+  // captures the post-bump value, then passes `() => loadSeqRef.current !==
+  // seq` as applyLoad's isCancelled predicate. Whichever load bumped the
+  // sequence last is the only one allowed to commit — this covers both a
+  // video change arriving mid-load (an older sequence number can never
+  // become current again) and two loads in flight for the *same* video (the
+  // most recently requested one wins, not whichever happens to resolve
+  // first). A plain per-video `videoId` comparison only caught the first
+  // case.
+  const loadSeqRef = useRef(0);
 
   const folderUri = useMemo(() => {
     if (!videoUri) return null;
@@ -179,11 +186,11 @@ export function useSubtitles({
   // (the screen stays mounted across next/prev/autoplay — see
   // handleNavigateTo in app/player.tsx, which updates videoId/uri via
   // router.setParams rather than unmounting), so without this a stale
-  // video's subtitles — or a stale error — could land on the next one.
-  // Every call site supplies a predicate scoped to its own notion of
-  // "still current": effects use a boolean flipped in their cleanup,
-  // imperative actions (selectCandidate, pickFromFile) compare against
-  // videoIdRef.
+  // video's subtitles — or a stale error — could land on the next one. Every
+  // call site passes `() => loadSeqRef.current !== seq` (see loadSeqRef
+  // above), which also closes the same-video case: two loads in flight for
+  // one video resolve in whichever order they resolve, but only the one
+  // that bumped the sequence last is allowed to commit.
   const applyLoad = useCallback(
     async (uri: string, name: string, persist: boolean, isCancelled: () => boolean) => {
       let loaded;
@@ -252,7 +259,8 @@ export function useSubtitles({
         const name = decodeURIComponent(prefs.uri.slice(prefs.uri.lastIndexOf('/') + 1));
         try {
           if (new File(prefs.uri).exists) {
-            await applyLoad(prefs.uri, name, false, () => cancelled);
+            const seq = ++loadSeqRef.current;
+            await applyLoad(prefs.uri, name, false, () => loadSeqRef.current !== seq);
             return;
           }
         } catch {
@@ -263,8 +271,25 @@ export function useSubtitles({
       // Do not auto-load over an embedded track that is already showing.
       if (embeddedActiveRef.current || !folderUri) return;
       const pick = pickAutoLoad(found, deviceLanguage());
-      if (pick) await applyLoad(joinUri(folderUri, pick.relativePath), pick.name, false, () => cancelled);
-    })();
+      if (pick) {
+        const seq = ++loadSeqRef.current;
+        await applyLoad(joinUri(folderUri, pick.relativePath), pick.name, false, () => loadSeqRef.current !== seq);
+      }
+    })().catch(() => {
+      // applyLoad only throws for something genuinely unexpected (a
+      // non-release error touching the player, or setSubtitlePrefs
+      // failing — the ordinary "couldn't read/parse this file" cases are
+      // already caught inside applyLoad and turned into setError there).
+      // getSubtitlePrefs/scan could in principle throw too. Without this
+      // catch any of those would surface as an unhandled promise rejection
+      // instead of a toast. Guarded by `cancelled` — this effect's own
+      // teardown flag, still needed here (independently of loadSeqRef) to
+      // guard the setDelayMsState/setCandidates writes above — so a failure
+      // that resolves after the video has already changed again cannot
+      // flash an error over the new video.
+      if (cancelled) return;
+      setError('Could not load subtitles');
+    });
 
     return () => {
       cancelled = true;
@@ -302,7 +327,10 @@ export function useSubtitles({
   // ── Re-probe when returning from the system settings screen ───────────
   useEffect(() => {
     if (!needsPermission) return;
-    let cancelled = false;
+    // No effect-scoped cancellation flag here (round 1 added one; dropped
+    // now that it would do nothing loadSeqRef doesn't already cover — this
+    // effect has no other async state write that needs guarding, unlike the
+    // reset effect above).
     const sub = AppState.addEventListener('change', (state) => {
       if (state !== 'active' || !folderUri) return;
       if (!canReadFolder(folderUri)) return;
@@ -311,13 +339,17 @@ export function useSubtitles({
       setCandidates(found);
       if (!active && !embeddedActiveRef.current) {
         const pick = pickAutoLoad(found, deviceLanguage());
-        if (pick) void applyLoad(joinUri(folderUri, pick.relativePath), pick.name, false, () => cancelled);
+        if (pick) {
+          const seq = ++loadSeqRef.current;
+          const isCancelled = () => loadSeqRef.current !== seq;
+          void applyLoad(joinUri(folderUri, pick.relativePath), pick.name, false, isCancelled).catch(() => {
+            if (isCancelled()) return;
+            setError('Could not load subtitles');
+          });
+        }
       }
     });
-    return () => {
-      cancelled = true;
-      sub.remove();
-    };
+    return () => sub.remove();
     // embeddedActive: see the note on the reset effect above — read through
     // embeddedActiveRef so toggling an embedded track cannot tear down and
     // restart this listener.
@@ -372,12 +404,12 @@ export function useSubtitles({
   const selectCandidate = useCallback(
     async (candidate: SubtitleCandidate) => {
       if (!folderUri) return;
-      const calledForVideoId = videoIdRef.current;
+      const seq = ++loadSeqRef.current;
       await applyLoad(
         joinUri(folderUri, candidate.relativePath),
         candidate.name,
         true,
-        () => videoIdRef.current !== calledForVideoId,
+        () => loadSeqRef.current !== seq,
       );
     },
     [folderUri, applyLoad],
@@ -408,8 +440,8 @@ export function useSubtitles({
       // loadSubtitle run — parseSubtitle falls back to content-sniffing, and
       // a genuinely unparseable file still surfaces the truthful "No
       // subtitles found in <name>" message.
-      const calledForVideoId = videoIdRef.current;
-      await applyLoad(result.uri, result.name, true, () => videoIdRef.current !== calledForVideoId);
+      const seq = ++loadSeqRef.current;
+      await applyLoad(result.uri, result.name, true, () => loadSeqRef.current !== seq);
     } catch {
       // In practice unreachable: File.pickFileAsync catches every error
       // internally and resolves with { canceled: true, result: null } (see
