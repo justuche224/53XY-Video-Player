@@ -94,6 +94,11 @@ describe('findSubtitleCandidates', () => {
       'Movie - extra.srt',
     ]);
   });
+
+  it('treats a bare .hi suffix as Hindi rather than a hearing-impaired flag', () => {
+    const found = findSubtitleCandidates('Movie.mkv', files('Movie.hi.srt'), null);
+    expect(found.map((c) => [c.rank, c.lang])).toEqual([[1, 'hi']]);
+  });
 });
 
 describe('pickAutoLoad', () => {

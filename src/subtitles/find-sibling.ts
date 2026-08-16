@@ -20,7 +20,7 @@ const VIDEO_EXTENSIONS = [
 ];
 
 /** Tokens that mark a partial or accessibility track rather than a full one. */
-const FLAG_TOKENS = ['forced', 'sdh', 'cc', 'hi'];
+const FLAG_TOKENS = ['forced', 'sdh', 'cc'];
 
 function stripExt(name: string): string {
   const dot = name.lastIndexOf('.');
