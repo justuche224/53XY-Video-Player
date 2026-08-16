@@ -166,3 +166,25 @@ export async function setSubtitlePrefs(
     [videoId, nowMs, uri, delayMs],
   );
 }
+
+// Same upsert shape as setSubtitlePrefs, but names only subtitle_delay_ms in
+// ON CONFLICT. useSubtitles debounces delay-slider writes through this path
+// specifically because the per-video reset effect briefly sets its `active`
+// state to null while restoring prefs for a freshly-selected video — a delay
+// change landing in that window must not overwrite a still-loading (or
+// already-remembered) subtitle_uri with NULL, which setSubtitlePrefs(uri:
+// null, ...) would do.
+export async function setSubtitleDelay(
+  db: SQLiteDatabase,
+  videoId: string,
+  delayMs: number,
+  nowMs: number,
+): Promise<void> {
+  await db.runAsync(
+    `INSERT INTO watch_progress (video_id, position_ms, percent, completed, last_played_at, subtitle_delay_ms)
+     VALUES (?, 0, 0, 0, ?, ?)
+     ON CONFLICT(video_id) DO UPDATE SET
+       subtitle_delay_ms = excluded.subtitle_delay_ms`,
+    [videoId, nowMs, delayMs],
+  );
+}

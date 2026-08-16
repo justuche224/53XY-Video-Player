@@ -4,19 +4,23 @@ import { Directory, File } from 'expo-file-system';
 import { useSQLiteContext } from 'expo-sqlite';
 import type { VideoPlayer } from 'expo-video';
 
-import { getSubtitlePrefs, setSubtitlePrefs } from '@/db/progress-repo';
+import { getSubtitlePrefs, setSubtitleDelay, setSubtitlePrefs } from '@/db/progress-repo';
+import { isReleasedObjectError } from '@/player/released-object';
 
 import type { Cue, SubtitleCandidate } from './types';
 import { activeCues, cueTextOf } from './active-cue';
 import { findSubtitleCandidates, pickAutoLoad, SUBS_FOLDER_NAMES } from './find-sibling';
 import type { DirectoryEntry, SubsFolder } from './find-sibling';
 import { loadSubtitle, SubtitleTooLargeError } from './load-subtitle';
-import { subtitleFormatOf } from './parse-subtitle';
 import { canReadFolder, openAllFilesAccessSettings } from './storage-access';
 
 /** How often the cue clock ticks. 1s (the player's timeUpdate interval) would
  *  land lines up to a second late; 150ms is imperceptible and cheap. */
 const TICK_MS = 150;
+
+/** Trailing debounce for persisting a delay-slider drag. A slider fires many
+ *  times a second; only the settled value is worth a write. */
+const DELAY_PERSIST_DEBOUNCE_MS = 400;
 
 export interface UseSubtitles {
   /** Text to display right now; '' when nothing is active. */
@@ -44,16 +48,13 @@ function joinUri(folderUri: string, relativePath: string): string {
  * Best-effort two-letter device language for auto-pick's tie-break.
  *
  * `NativeModules.I18nManager?.localeIdentifier` (the brief's original guess)
- * is legacy-bridge internals that RN's own `I18nManager` wrapper
- * (Libraries/ReactNative/I18nManager.js) does not even re-export on its
- * public default object — only `isRTL`/`doLeftAndRightSwapInRTL` survive
- * there. This app also runs with the new architecture on
+ * is legacy-bridge internals, and this app runs with the new architecture on
  * (android/gradle.properties: newArchEnabled=true), so reaching into
  * `NativeModules.I18nManager` directly means going through the turbo-module
- * interop layer for a module whose public JS surface never promised that
- * constant. `Intl.DateTimeFormat().resolvedOptions().locale` is a standard
- * ECMA-402 API that Hermes ships with (ICU data bundled by default, no extra
- * gradle flag needed), works identically on old and new architecture, and
+ * interop layer rather than the documented `I18nManager` JS API.
+ * `Intl.DateTimeFormat().resolvedOptions().locale` is a standard ECMA-402 API
+ * that Hermes ships with (ICU data bundled by default, no extra gradle flag
+ * present in this repo), works identically on old and new architecture, and
  * needs no new dependency. 'en' remains the final fallback if it ever throws.
  */
 function deviceLanguage(): string {
@@ -88,12 +89,40 @@ export function useSubtitles({
   const [error, setError] = useState<string | null>(null);
   const [activeText, setActiveText] = useState('');
 
-  // Read by the ticker without re-creating the interval on every change.
+  // delayRef lets the ticker, and setDelayMs's immediate recompute, read the
+  // live delay without a delay change recreating the interval below. Every
+  // path that changes `delayMs` (the reset effect and setDelayMs) also
+  // writes this ref imperatively at the same time, so it needs no render-
+  // phase sync of its own.
   const delayRef = useRef(0);
-  delayRef.current = delayMs;
+  // cuesRef exists so setDelayMs — a plain callback, not an effect — can
+  // read the current cues without capturing a stale closure. Unlike
+  // delayRef this is NOT about avoiding interval recreation: the ticker
+  // effect below already depends on `cues` directly and recreates its
+  // interval on every subtitle switch regardless.
   const cuesRef = useRef<Cue[] | null>(null);
-  cuesRef.current = cues;
+  useEffect(() => {
+    cuesRef.current = cues;
+  }, [cues]);
   const shownRef = useRef('');
+
+  // embeddedActive/videoId read through refs, kept fresh via effect (never
+  // written during render — a render that is interrupted or thrown away
+  // before committing must not be able to leave a ref holding a value that
+  // was never actually part of a committed render). embeddedActiveRef backs
+  // the per-video reset effect and the AppState handler, both of which
+  // deliberately exclude `embeddedActive` from their dependency arrays (see
+  // the comments at each). videoIdRef lets imperative actions
+  // (selectCandidate, pickFromFile) whose in-flight promise resolves after
+  // the video has already changed again tell that they are now stale.
+  const embeddedActiveRef = useRef(embeddedActive);
+  useEffect(() => {
+    embeddedActiveRef.current = embeddedActive;
+  }, [embeddedActive]);
+  const videoIdRef = useRef(videoId);
+  useEffect(() => {
+    videoIdRef.current = videoId;
+  }, [videoId]);
 
   const folderUri = useMemo(() => {
     if (!videoUri) return null;
@@ -145,25 +174,52 @@ export function useSubtitles({
     }
   }, [folderUri, videoName]);
 
+  // `isCancelled` is checked right after the read resolves, before any state
+  // write: `loadSubtitle`'s await can outlive the video that requested it
+  // (the screen stays mounted across next/prev/autoplay — see
+  // handleNavigateTo in app/player.tsx, which updates videoId/uri via
+  // router.setParams rather than unmounting), so without this a stale
+  // video's subtitles — or a stale error — could land on the next one.
+  // Every call site supplies a predicate scoped to its own notion of
+  // "still current": effects use a boolean flipped in their cleanup,
+  // imperative actions (selectCandidate, pickFromFile) compare against
+  // videoIdRef.
   const applyLoad = useCallback(
-    async (uri: string, name: string, persist: boolean) => {
+    async (uri: string, name: string, persist: boolean, isCancelled: () => boolean) => {
+      let loaded;
       try {
-        const loaded = await loadSubtitle(uri, name);
-        if (loaded.cues.length === 0) {
-          setError(`No subtitles found in ${name}`);
-          return;
-        }
-        setCues(loaded.cues);
-        setActive({ uri: loaded.uri, name: loaded.name });
-        // Mutually exclusive with embedded tracks.
-        player.subtitleTrack = null;
-        if (persist && videoId) {
-          await setSubtitlePrefs(db, videoId, uri, delayRef.current, Date.now());
-        }
+        loaded = await loadSubtitle(uri, name);
       } catch (e) {
+        if (isCancelled()) return;
         setError(
           e instanceof SubtitleTooLargeError ? 'Subtitle file is too large' : `Could not read ${name}`,
         );
+        return;
+      }
+      if (isCancelled()) return;
+      if (loaded.cues.length === 0) {
+        setError(`No subtitles found in ${name}`);
+        return;
+      }
+      setCues(loaded.cues);
+      setActive({ uri: loaded.uri, name: loaded.name });
+      // Mutually exclusive with embedded tracks. `useVideoPlayer` releases
+      // the previous player during the commit in which `uri` changes, which
+      // can land while this function was parked on the `loadSubtitle` await
+      // above — the isCancelled() check just above can lag that release by
+      // a tick (the release can happen synchronously during commit, ahead
+      // of the passive-effect cleanup that flips the cancellation flag), so
+      // this assignment can still throw against an already-released player.
+      // That is not a read failure and must not surface as "Could not read
+      // ...", so it gets its own guard rather than falling into the outer
+      // catch.
+      try {
+        player.subtitleTrack = null;
+      } catch (err) {
+        if (!isReleasedObjectError(err)) throw err;
+      }
+      if (persist && videoId) {
+        await setSubtitlePrefs(db, videoId, uri, delayRef.current, Date.now());
       }
     },
     [db, player, videoId],
@@ -196,7 +252,7 @@ export function useSubtitles({
         const name = decodeURIComponent(prefs.uri.slice(prefs.uri.lastIndexOf('/') + 1));
         try {
           if (new File(prefs.uri).exists) {
-            await applyLoad(prefs.uri, name, false);
+            await applyLoad(prefs.uri, name, false, () => cancelled);
             return;
           }
         } catch {
@@ -205,9 +261,9 @@ export function useSubtitles({
       }
 
       // Do not auto-load over an embedded track that is already showing.
-      if (embeddedActive || !folderUri) return;
+      if (embeddedActiveRef.current || !folderUri) return;
       const pick = pickAutoLoad(found, deviceLanguage());
-      if (pick) await applyLoad(joinUri(folderUri, pick.relativePath), pick.name, false);
+      if (pick) await applyLoad(joinUri(folderUri, pick.relativePath), pick.name, false, () => cancelled);
     })();
 
     return () => {
@@ -215,7 +271,9 @@ export function useSubtitles({
     };
     // embeddedActive is deliberately excluded: this effect is the per-video
     // reset, and re-running it when the user toggles an embedded track would
-    // wipe their external selection.
+    // wipe their external selection. Its value is instead read through
+    // embeddedActiveRef (kept fresh by its own effect above), which this
+    // effect can read without depending on it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db, videoId, videoUri, folderUri, scan, applyLoad]);
 
@@ -244,21 +302,31 @@ export function useSubtitles({
   // ── Re-probe when returning from the system settings screen ───────────
   useEffect(() => {
     if (!needsPermission) return;
+    let cancelled = false;
     const sub = AppState.addEventListener('change', (state) => {
       if (state !== 'active' || !folderUri) return;
       if (!canReadFolder(folderUri)) return;
       setNeedsPermission(false);
       const found = scan();
       setCandidates(found);
-      if (!active && !embeddedActive) {
+      if (!active && !embeddedActiveRef.current) {
         const pick = pickAutoLoad(found, deviceLanguage());
-        if (pick) void applyLoad(joinUri(folderUri, pick.relativePath), pick.name, false);
+        if (pick) void applyLoad(joinUri(folderUri, pick.relativePath), pick.name, false, () => cancelled);
       }
     });
-    return () => sub.remove();
-  }, [needsPermission, folderUri, scan, active, embeddedActive, applyLoad]);
+    return () => {
+      cancelled = true;
+      sub.remove();
+    };
+    // embeddedActive: see the note on the reset effect above — read through
+    // embeddedActiveRef so toggling an embedded track cannot tear down and
+    // restart this listener.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsPermission, folderUri, scan, active, applyLoad]);
 
   // ── Actions ───────────────────────────────────────────────────────────
+  const delayPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const setDelayMs = useCallback(
     (ms: number) => {
       setDelayMsState(ms);
@@ -270,15 +338,47 @@ export function useSubtitles({
         shownRef.current = text;
         setActiveText(text);
       }
-      if (videoId) void setSubtitlePrefs(db, videoId, active?.uri ?? null, ms, Date.now());
+      // The DB write is debounced (a slider drags dozens of times a
+      // second) and goes through setSubtitleDelay, which touches only the
+      // subtitle_delay_ms column — never subtitle_uri. Using setSubtitlePrefs
+      // here would require passing `active?.uri`, and the per-video reset
+      // effect briefly sets `active` to null while it restores prefs for a
+      // freshly-selected video; a drag landing in that window would NULL
+      // out a still-loading or already-remembered subtitle.
+      if (!videoId) return;
+      if (delayPersistTimerRef.current) clearTimeout(delayPersistTimerRef.current);
+      delayPersistTimerRef.current = setTimeout(() => {
+        delayPersistTimerRef.current = null;
+        void setSubtitleDelay(db, videoId, delayRef.current, Date.now());
+      }, DELAY_PERSIST_DEBOUNCE_MS);
     },
-    [db, player, videoId, active],
+    [db, player, videoId],
   );
+
+  // Flush a pending debounced delay write rather than lose the last drag
+  // position — both when the video changes mid-debounce (this effect
+  // re-runs, and its cleanup uses that render's own videoId/db, i.e. the
+  // outgoing video's) and on true unmount.
+  useEffect(() => {
+    return () => {
+      if (delayPersistTimerRef.current) {
+        clearTimeout(delayPersistTimerRef.current);
+        delayPersistTimerRef.current = null;
+        if (videoId) void setSubtitleDelay(db, videoId, delayRef.current, Date.now());
+      }
+    };
+  }, [db, videoId]);
 
   const selectCandidate = useCallback(
     async (candidate: SubtitleCandidate) => {
       if (!folderUri) return;
-      await applyLoad(joinUri(folderUri, candidate.relativePath), candidate.name, true);
+      const calledForVideoId = videoIdRef.current;
+      await applyLoad(
+        joinUri(folderUri, candidate.relativePath),
+        candidate.name,
+        true,
+        () => videoIdRef.current !== calledForVideoId,
+      );
     },
     [folderUri, applyLoad],
   );
@@ -302,16 +402,21 @@ export function useSubtitles({
       // and the v56 docs — never an array here).
       const { result, canceled } = await File.pickFileAsync({ mimeTypes: ['*/*'] });
       if (canceled || !result) return;
-      const name = result.name;
-      if (!subtitleFormatOf(name)) {
-        setError('Not a supported subtitle file');
-        return;
-      }
-      await applyLoad(result.uri, name, true);
+      // No hard extension check here: some SAF providers (e.g. Android's
+      // Downloads provider) hand back an opaque document id with no
+      // extension as `name`, which would reject a perfectly good file. Let
+      // loadSubtitle run — parseSubtitle falls back to content-sniffing, and
+      // a genuinely unparseable file still surfaces the truthful "No
+      // subtitles found in <name>" message.
+      const calledForVideoId = videoIdRef.current;
+      await applyLoad(result.uri, result.name, true, () => videoIdRef.current !== calledForVideoId);
     } catch {
-      // Native-side failure; pickFileAsync itself resolves (rather than
-      // throws) with { canceled: true } when the user backs out of the
-      // picker, so this only guards against something going genuinely wrong.
+      // In practice unreachable: File.pickFileAsync catches every error
+      // internally and resolves with { canceled: true, result: null } (see
+      // node_modules/expo-file-system/src/File.ts), so a genuine native
+      // failure and a user cancelling the picker are indistinguishable at
+      // this call site — both come back as a normal, non-throwing result.
+      // Kept only as a last-resort guard.
     }
   }, [applyLoad]);
 

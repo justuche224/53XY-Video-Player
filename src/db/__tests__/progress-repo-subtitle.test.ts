@@ -1,4 +1,4 @@
-import { getSubtitlePrefs, setSubtitlePrefs, upsertProgress } from '../progress-repo';
+import { getSubtitlePrefs, setSubtitlePrefs, setSubtitleDelay, upsertProgress } from '../progress-repo';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 function makeFakeDb() {
@@ -43,6 +43,17 @@ describe('setSubtitlePrefs', () => {
     const { db, calls } = makeFakeDb();
     await setSubtitlePrefs(db, 'v1', null, 0, 123);
     expect(calls[0].params).toEqual(['v1', 123, null, 0]);
+  });
+});
+
+describe('setSubtitleDelay', () => {
+  it('writes only subtitle_delay_ms, never subtitle_uri', async () => {
+    const { db, calls } = makeFakeDb();
+    await setSubtitleDelay(db, 'v1', 250, 123);
+    expect(calls[0].sql).toContain('INSERT INTO watch_progress');
+    expect(calls[0].sql).toContain('subtitle_delay_ms = excluded.subtitle_delay_ms');
+    expect(calls[0].sql).not.toContain('subtitle_uri');
+    expect(calls[0].params).toEqual(['v1', 123, 250]);
   });
 });
 

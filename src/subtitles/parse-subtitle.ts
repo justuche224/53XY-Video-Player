@@ -22,8 +22,29 @@ export function subtitleFormatOf(name: string): SubtitleFormat | null {
   return null;
 }
 
+/**
+ * Identify a subtitle format from its content rather than its filename.
+ *
+ * Needed because some SAF content providers (notably Android's Downloads
+ * provider, `content://com.android.providers.downloads.documents/...`) hand
+ * back an opaque document id with no extension in place of a real filename,
+ * so `subtitleFormatOf` has nothing to go on. Order matters: a VTT file
+ * always opens with a `WEBVTT` header, so that is checked first; ASS/SSA
+ * declares itself with a `[Script Info]` or `[Events]` section header; SRT
+ * has no header at all, so it is identified last, by its comma-millisecond
+ * timecode arrow (which also rules out VTT's dot-millisecond arrows).
+ */
+export function sniffSubtitleFormat(text: string): SubtitleFormat | null {
+  const head = text.replace(/^\uFEFF/, '').trimStart();
+  if (/^WEBVTT/.test(head)) return 'vtt';
+  if (/^\s*\[(Script Info|Events)\]/im.test(text)) return 'ass';
+  if (/\d{2}:\d{2}:\d{2},\d{3}\s*-->\s*\d{2}:\d{2}:\d{2},\d{3}/.test(text)) return 'srt';
+  return null;
+}
+
 export function parseSubtitle(name: string, text: string): Cue[] {
-  switch (subtitleFormatOf(name)) {
+  const format = subtitleFormatOf(name) ?? sniffSubtitleFormat(text);
+  switch (format) {
     case 'srt':
       return parseSrt(text);
     case 'vtt':
