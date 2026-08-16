@@ -5,6 +5,7 @@ import type { SubtitleTrack, AudioTrack } from 'expo-video';
 
 import { PressableScale } from '@/components/pressable-scale';
 import { useTheme } from '@/theme/theme-provider';
+import type { UseSubtitles } from '@/subtitles/use-subtitles';
 
 interface TracksSheetProps {
   player: VideoPlayer;
@@ -12,6 +13,8 @@ interface TracksSheetProps {
   audioTracks: AudioTrack[];
   activeSubtitle: SubtitleTrack | null;
   activeAudio: AudioTrack | null;
+  subtitles: UseSubtitles;
+  onAdjustDelay: () => void;
   onClose: () => void;
 }
 
@@ -21,11 +24,14 @@ export function TracksSheet({
   audioTracks,
   activeSubtitle,
   activeAudio,
+  subtitles,
+  onAdjustDelay,
   onClose,
 }: TracksSheetProps) {
   const { colors, spacing, radius } = useTheme();
 
   function handleSelectSubtitle(track: SubtitleTrack | null) {
+    if (track !== null) subtitles.clearSubtitle();
     player.subtitleTrack = track;
     onClose();
   }
@@ -37,29 +43,6 @@ export function TracksSheet({
 
   const hasSubtitles = subtitleTracks.length > 0;
   const hasAudio = audioTracks.length > 1; // Only show if multiple audio tracks
-
-  if (!hasSubtitles && !hasAudio) {
-    return (
-      <Modal transparent animationType="fade" onRequestClose={onClose}>
-        <Pressable style={styles.backdrop} onPress={onClose}>
-          <View
-            style={[
-              styles.sheet,
-              {
-                backgroundColor: colors.surface ?? '#1e1e1e',
-                borderRadius: radius.lg,
-                padding: spacing.lg,
-                marginHorizontal: spacing.lg,
-              },
-            ]}>
-            <Text style={[styles.noTracksText, { color: colors.onSurface }]}>
-              No embedded tracks available
-            </Text>
-          </View>
-        </Pressable>
-      </Modal>
-    );
-  }
 
   return (
     <Modal transparent animationType="slide" onRequestClose={onClose}>
@@ -78,6 +61,78 @@ export function TracksSheet({
           <View style={[styles.handle, { backgroundColor: colors.outline ?? '#555' }]} />
 
           <ScrollView showsVerticalScrollIndicator={false}>
+            <Text
+              style={[
+                styles.sectionTitle,
+                { color: colors.onSurfaceVariant ?? '#aaa', marginHorizontal: spacing.lg },
+              ]}>
+              External subtitles
+            </Text>
+
+            {subtitles.candidates.map((candidate) => (
+              <TrackRow
+                key={candidate.relativePath}
+                label={candidate.name}
+                isActive={subtitles.active?.name === candidate.name}
+                onPress={() => {
+                  void subtitles.selectCandidate(candidate);
+                  onClose();
+                }}
+                colors={colors}
+                spacing={spacing}
+              />
+            ))}
+
+            {subtitles.needsPermission && (
+              <TrackRow
+                label="Allow access to subtitle files…"
+                isActive={false}
+                onPress={() => {
+                  void subtitles.requestAccess();
+                  onClose();
+                }}
+                colors={colors}
+                spacing={spacing}
+              />
+            )}
+
+            <TrackRow
+              label="Load from file…"
+              isActive={false}
+              onPress={() => {
+                void subtitles.pickFromFile();
+                onClose();
+              }}
+              colors={colors}
+              spacing={spacing}
+            />
+
+            {subtitles.active && (
+              <TrackRow
+                label="Adjust delay…"
+                isActive={false}
+                onPress={() => {
+                  onAdjustDelay();
+                  onClose();
+                }}
+                colors={colors}
+                spacing={spacing}
+              />
+            )}
+
+            {subtitles.active && (
+              <TrackRow
+                label="Off"
+                isActive={false}
+                onPress={() => {
+                  subtitles.clearSubtitle();
+                  onClose();
+                }}
+                colors={colors}
+                spacing={spacing}
+              />
+            )}
+
             {hasSubtitles && (
               <>
                 <Text style={[styles.sectionTitle, { color: colors.onSurfaceVariant ?? '#aaa', marginHorizontal: spacing.lg }]}>

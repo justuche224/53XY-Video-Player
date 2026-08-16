@@ -184,6 +184,7 @@ export default function PlayerScreen() {
     videoUri: uri,
     embeddedActive: activeSubtitle !== null,
   });
+  const [delayBarVisible, setDelayBarVisible] = useState(false);
 
   // ── Controls visibility (lifted from ControlsOverlay) ───────────────────
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -1115,6 +1116,8 @@ export default function PlayerScreen() {
               audioTracks={audioTracks}
               activeSubtitle={activeSubtitle}
               activeAudio={activeAudio}
+              subtitles={subtitles}
+              onAdjustDelay={() => setDelayBarVisible(true)}
               onClose={() => setTracksSheetVisible(false)}
             />
           )}
