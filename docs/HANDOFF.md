@@ -49,6 +49,8 @@
 | Visual cohesion 4–5 | Settings split into landing list + Player/Library filters/Hidden folders/About sub-screens (`ListItem`, `useAllVideos`); restrained motion (reduced-motion-aware hero entrance + consistent detail-screen slide) | ✅ merged |
 | Long-press context menu | Multi-select, Contextual top bar, Share, Delete, Info, Play All, Mark as Played/Unplayed, Add to playlist, Move to group (manual overrides, migration v8) | ✅ merged, device-verified |
 | Contextual bar UX fixes | Bar overflow fix (⋮ overflow menu), smart Mark Played/Unplayed toggle, Home "Play" routing fix | ✅ merged, device-verified |
+| Watched badge | Sticky `completed` flag (migration v9 backfill); check chip on cards/rows, bar suppressed once watched; one definition of "watched" across the app | ✅ merged, device-verified |
+| Player: boost-after-release fix | `handleBoostEnd` guarded against a long-press ending after the player is released (uri swap or unmount) | ✅ merged, device-verified |
 | Multi-file share | `modules/share-media` Kotlin module (`ACTION_SEND_MULTIPLE`); share up to 50 videos at once, was 1 | ✅ merged, device-verified (phone + emulator) |
 | Selection queueing | "Play" queues exactly the selected subset (2+ items) and stops; Home Play now works across multiple groups; one `activeQueue()` drives both neighbors and prev/next chrome | ✅ merged, device-verified |
 | libVLC fallback | Custom Expo native module for exotic codecs (large native effort, parked) | 📋 backlog — parked |
@@ -63,8 +65,10 @@
 | Player: gated resume seek | Gate resume seek on player ready/status event instead of seeking immediately | 📋 backlog — optional |
 | Grouping refinements | Number-prefixed siblings, screen-recording bucketing | 📋 backlog — by design |
 | Themed error boundary | `SQLiteProvider` fallback (class component can't use `useTheme`) | 📋 backlog — minor |
+| Player: gesture writes after release | `handleSeek`/double-tap/pan-end write to `player` from gesture callbacks with the same use-after-release exposure as the fixed boost path; far smaller window (taps/pans are instantaneous), so left alone rather than scattering try/catch | 📋 backlog — latent |
+| Player: speed resets on video switch | `rate` state survives a next/prev but the new player starts at 1×, so the speed pill can read 1.5× while playback is 1× | 📋 backlog — minor |
 
-Tests: **289 passing**, `npx tsc --noEmit` clean.
+Tests: **302 passing**, `npx tsc --noEmit` clean.
 
 > Counting note: a bare `npm test` also picks up a stale copy of the suite under
 > `.claude/worktrees/agent-aadc8d4acf52194cf/` left behind by an earlier agent run,
@@ -142,6 +146,8 @@ Nothing is in flight. The **player feel pack** ([spec](./superpowers/specs/2026-
 ## 7. Changelog
 
 > Append-only, newest first. One bullet per shipped feature. Keep only the latest ~5 here; archive older entries to [CHANGELOG.md](./CHANGELOG.md).
+
+- **Watched badge + boost-after-release fix (device-verified)** — a filled progress bar was the only sign a video had been finished, and it vanished the moment you replayed one. Root cause wasn't cosmetic: `watch_progress.completed` has existed since migration v1, but `upsertProgress` wrote `completed = excluded.completed`, so the first 5-second write of a replay **erased** the flag — which the UI never read anyway, deriving "watched" from `percent` alone. The flag is now sticky (`MAX(watch_progress.completed, excluded.completed)`), with Mark as unplayed — which deletes the row — the only reset; `ProgressEntry`/`HistoryRow` carry it, and `getProgressMap`/`getHistory` select it. **Migration v9** backfills `completed = 1 WHERE percent >= 0.95`, reconstructing the flag once for a library whose marks the old bug had cleared. UI: `WatchedBadge` (`checkmark-circle` on the same 62%-black chip as `DurationBadge`) pinned **top-right** — the only free corner, with duration bottom-right, the resume bar on the bottom edge and the selection check dead centre — and the progress bar is suppressed once watched, since a full bar under a check says the same thing twice. Group cards get the check only when *every* item is watched. This also collapsed a live inconsistency: `isCompleted` used 0.95 while `resolveWatchToggle` and `groupPercent` hardcoded 0.99; all three now read the one flag. Shipped alongside a **player crash fix**: `handleBoostEnd` wrote `player.playbackRate` from a gesture callback that can outlive the player — `useVideoPlayer` releases its shared object in the effect cleanup phase (uri swap on next/prev/autoplay, or unmount) while RNGH's `onFinalize` → `scheduleOnRN` hop lands the boost-end asynchronously after it, and **any call on a released shared object throws** (`SharedObject.release()` is documented as detaching JS from native; there is no `isReleased` flag to test first, so the throw is the only signal). Boost UI state now clears *before* the player is touched — a failed restore used to strand the 2× badge — and the restore swallows exactly the released-object error (`isReleasedObjectError`, pure + Jest-tested). The trigger, which is why it's near-impossible to reproduce on demand: a long-press that *spans* the switch — hold 2× as the video ends, the autoplay countdown swaps the video 5s later, then lift. JS-only.
 
 - **Home "View info" (device-verified)** — per-file details were reachable only from inside a group; Home's contextual overflow now carries the same View info entry, gated on the selection resolving to exactly one video (info is per-file, so a selected multi-episode group doesn't offer it). JS-only.
 
