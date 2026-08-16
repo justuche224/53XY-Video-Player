@@ -711,6 +711,10 @@ export default function PlayerScreen() {
   }, [player]);
 
   const handleAutoHide = useCallback(() => setControlsVisible(false), []);
+  // Stable for the same reason as handleAutoHide: the delay bar runs its own
+  // idle timer, and an inline arrow here would hand it a new identity on every
+  // timeUpdate render.
+  const handleDelayBarClose = useCallback(() => setDelayBarVisible(false), []);
 
   // ── Zoom / display-mode handlers ─────────────────────────────────────────
   // A label flash auto-dismisses; live % (during a pinch) stays until replaced.
@@ -1100,7 +1104,7 @@ export default function PlayerScreen() {
               <SubtitleDelayBar
                 delayMs={subtitles.delayMs}
                 onChange={subtitles.setDelayMs}
-                onClose={() => setDelayBarVisible(false)}
+                onClose={handleDelayBarClose}
               />
             )}
           </PlayerGestures>

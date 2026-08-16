@@ -1,16 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { ON_ARTWORK } from '@/theme/resolve-theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { ChromeButton } from './chrome-button';
 import { usePlayerGestureRelations } from './player-gesture-relations';
 
 /** Range and granularity of the delay control. */
-export const DELAY_RANGE_MS = 20000;
+const DELAY_RANGE_MS = 20000;
 const STEP_MS = 50;
 /** Idle time before the bar fades away on its own. */
 const AUTO_HIDE_MS = 4000;
@@ -35,42 +36,73 @@ export function SubtitleDelayBar({
   onClose: () => void;
 }) {
   const relations = usePlayerGestureRelations();
+  const insets = useSafeAreaInsets();
   const barWidth = useSharedValue(0);
   const dragging = useSharedValue(false);
   const dragFraction = useSharedValue(0);
 
   // Mirror the resting delay into a shared value for the thumb's position.
-  const restFraction = (delayMs + DELAY_RANGE_MS) / (2 * DELAY_RANGE_MS);
+  // Clamped: a stored delay outside the range would otherwise render a >100%
+  // fill and put the thumb off the track.
+  const restFraction = Math.min(
+    1,
+    Math.max(0, (delayMs + DELAY_RANGE_MS) / (2 * DELAY_RANGE_MS)),
+  );
   const restFractionSV = useSharedValue(restFraction);
   useEffect(() => {
     restFractionSV.value = restFraction;
   }, [restFraction, restFractionSV]);
 
   // ── Auto-hide ─────────────────────────────────────────────────────────
-  const [interactions, setInteractions] = useState(0);
-  const bump = useCallback(() => setInteractions((n) => n + 1), []);
+  // The timer lives in a ref rather than in an effect keyed on an interaction
+  // counter. Two reasons: the player re-renders at >=1Hz (timeUpdateEventInterval
+  // is 1), so an effect depending on the onClose prop would re-arm forever and
+  // never fire; and a counter in state would force a React render on every drag
+  // update. onClose is read through latestRef the way PlayerPressableScale reads
+  // onPress, so an unstable prop can't restart the countdown.
+  const latestOnClose = useRef(onClose);
+  latestOnClose.current = onClose;
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draggingJs = useRef(false);
-  useEffect(() => {
-    const id = setTimeout(() => {
-      if (!draggingJs.current) onClose();
-    }, AUTO_HIDE_MS);
-    return () => clearTimeout(id);
-  }, [interactions, onClose]);
 
+  const clearHide = useCallback(() => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+  }, []);
+
+  const armHide = useCallback(() => {
+    clearHide();
+    hideTimerRef.current = setTimeout(() => {
+      // A drag in progress defers the close; the drag-end path re-arms.
+      if (draggingJs.current) return;
+      latestOnClose.current();
+    }, AUTO_HIDE_MS);
+  }, [clearHide]);
+
+  useEffect(() => {
+    armHide();
+    return clearHide;
+  }, [armHide, clearHide]);
+
+  // Deliberately does NOT depend on delayMs. commit runs on every pan update,
+  // so taking delayMs here would recreate it — and with it the memoized `pan`
+  // gesture — mid-drag, which is exactly the arena-wedge class this player has
+  // two commits fixing. nudge may depend on delayMs; it only runs on a tap.
   const commit = useCallback(
     (fraction: number) => {
       onChange(quantize(fraction * 2 * DELAY_RANGE_MS - DELAY_RANGE_MS));
-      bump();
     },
-    [onChange, bump],
+    [onChange],
   );
 
   const nudge = useCallback(
     (deltaMs: number) => {
       onChange(quantize(delayMs + deltaMs));
-      bump();
+      armHide();
     },
-    [delayMs, onChange, bump],
+    [delayMs, onChange, armHide],
   );
 
   const setDraggingJs = useCallback((value: boolean) => {
@@ -84,6 +116,7 @@ export function SubtitleDelayBar({
         'worklet';
         dragging.value = true;
         scheduleOnRN(setDraggingJs, true);
+        scheduleOnRN(clearHide);
         if (barWidth.value > 0) {
           const f = Math.min(1, Math.max(0, e.x / barWidth.value));
           dragFraction.value = f;
@@ -104,12 +137,26 @@ export function SubtitleDelayBar({
         restFractionSV.value = dragFraction.value;
         dragging.value = false;
         scheduleOnRN(setDraggingJs, false);
+        // Re-arm here, not in commit: a timeout that fired mid-drag was
+        // suppressed by the draggingJs guard and would otherwise never come
+        // back, leaving the bar stuck open after a long hold.
+        scheduleOnRN(armHide);
       });
     // Same arena discipline as PlayerPressableScale: without this the
     // screen's brightness/volume pan fights the slider.
     if (relations) g.blocksExternalGesture(...relations);
     return g;
-  }, [relations, commit, setDraggingJs, barWidth, dragFraction, dragging, restFractionSV]);
+  }, [
+    relations,
+    commit,
+    setDraggingJs,
+    clearHide,
+    armHide,
+    barWidth,
+    dragFraction,
+    dragging,
+    restFractionSV,
+  ]);
 
   const filledStyle = useAnimatedStyle(() => {
     const f = dragging.value ? dragFraction.value : restFractionSV.value;
@@ -121,8 +168,13 @@ export function SubtitleDelayBar({
   });
 
   return (
-    <View style={styles.wrapper} pointerEvents="box-none">
-      <View style={[styles.bar, { backgroundColor: ON_ARTWORK.chip }]}>
+    <View
+      style={[styles.wrapper, { paddingBottom: 24 + insets.bottom }]}
+      pointerEvents="box-none">
+      {/* Darker than ON_ARTWORK.chip on purpose: ChromeButton paints each
+          button with that token, so a bar in the same colour would leave the
+          six chips invisible against it. */}
+      <View style={[styles.bar, { backgroundColor: 'rgba(0,0,0,0.85)' }]}>
         <View style={styles.row}>
           <ChromeButton size={36} onPress={() => nudge(-500)}>
             <Text style={styles.nudgeLabel}>−0.5</Text>
@@ -141,7 +193,7 @@ export function SubtitleDelayBar({
             size={36}
             onPress={() => {
               onChange(0);
-              bump();
+              armHide();
             }}>
             <MaterialIcons name="restart-alt" size={18} color="#fff" />
           </ChromeButton>
@@ -177,7 +229,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingBottom: 24,
+    // paddingBottom is applied inline, adding the safe-area inset.
   },
   bar: { width: '100%', maxWidth: 520, borderRadius: 20, padding: 12, gap: 8 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
