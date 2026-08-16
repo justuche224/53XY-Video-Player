@@ -29,6 +29,7 @@ import { panAxis, panHalf, clamp01, scrubDeltaSec } from '@/player/pan';
 import { useBackgroundPlay } from '@/player/use-background-play';
 import { usePictureInPicture } from '@/player/use-pip';
 import { useAutoplayNext } from '@/player/use-autoplay-next';
+import { useSubtitleSize } from '@/player/use-subtitle-size';
 import { usePreviewStrip } from '@/player/use-preview-strip';
 import { frameIndexFor, nearestCompleted } from '@/player/preview-strip';
 import { shouldAutoplayNext, AUTOPLAY_COUNTDOWN_SEC } from '@/player/autoplay-next';
@@ -186,6 +187,7 @@ export default function PlayerScreen() {
     embeddedActive: activeSubtitle !== null,
   });
   const [delayBarVisible, setDelayBarVisible] = useState(false);
+  const { subtitleSize } = useSubtitleSize();
 
   // ── Controls visibility (lifted from ControlsOverlay) ───────────────────
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -992,7 +994,7 @@ export default function PlayerScreen() {
           visible while the screen is locked. */}
       <SubtitleOverlay
         text={subtitles.activeText}
-        sizeKey="m"
+        sizeKey={subtitleSize}
         lifted={controlsVisible && !locked}
       />
 
