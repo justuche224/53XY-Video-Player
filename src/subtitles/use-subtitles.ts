@@ -6,6 +6,7 @@ import type { VideoPlayer } from 'expo-video';
 
 import { getSubtitlePrefs, setSubtitleDelay, setSubtitlePrefs } from '@/db/progress-repo';
 import { isReleasedObjectError } from '@/player/released-object';
+import { subtitleDisplayName } from './display-name';
 
 import type { Cue, SubtitleCandidate } from './types';
 import { activeCues, cueTextOf } from './active-cue';
@@ -283,7 +284,7 @@ export function useSubtitles({
 
       // A remembered file wins, as long as it still exists.
       if (prefs.uri) {
-        const name = decodeURIComponent(prefs.uri.slice(prefs.uri.lastIndexOf('/') + 1));
+        const name = subtitleDisplayName(prefs.uri);
         try {
           if (new File(prefs.uri).exists) {
             const seq = ++loadSeqRef.current;
@@ -495,7 +496,15 @@ export function useSubtitles({
       // a genuinely unparseable file still surfaces the truthful "No
       // subtitles found in <name>" message.
       const seq = ++loadSeqRef.current;
-      await applyLoad(result.uri, result.name, true, null, () => loadSeqRef.current !== seq);
+      await applyLoad(
+        result.uri,
+        // Not result.name: for the MediaStore provider that is the document
+        // id ('msf:345000'), which then showed up as the track's title.
+        subtitleDisplayName(result.uri, result.name),
+        true,
+        null,
+        () => loadSeqRef.current !== seq,
+      );
     } catch {
       // File.pickFileAsync itself will not land here: it catches every
       // error internally and resolves with { canceled: true, result: null }
