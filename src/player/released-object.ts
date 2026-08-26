@@ -15,3 +15,21 @@ export function isReleasedObjectError(err: unknown): boolean {
     err instanceof Error ? err.message : typeof err === 'string' ? err : '';
   return message.includes('already released');
 }
+
+/**
+ * Run `fn`, swallowing the throw only if it came from a released object.
+ *
+ * Every player gesture callback reaches JS through `scheduleOnRN`, so it can
+ * land after the screen unmounted and released the player: leaving a video
+ * mid-hold, mid-scrub, or mid double-tap is enough. The work is moot at that
+ * point — the player is gone and so is the UI it would have updated — but the
+ * throw still surfaces as a redbox. Anything that isn't a release complaint
+ * rethrows.
+ */
+export function ignoreIfReleased(fn: () => void): void {
+  try {
+    fn();
+  } catch (err) {
+    if (!isReleasedObjectError(err)) throw err;
+  }
+}

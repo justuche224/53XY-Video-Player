@@ -22,7 +22,7 @@ import {
   type DisplayMode, type ZoomState,
 } from '@/player/zoom';
 import { shouldResume } from '@/player/resume';
-import { isReleasedObjectError } from '@/player/released-object';
+import { ignoreIfReleased } from '@/player/released-object';
 import { seekTarget, tapZone } from '@/player/seek';
 import { doubleTapAction } from '@/player/double-tap';
 import { panAxis, panHalf, clamp01, scrubDeltaSec } from '@/player/pan';
@@ -660,37 +660,48 @@ export default function PlayerScreen() {
     const action = doubleTapAction(zone, controlsVisibleRef.current);
     if (action === 'none') return;
 
-    if (action === 'toggle') {
-      // Center third toggles play/pause; flash the action just taken.
-      if (player.playing) {
-        player.pause();
-        setSeekFlash((prev) => ({ kind: 'center', glyph: '⏸', nonce: (prev?.nonce ?? 0) + 1 }));
-      } else {
-        const isEnded = lastDurationSecRef.current > 0 && lastPositionSecRef.current >= lastDurationSecRef.current - 0.5;
-        if (isEnded) {
-          player.currentTime = 0;
-          setPositionSec(0);
-          lastPositionSecRef.current = 0;
+    // Guarded: the tap resolves on the UI thread and hops to JS, so it can
+    // arrive after a back-out has released the player.
+    ignoreIfReleased(() => {
+      if (action === 'toggle') {
+        // Center third toggles play/pause; flash the action just taken.
+        if (player.playing) {
+          player.pause();
+          setSeekFlash((prev) => ({ kind: 'center', glyph: '⏸', nonce: (prev?.nonce ?? 0) + 1 }));
+        } else {
+          const isEnded = lastDurationSecRef.current > 0 && lastPositionSecRef.current >= lastDurationSecRef.current - 0.5;
+          if (isEnded) {
+            player.currentTime = 0;
+            setPositionSec(0);
+            lastPositionSecRef.current = 0;
+          }
+          player.play();
+          setSeekFlash((prev) => ({ kind: 'center', glyph: isEnded ? '↻' : '▶', nonce: (prev?.nonce ?? 0) + 1 }));
         }
-        player.play();
-        setSeekFlash((prev) => ({ kind: 'center', glyph: isEnded ? '↻' : '▶', nonce: (prev?.nonce ?? 0) + 1 }));
+        return;
       }
-      return;
-    }
-    const delta = zone === 'left' ? -10 : 10;
-    const target = seekTarget(lastPositionSecRef.current, delta, lastDurationSecRef.current);
-    player.currentTime = target;
-    setPositionSec(target);
-    lastPositionSecRef.current = target;
-    setSeekFlash((prev) => ({ kind: zone === 'left' ? 'left' : 'right', nonce: (prev?.nonce ?? 0) + 1 }));
+      const delta = zone === 'left' ? -10 : 10;
+      const target = seekTarget(lastPositionSecRef.current, delta, lastDurationSecRef.current);
+      player.currentTime = target;
+      setPositionSec(target);
+      lastPositionSecRef.current = target;
+      setSeekFlash((prev) => ({ kind: zone === 'left' ? 'left' : 'right', nonce: (prev?.nonce ?? 0) + 1 }));
+    });
   }, [player]);
 
   const handleBoostStart = useCallback(() => {
-    boostPrevRateRef.current = player.playbackRate;
-    boostingRef.current = true;
-    player.playbackRate = 2;
-    setBoostActive(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // The long-press matures on the UI thread 350ms after touch-down and then
+    // hops to JS, so backing out mid-hold lands this on a released player.
+    // Read the rate first and arm nothing until it succeeds: a boost armed
+    // against a dead player would strand the 2x badge and, worse, restore a
+    // garbage rate onto whatever player comes next.
+    ignoreIfReleased(() => {
+      boostPrevRateRef.current = player.playbackRate;
+      player.playbackRate = 2;
+      boostingRef.current = true;
+      setBoostActive(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    });
   }, [player]);
 
   const handleBoostEnd = useCallback(() => {
@@ -700,16 +711,14 @@ export default function PlayerScreen() {
     // a stranded 2× badge over a video playing at 1× is worse than no restore.
     setBoostActive(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    try {
+    // A long-press can still be held when the player is released — the video
+    // switches (uri change) or the screen is left mid-hold, and RNGH's
+    // onFinalize → scheduleOnRN hop lands the callback after the release.
+    // Restoring a rate on a dead player is a no-op worth swallowing; the
+    // replacement player starts at its own rate anyway.
+    ignoreIfReleased(() => {
       player.playbackRate = boostPrevRateRef.current;
-    } catch (err) {
-      // A long-press can still be held when the player is released — the video
-      // switches (uri change) or the screen is left mid-hold, and RNGH's
-      // onFinalize → scheduleOnRN hop lands the callback after the release.
-      // Restoring a rate on a dead player is a no-op worth swallowing; the
-      // replacement player starts at its own rate anyway.
-      if (!isReleasedObjectError(err)) throw err;
-    }
+    });
   }, [player]);
 
   const handleAutoHide = useCallback(() => setControlsVisible(false), []);
@@ -852,9 +861,14 @@ export default function PlayerScreen() {
   const handlePanEnd = useCallback(() => {
     if (panRef.current.axis === 'horizontal') {
       const target = scrubTargetRef.current;
-      player.currentTime = target;
-      setPositionSec(target);
-      lastPositionSecRef.current = target;
+      // Guarded like the other gesture callbacks: lifting the finger as the
+      // screen unmounts would otherwise seek a released player. The HUD teardown
+      // below still runs — it must, guard or no guard.
+      ignoreIfReleased(() => {
+        player.currentTime = target;
+        setPositionSec(target);
+        lastPositionSecRef.current = target;
+      });
     }
     setScrubHud(null);
     setLevelHud(null);
