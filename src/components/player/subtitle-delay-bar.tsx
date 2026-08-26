@@ -7,6 +7,8 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { formatDelay } from '@/subtitles/format-delay';
+
 import { ChromeButton } from './chrome-button';
 import { usePlayerGestureRelations } from './player-gesture-relations';
 
@@ -19,11 +21,6 @@ const AUTO_HIDE_MS = 4000;
 function quantize(ms: number): number {
   const clamped = Math.max(-DELAY_RANGE_MS, Math.min(DELAY_RANGE_MS, ms));
   return Math.round(clamped / STEP_MS) * STEP_MS;
-}
-
-function formatDelay(ms: number): string {
-  const sign = ms > 0 ? '+' : ms < 0 ? '−' : '';
-  return `${sign}${(Math.abs(ms) / 1000).toFixed(2)}s`;
 }
 
 export function SubtitleDelayBar({

@@ -5,6 +5,8 @@ import type { SubtitleTrack, AudioTrack } from 'expo-video';
 
 import { PressableScale } from '@/components/pressable-scale';
 import { useTheme } from '@/theme/theme-provider';
+import { disambiguateLabels } from '@/player/disambiguate-labels';
+import { formatDelay } from '@/subtitles/format-delay';
 import type { UseSubtitles } from '@/subtitles/use-subtitles';
 
 interface TracksSheetProps {
@@ -44,6 +46,19 @@ export function TracksSheet({
   const hasSubtitles = subtitleTracks.length > 0;
   const hasAudio = audioTracks.length > 1; // Only show if multiple audio tracks
 
+  // Containers routinely ship two streams both labelled "English" (full and
+  // forced, or SDH). Numbering them is the difference between a choice and a
+  // coin toss.
+  const subtitleLabels = disambiguateLabels(
+    subtitleTracks.map((t) => t.label || t.language),
+  );
+  const audioLabels = disambiguateLabels(audioTracks.map((t) => t.label || t.language));
+
+  const pickedFileLabel =
+    subtitles.active !== null && subtitles.active.relativePath === null
+      ? subtitles.active.name
+      : null;
+
   return (
     <Modal transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
@@ -69,10 +84,35 @@ export function TracksSheet({
               External subtitles
             </Text>
 
+            {/* Off leads the list and carries the tick when nothing external is
+                loaded — the same shape as the embedded section below, so the
+                two sections can be read at a glance as "which one is on". */}
+            <TrackRow
+              label="Off"
+              isActive={subtitles.active === null}
+              onPress={() => {
+                subtitles.clearSubtitle();
+                onClose();
+              }}
+              colors={colors}
+              spacing={spacing}
+            />
+
+            {/* A file picked through the system picker has no relativePath, so
+                it matches no candidate row and would otherwise leave the whole
+                section looking inert while its subtitles are on screen. Give it
+                a row of its own. It is display-only: selecting the thing that
+                is already selected does nothing. */}
+            {pickedFileLabel !== null && (
+              <TrackRow label={pickedFileLabel} isActive colors={colors} spacing={spacing} />
+            )}
+
             {subtitles.candidates.map((candidate) => (
               <TrackRow
                 key={candidate.relativePath}
-                label={candidate.name}
+                /* relativePath, not name: 'Movie.en.srt' and 'Subs/Movie.en.srt'
+                   share a basename, and the path is what tells them apart. */
+                label={candidate.relativePath}
                 isActive={
                   subtitles.active?.relativePath != null &&
                   subtitles.active.relativePath === candidate.relativePath
@@ -112,7 +152,13 @@ export function TracksSheet({
 
             {subtitles.active && (
               <TrackRow
-                label="Adjust delay…"
+                /* The current offset rides on the label so the sheet answers
+                   "is it shifted, and by how much" without opening the bar. */
+                label={
+                  subtitles.delayMs === 0
+                    ? 'Adjust delay…'
+                    : `Adjust delay… (${formatDelay(subtitles.delayMs)})`
+                }
                 isActive={false}
                 onPress={() => {
                   onAdjustDelay();
@@ -123,23 +169,13 @@ export function TracksSheet({
               />
             )}
 
-            {subtitles.active && (
-              <TrackRow
-                label="Off"
-                isActive={false}
-                onPress={() => {
-                  subtitles.clearSubtitle();
-                  onClose();
-                }}
-                colors={colors}
-                spacing={spacing}
-              />
-            )}
-
             {hasSubtitles && (
               <>
-                <Text style={[styles.sectionTitle, { color: colors.onSurfaceVariant ?? '#aaa', marginHorizontal: spacing.lg }]}>
-                  Subtitles
+                {/* "Subtitles" alone read as the master switch, so its Off row
+                    looked like it contradicted the external subtitles actually
+                    on screen. Naming the source removes the contradiction. */}
+                <Text style={[styles.sectionTitle, { color: colors.onSurfaceVariant ?? '#aaa', marginHorizontal: spacing.lg, marginTop: spacing.md }]}>
+                  Embedded subtitles
                 </Text>
 
                 {/* Off row */}
@@ -154,7 +190,7 @@ export function TracksSheet({
                 {subtitleTracks.map((track, i) => (
                   <TrackRow
                     key={track.id ?? `sub-${i}`}
-                    label={track.label || track.language}
+                    label={subtitleLabels[i]}
                     isActive={
                       activeSubtitle !== null &&
                       (track.id !== undefined
@@ -186,7 +222,7 @@ export function TracksSheet({
                 {audioTracks.map((track, i) => (
                   <TrackRow
                     key={track.id ?? `audio-${i}`}
-                    label={track.label || track.language}
+                    label={audioLabels[i]}
                     isActive={
                       activeAudio !== null &&
                       (track.id !== undefined
@@ -215,13 +251,16 @@ function TrackRow({
   spacing,
 }: {
   label: string;
-  isActive: boolean;
-  onPress: () => void;
+  isActive?: boolean;
+  /** Omit for a display-only row: it renders as a plain View, so it neither
+      scales under a finger nor advertises a tap that does nothing. */
+  onPress?: () => void;
   colors: Record<string, string>;
   spacing: { xs: number; sm: number; md: number; lg: number; xl: number; xxl: number };
 }) {
-  return (
-    <PressableScale onPress={onPress} style={[styles.trackRow, { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm }]}>
+  const rowStyle = [styles.trackRow, { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm }];
+  const content = (
+    <>
       <Text
         style={[
           styles.trackLabel,
@@ -229,12 +268,21 @@ function TrackRow({
             color: isActive ? (colors.primary ?? '#90caf9') : (colors.onSurface ?? '#fff'),
             fontWeight: isActive ? '600' : '400',
           },
-        ]}>
+        ]}
+        numberOfLines={1}
+        ellipsizeMode="middle">
         {label}
       </Text>
       {isActive && (
         <Text style={[styles.checkmark, { color: colors.primary ?? '#90caf9' }]}>{'✓'}</Text>
       )}
+    </>
+  );
+
+  if (!onPress) return <View style={rowStyle}>{content}</View>;
+  return (
+    <PressableScale onPress={onPress} style={rowStyle}>
+      {content}
     </PressableScale>
   );
 }
@@ -270,6 +318,8 @@ const styles = StyleSheet.create({
   },
   trackLabel: {
     fontSize: 15,
+    flexShrink: 1,
+    marginRight: 8,
   },
   checkmark: {
     fontSize: 16,
