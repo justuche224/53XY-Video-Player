@@ -26,10 +26,14 @@ export function isReleasedObjectError(err: unknown): boolean {
  * throw still surfaces as a redbox. Anything that isn't a release complaint
  * rethrows.
  */
-export function ignoreIfReleased(fn: () => void): void {
+export function ignoreIfReleased(fn: () => void, label?: string): void {
   try {
     fn();
   } catch (err) {
     if (!isReleasedObjectError(err)) throw err;
+    // A guard that swallows silently is a guard you can't tell is working.
+    // The label is the only way to know which callback lost the race, and a
+    // negative result ("no warning on back-out") is itself the answer.
+    if (__DEV__) console.warn(`[released-object] swallowed in ${label ?? 'unlabelled'}`);
   }
 }

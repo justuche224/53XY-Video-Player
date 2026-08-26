@@ -686,7 +686,7 @@ export default function PlayerScreen() {
       setPositionSec(target);
       lastPositionSecRef.current = target;
       setSeekFlash((prev) => ({ kind: zone === 'left' ? 'left' : 'right', nonce: (prev?.nonce ?? 0) + 1 }));
-    });
+    }, 'handleDoubleTap');
   }, [player]);
 
   const handleBoostStart = useCallback(() => {
@@ -701,7 +701,7 @@ export default function PlayerScreen() {
       boostingRef.current = true;
       setBoostActive(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    });
+    }, 'handleBoostStart');
   }, [player]);
 
   const handleBoostEnd = useCallback(() => {
@@ -718,7 +718,7 @@ export default function PlayerScreen() {
     // replacement player starts at its own rate anyway.
     ignoreIfReleased(() => {
       player.playbackRate = boostPrevRateRef.current;
-    });
+    }, 'handleBoostEnd');
   }, [player]);
 
   const handleAutoHide = useCallback(() => setControlsVisible(false), []);
@@ -868,7 +868,7 @@ export default function PlayerScreen() {
         player.currentTime = target;
         setPositionSec(target);
         lastPositionSecRef.current = target;
-      });
+      }, 'handlePanEnd');
     }
     setScrubHud(null);
     setLevelHud(null);

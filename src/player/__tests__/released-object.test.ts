@@ -44,6 +44,15 @@ describe('ignoreIfReleased', () => {
     expect(after).toHaveBeenCalled();
   });
 
+  it('names the call site in the dev warning so a swallow is visible', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    ignoreIfReleased(() => {
+      throw new Error('already released');
+    }, 'handleBoostStart');
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('handleBoostStart'));
+    warn.mockRestore();
+  });
+
   it('rethrows anything else', () => {
     expect(() =>
       ignoreIfReleased(() => {
