@@ -1,19 +1,37 @@
 import { usePermissions } from 'expo-media-library';
 import { useSQLiteContext } from 'expo-sqlite';
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import { deleteVideosByIds, getAllVideos, upsertVideos } from '@/db/videos-repo';
 import { deleteProgressByIds } from '@/db/progress-repo';
 import { getManualGroupsMap } from '@/db/manual-groups-repo';
 import { deletePreviewFramesByIds } from '@/db/preview-frames-repo';
 import { scanVideos } from '@/media/media-scanner';
-import type { LibraryVideo } from './types';
+import { applyFilters } from './filter-videos';
+import { useFilterSettings } from './filter-settings';
+import { groupByFolder, groupByName } from './group-videos';
+import type { Group, LibraryVideo } from './types';
 
 export type LibraryStatus = 'loading' | 'ready' | 'denied' | 'error';
 
 interface LibraryData {
   videos: LibraryVideo[];
   manualGroups: Map<string, string>;
+  // Computed once here and shared by every consumer of `useGroups`, instead
+  // of each mounted screen (Home, group detail, player) re-deriving the same
+  // grouping from the full library independently — the player screen mounting
+  // on top of an already-mounted group screen was paying for this twice on
+  // every open.
+  groupsByName: Group[];
+  groupsByFolder: Group[];
   status: LibraryStatus;
   refreshing: boolean;
   error?: string;
@@ -41,6 +59,17 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState(0);
 
   const [manualGroups, setManualGroups] = useState<Map<string, string>>(new Map());
+  const { filter } = useFilterSettings();
+
+  const visible = useMemo(() => applyFilters(videos, filter), [videos, filter]);
+  const groupsByName = useMemo(
+    () => groupByName(visible, manualGroups),
+    [visible, manualGroups],
+  );
+  const groupsByFolder = useMemo(
+    () => groupByFolder(visible, manualGroups),
+    [visible, manualGroups],
+  );
 
   // 1) Show the cached library immediately — reading our own DB needs no permission.
   useEffect(() => {
@@ -112,7 +141,9 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         : 'loading';
 
   return (
-    <LibraryContext.Provider value={{ videos, manualGroups, status, refreshing, error, reload }}>
+    <LibraryContext.Provider
+      value={{ videos, manualGroups, groupsByName, groupsByFolder, status, refreshing, error, reload }}
+    >
       {children}
     </LibraryContext.Provider>
   );

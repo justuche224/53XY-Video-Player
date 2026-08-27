@@ -1,28 +1,22 @@
-import { useMemo } from 'react';
-
-import { useFilterSettings } from './filter-settings';
-import { applyFilters } from './filter-videos';
-import { groupByFolder, groupByName } from './group-videos';
 import { useLibraryData } from './library-provider';
 import type { Group } from './types';
 
 /**
- * Read-only grouped view over the shared {@link useLibraryData} cache. No DB
- * read of its own — group detail and the player's prev/next resolve from the
- * in-memory library that was already loaded at app start.
+ * Read-only grouped view over the shared {@link useLibraryData} cache. Groups
+ * are computed once in `LibraryProvider` and shared by every consumer — no
+ * per-mount recomputation here, so a screen mounting on top of another
+ * (e.g. the player pushed over group detail) doesn't re-derive the same
+ * grouping from the full library a second time.
  */
 export function useGroups(mode: 'name' | 'folder'): {
   groups: Group[];
   loading: boolean;
   reload: () => void;
 } {
-  const { videos, manualGroups, status, reload } = useLibraryData();
-  const { filter } = useFilterSettings();
-
-  const groups = useMemo(() => {
-    const visible = applyFilters(videos, filter);
-    return mode === 'name' ? groupByName(visible, manualGroups) : groupByFolder(visible, manualGroups);
-  }, [videos, manualGroups, mode, filter]);
-
-  return { groups, loading: status === 'loading', reload };
+  const { groupsByName, groupsByFolder, status, reload } = useLibraryData();
+  return {
+    groups: mode === 'name' ? groupsByName : groupsByFolder,
+    loading: status === 'loading',
+    reload,
+  };
 }

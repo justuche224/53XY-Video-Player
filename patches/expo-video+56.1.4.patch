@@ -1,0 +1,97 @@
+diff --git a/node_modules/expo-video/android/src/main/java/expo/modules/video/utils/DataSourceUtils.kt b/node_modules/expo-video/android/src/main/java/expo/modules/video/utils/DataSourceUtils.kt
+index 460fb7b..ac26191 100644
+--- a/node_modules/expo-video/android/src/main/java/expo/modules/video/utils/DataSourceUtils.kt
++++ b/node_modules/expo-video/android/src/main/java/expo/modules/video/utils/DataSourceUtils.kt
+@@ -2,10 +2,13 @@ package expo.modules.video
+ 
+ import android.content.Context
+ import android.content.pm.ApplicationInfo
++import android.net.Uri
+ import androidx.annotation.OptIn
+ import androidx.media3.common.util.UnstableApi
+-import androidx.media3.common.util.Util
+ import androidx.media3.datasource.DataSource
++import androidx.media3.datasource.DataSpec
++import androidx.media3.datasource.TransferListener
++import androidx.media3.common.util.Util
+ import androidx.media3.datasource.DefaultDataSource
+ import androidx.media3.datasource.cache.CacheDataSource
+ import androidx.media3.datasource.okhttp.OkHttpDataSource
+@@ -15,6 +18,68 @@ import expo.modules.video.records.VideoSource
+ import expo.modules.video.managers.VideoManager
+ import okhttp3.OkHttpClient
+ 
++// 53XY fix (docs/2026-08-26-playback-startup-latency.md): some 10-bit HEVC .mkv files took
++// 9-12s to start playback. On-device I/O tracing found the cause: ExoPlayer's MatroskaExtractor
++// reads the file's Cues element (near EOF in these remuxes) via ~1-4 byte DataSource.read()
++// calls -- one file took 558,146 individual reads to transfer 781KB, ~12.8s wall time purely
++// from per-call (syscall/JNI) overhead multiplied hundreds of thousands of times. This wraps
++// the real DataSource with a read-ahead buffer so those tiny sequential reads are served from
++// an already-fetched chunk instead of a fresh read each time -- MatroskaExtractor's own Cues
++// parsing and seeking behavior are completely unchanged (unlike disabling seek-for-cues, which
++// was tried first and broke scrubbing by discarding the seek index entirely).
++private const val IO_BUFFER_SIZE = 64 * 1024
++
++@OptIn(UnstableApi::class)
++private class BufferedDataSource(private val delegate: DataSource) : DataSource {
++  private val buffer = ByteArray(IO_BUFFER_SIZE)
++  private var bufferPos = 0
++  private var bufferLen = 0
++
++  override fun addTransferListener(transferListener: TransferListener) =
++    delegate.addTransferListener(transferListener)
++
++  override fun open(dataSpec: DataSpec): Long {
++    bufferPos = 0
++    bufferLen = 0
++    return delegate.open(dataSpec)
++  }
++
++  override fun read(destination: ByteArray, offset: Int, length: Int): Int {
++    if (length == 0) return 0
++    if (bufferPos < bufferLen) {
++      val toCopy = minOf(bufferLen - bufferPos, length)
++      System.arraycopy(buffer, bufferPos, destination, offset, toCopy)
++      bufferPos += toCopy
++      return toCopy
++    }
++    // A request already as large as our buffer gains nothing from buffering -- forward it
++    // directly to avoid an extra copy on the normal (large-read) playback path.
++    if (length >= IO_BUFFER_SIZE) {
++      return delegate.read(destination, offset, length)
++    }
++    val n = delegate.read(buffer, 0, IO_BUFFER_SIZE)
++    if (n <= 0) return n
++    bufferLen = n
++    val toCopy = minOf(n, length)
++    System.arraycopy(buffer, 0, destination, offset, toCopy)
++    bufferPos = toCopy
++    return toCopy
++  }
++
++  override fun getUri(): Uri? = delegate.getUri()
++
++  override fun close() {
++    bufferPos = 0
++    bufferLen = 0
++    delegate.close()
++  }
++}
++
++@OptIn(UnstableApi::class)
++private class BufferedDataSourceFactory(private val delegate: DataSource.Factory) : DataSource.Factory {
++  override fun createDataSource(): DataSource = BufferedDataSource(delegate.createDataSource())
++}
++
+ @OptIn(UnstableApi::class)
+ fun buildBaseDataSourceFactory(context: Context, videoSource: VideoSource): DataSource.Factory {
+   return if (videoSource.uri?.scheme?.startsWith("http") == true) {
+@@ -54,7 +119,7 @@ fun buildCacheDataSourceFactory(context: Context, videoSource: VideoSource): Dat
+ }
+ 
+ fun buildMediaSourceFactory(context: Context, dataSourceFactory: DataSource.Factory): MediaSource.Factory {
+-  return DefaultMediaSourceFactory(context).setDataSourceFactory(dataSourceFactory)
++  return DefaultMediaSourceFactory(context).setDataSourceFactory(BufferedDataSourceFactory(dataSourceFactory))
+ }
+ 
+ @OptIn(UnstableApi::class)
