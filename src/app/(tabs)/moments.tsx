@@ -34,7 +34,15 @@ export default function MomentsScreen() {
 
   const load = useCallback(() => {
     getMoments(db)
-      .then(setMoments)
+      .then((loaded) => {
+        setMoments(loaded);
+        // A moment deleted elsewhere (e.g. the detail screen) while it was
+        // part of an active selection must not linger in `selected` — that
+        // would overcount the ContextualAppBar and the delete-confirmation
+        // copy even though the underlying operations stay safe.
+        const ids = new Set(loaded.map((m) => m.id));
+        setSelected((prev) => new Set([...prev].filter((id) => ids.has(id))));
+      })
       .catch((e) => console.warn('[moments] failed to load moments:', e));
   }, [db]);
 
@@ -93,15 +101,21 @@ export default function MomentsScreen() {
           style: 'destructive',
           onPress: async () => {
             const doomed = moments.filter((m) => selected.has(m.id));
-            for (const m of doomed) deleteFrame(m.frameUri);
-            await deleteMoments(db, ids);
-            const remaining = await getMoments(db);
-            setMoments(remaining);
-            clearSelection();
+            // Rows first, then the files: if the database delete throws, the
+            // frames survive and the rows still resolve to them — leaked
+            // JPEGs nothing references, invisible to the user. Deleting the
+            // frames first risks the opposite: rows that outlive their files
+            // and render permanently broken. Do not reorder this. Mirrors
+            // src/app/moment.tsx's onDelete.
             try {
+              await deleteMoments(db, ids);
+              for (const m of doomed) deleteFrame(m.frameUri);
+              const remaining = await getMoments(db);
+              setMoments(remaining);
+              clearSelection();
               writeManifest(ensureMomentsDir(), remaining);
             } catch (e) {
-              console.warn('[moments] failed to rewrite manifest after delete:', e);
+              console.warn('[moments] failed to delete moments:', e);
             }
           },
         },
