@@ -1,7 +1,8 @@
 import { Directory, File, Paths } from 'expo-file-system';
 
 import { fromManifestJson, toManifestJson } from './manifest';
-import { MANIFEST_FILENAME } from './moment-policy';
+import type { MomentMove } from './migrate-moments';
+import { MANIFEST_FILENAME, SHARED_MOMENTS_DIR } from './moment-policy';
 import { pickMomentsDir } from './moments-dir';
 import type { Moment } from './types';
 
@@ -132,4 +133,50 @@ export function deleteFrame(frameUri: string | null): void {
     // A frame we cannot delete is a leaked file, not a failed user action.
     console.warn('[moments] failed to delete frame file:', frameUri, error);
   }
+}
+
+/**
+ * True when moments are being written to shared storage — i.e. when they will
+ * survive an uninstall. False means the app fell back to its own document
+ * directory, which is wiped with the app.
+ */
+export function momentsDirIsShared(): boolean {
+  return ensureMomentsDir() === SHARED_MOMENTS_DIR;
+}
+
+/**
+ * Drop the cached directory so the next `ensureMomentsDir()` probes again.
+ * Needed because "All files access" can be granted while the app is running:
+ * the user leaves for system settings, flips the toggle, and comes back to a
+ * process whose cached answer is now stale.
+ */
+export function invalidateMomentsDir(): void {
+  cachedDir = null;
+}
+
+/**
+ * Move planned frames into the current directory. Returns the moves that
+ * actually happened. Best-effort per file: one unmovable frame must not
+ * abandon the rest, and a frame that fails to move keeps its old uri, which
+ * still resolves.
+ *
+ * expo-file-system's `File.move()` is async (`Promise<void>`); the
+ * synchronous counterpart callers of this function depend on is
+ * `File.moveSync()`, which also requires the destination to be a `File`/
+ * `Directory` instance rather than a bare uri string. See
+ * `node_modules/expo-file-system/build/internal/NativeFileSystem.types.d.ts`.
+ */
+export function moveMomentFrames(moves: MomentMove[]): MomentMove[] {
+  const moved: MomentMove[] = [];
+  for (const move of moves) {
+    try {
+      const source = new File(move.fromUri);
+      if (!source.exists) continue;
+      source.moveSync(new File(move.toUri));
+      moved.push(move);
+    } catch (error) {
+      console.warn(`[moments] could not move frame ${move.id}:`, error);
+    }
+  }
+  return moved;
 }
