@@ -80,4 +80,12 @@ describe('schema migrations', () => {
     expect(m11!.up).toContain('CREATE INDEX IF NOT EXISTS idx_moments_created');
     expect(m11!.up).toContain('CREATE INDEX IF NOT EXISTS idx_moments_video');
   });
+
+  it('migration 12 adds embedded_subtitle_id to watch_progress', () => {
+    const m12 = MIGRATIONS.find((m) => m.version === 12);
+    expect(m12).toBeDefined();
+    expect(m12!.up).toContain(
+      'ALTER TABLE watch_progress ADD COLUMN embedded_subtitle_id TEXT',
+    );
+  });
 });

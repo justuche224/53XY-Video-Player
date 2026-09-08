@@ -15,7 +15,7 @@ import type { AppStateStatus } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { getDisplayMode, getProgressMap, setDisplayMode, upsertProgress } from '@/db/progress-repo';
+import { getDisplayMode, getEmbeddedSubtitleId, getProgressMap, setDisplayMode, setEmbeddedSubtitleId, upsertProgress } from '@/db/progress-repo';
 import { getMomentsForVideo } from '@/db/moments-repo';
 import { buildProgress, shouldWrite } from '@/player/progress-writer';
 import { markerFractions } from '@/player/moment-markers';
@@ -726,15 +726,58 @@ export default function PlayerScreen() {
   }, []);
 
   // ── Track availability events ────────────────────────────────────────────
+  // Tracks whether the initial auto-select/restore has fired for the current
+  // player so we don't persist that automatic assignment back into the DB
+  // (it would overwrite a user's deliberate "off" with the first track id).
+  const subtitleRestoredRef = useRef(false);
+
   useEffect(() => {
+    // Reset per-player: a next/prev switch recreates the player and needs a
+    // fresh restore cycle.
+    subtitleRestoredRef.current = false;
+
     const sub1 = player.addListener('availableSubtitleTracksChange', (payload) => {
-      setSubtitleTracks(payload.availableSubtitleTracks);
+      const tracks = payload.availableSubtitleTracks;
+      setSubtitleTracks(tracks);
+
+      if (tracks.length === 0 || subtitleRestoredRef.current) return;
+      subtitleRestoredRef.current = true;
+
+      // Restore saved choice, or fall back to first track.
+      getEmbeddedSubtitleId(db, currentVideoIdRef.current)
+        .then((savedId) => {
+          if (savedId !== null) {
+            // Find the saved track by id; if it no longer exists in the
+            // container, fall back to the first available track.
+            const match = tracks.find((t) => t.id === savedId) ?? tracks[0];
+            player.subtitleTrack = match;
+          } else {
+            // No saved preference — auto-select first track.
+            player.subtitleTrack = tracks[0];
+          }
+        })
+        .catch(() => {
+          // DB error — still auto-select so the user sees subtitles.
+          player.subtitleTrack = tracks[0];
+        });
     });
     const sub2 = player.addListener('availableAudioTracksChange', (payload) => {
       setAudioTracks(payload.availableAudioTracks);
     });
     const sub3 = player.addListener('subtitleTrackChange', (payload) => {
       setActiveSubtitle(payload.subtitleTrack);
+
+      // Persist every user-driven change so the choice survives a close/reopen.
+      // The initial auto-select/restore is gated above, but even if it slips
+      // through, persisting the same value is a harmless idempotent write.
+      if (subtitleRestoredRef.current) {
+        setEmbeddedSubtitleId(
+          db,
+          currentVideoIdRef.current,
+          payload.subtitleTrack?.id ?? null,
+          Date.now(),
+        ).catch(() => {});
+      }
     });
     const sub4 = player.addListener('audioTrackChange', (payload) => {
       setActiveAudio(payload.audioTrack);
@@ -746,7 +789,8 @@ export default function PlayerScreen() {
       sub3.remove();
       sub4.remove();
     };
-  }, [player]);
+  }, [player, db]);
+
 
   // ── Orientation lifecycle ─────────────────────────────────────────────────
   useFocusEffect(

@@ -136,6 +136,10 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_moments_video ON moments(video_id, position_ms);
     `,
   },
+  {
+    version: 12,
+    up: `ALTER TABLE watch_progress ADD COLUMN embedded_subtitle_id TEXT;`,
+  },
 ];
 
-export const LATEST_VERSION = 11;
+export const LATEST_VERSION = 12;

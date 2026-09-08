@@ -188,3 +188,36 @@ export async function setSubtitleDelay(
     [videoId, nowMs, delayMs],
   );
 }
+
+/**
+ * Returns the persisted embedded-subtitle track id for a video, or null when
+ * the user has never selected one (or explicitly turned subtitles off).
+ */
+export async function getEmbeddedSubtitleId(
+  db: SQLiteDatabase,
+  videoId: string,
+): Promise<string | null> {
+  const row = await db.getFirstAsync<{ embedded_subtitle_id: string | null }>(
+    'SELECT embedded_subtitle_id FROM watch_progress WHERE video_id = ?',
+    [videoId],
+  );
+  return row?.embedded_subtitle_id ?? null;
+}
+
+// Same upsert shape as setDisplayMode / setSubtitlePrefs: a fresh video may
+// have no progress row yet. ON CONFLICT names only the embedded column so
+// progress writes and subtitle writes stay independent.
+export async function setEmbeddedSubtitleId(
+  db: SQLiteDatabase,
+  videoId: string,
+  trackId: string | null,
+  nowMs: number,
+): Promise<void> {
+  await db.runAsync(
+    `INSERT INTO watch_progress (video_id, position_ms, percent, completed, last_played_at, embedded_subtitle_id)
+     VALUES (?, 0, 0, 0, ?, ?)
+     ON CONFLICT(video_id) DO UPDATE SET
+       embedded_subtitle_id = excluded.embedded_subtitle_id`,
+    [videoId, nowMs, trackId],
+  );
+}

@@ -1,4 +1,4 @@
-import { getSubtitlePrefs, setSubtitlePrefs, setSubtitleDelay, upsertProgress } from '../progress-repo';
+import { getSubtitlePrefs, setSubtitlePrefs, setSubtitleDelay, upsertProgress, getEmbeddedSubtitleId, setEmbeddedSubtitleId } from '../progress-repo';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 function makeFakeDb() {
@@ -57,11 +57,48 @@ describe('setSubtitleDelay', () => {
   });
 });
 
+describe('getEmbeddedSubtitleId', () => {
+  it('returns the stored id when a row exists', async () => {
+    const { db, setFirstResult } = makeFakeDb();
+    setFirstResult({ embedded_subtitle_id: 'sub-track-2' });
+    expect(await getEmbeddedSubtitleId(db, 'v1')).toBe('sub-track-2');
+  });
+
+  it('returns null when there is no row', async () => {
+    const { db } = makeFakeDb();
+    expect(await getEmbeddedSubtitleId(db, 'v1')).toBeNull();
+  });
+
+  it('returns null when the column is explicitly null', async () => {
+    const { db, setFirstResult } = makeFakeDb();
+    setFirstResult({ embedded_subtitle_id: null });
+    expect(await getEmbeddedSubtitleId(db, 'v1')).toBeNull();
+  });
+});
+
+describe('setEmbeddedSubtitleId', () => {
+  it('upserts only embedded_subtitle_id, never subtitle columns', async () => {
+    const { db, calls } = makeFakeDb();
+    await setEmbeddedSubtitleId(db, 'v1', 'sub-track-2', 123);
+    expect(calls[0].sql).toContain('INSERT INTO watch_progress');
+    expect(calls[0].sql).toContain('embedded_subtitle_id = excluded.embedded_subtitle_id');
+    expect(calls[0].sql).not.toContain('subtitle_uri');
+    expect(calls[0].sql).not.toContain('subtitle_delay_ms');
+    expect(calls[0].params).toEqual(['v1', 123, 'sub-track-2']);
+  });
+
+  it('writes NULL to clear the embedded subtitle selection', async () => {
+    const { db, calls } = makeFakeDb();
+    await setEmbeddedSubtitleId(db, 'v1', null, 123);
+    expect(calls[0].params).toEqual(['v1', 123, null]);
+  });
+});
+
 // Migration v9 exists because `completed` was being clobbered by
 // excluded.completed on every progress write. The subtitle columns must
 // never join that SET list, or the same class of bug returns.
 describe('upsertProgress', () => {
-  it('never touches the subtitle columns', async () => {
+  it('never touches the subtitle or embedded subtitle columns', async () => {
     const { db, calls } = makeFakeDb();
     await upsertProgress(db, 'v1', {
       positionMs: 1000,
@@ -71,5 +108,6 @@ describe('upsertProgress', () => {
     });
     expect(calls[0].sql).not.toContain('subtitle_uri');
     expect(calls[0].sql).not.toContain('subtitle_delay_ms');
+    expect(calls[0].sql).not.toContain('embedded_subtitle_id');
   });
 });
