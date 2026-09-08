@@ -3,7 +3,7 @@ import type { Moment } from './types';
 export const MANIFEST_VERSION = 1;
 
 export function toManifestJson(moments: Moment[]): string {
-  return JSON.stringify({ version: MANIFEST_VERSION, moments }, null, 2);
+  return JSON.stringify({ version: MANIFEST_VERSION, moments });
 }
 
 function str(value: unknown): string | null {

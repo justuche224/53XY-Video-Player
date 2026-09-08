@@ -69,9 +69,9 @@
 | Themed error boundary | `SQLiteProvider` fallback (class component can't use `useTheme`) | 📋 backlog — minor |
 | Player: gesture writes after release | `handleSeek`/double-tap/pan-end write to `player` from gesture callbacks with the same use-after-release exposure as the fixed boost path; far smaller window (taps/pans are instantaneous), so left alone rather than scattering try/catch | 📋 backlog — latent |
 | Player: speed resets on video switch | `rate` state survives a next/prev but the new player starts at 1×, so the speed pill can read 1.5× while playback is 1× | 📋 backlog — minor |
-| Moments Phase 1 — Capture & store | `moments` table (migration v11, no FK to `videos`), native `exact` frame-grab option, capture pipeline, shared-storage frames + manifest, player bookmark button, confirmation snackbar, note sheet | ✅ merged, code-reviewed, **not yet device-verified** (native change — needs `npx expo run:android`) |
+| Moments Phase 1 — Capture & store | `moments` table (migration v11, no FK to `videos`), native `exact` frame-grab option, capture pipeline, shared-storage frames + manifest, player bookmark button, confirmation snackbar, note sheet | **not yet merged**, code-reviewed, **device-verify pending** (native change — needs `npx expo run:android`) |
 
-Tests: **302 passing**, `npx tsc --noEmit` clean.
+Tests: **432 passing**, `npx tsc --noEmit` clean.
 
 > Counting note: a bare `npm test` also picks up a stale copy of the suite under
 > `.claude/worktrees/agent-aadc8d4acf52194cf/` left behind by an earlier agent run,
