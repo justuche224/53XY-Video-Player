@@ -110,6 +110,32 @@ export const MIGRATIONS: Migration[] = [
       ALTER TABLE watch_progress ADD COLUMN subtitle_delay_ms INTEGER NOT NULL DEFAULT 0;
     `,
   },
+  {
+    version: 11,
+    // No FOREIGN KEY to videos, and that omission is load-bearing. A scan that
+    // finds a file gone calls deleteVideosByIds; playlist_items and
+    // manual_groups cascade off videos and lose their rows, which is correct
+    // for them. A moment must outlive its file — that is the whole feature —
+    // so it carries its own snapshot of everything a card renders instead.
+    up: `
+      CREATE TABLE IF NOT EXISTS moments (
+        id            TEXT PRIMARY KEY NOT NULL,
+        video_id      TEXT,
+        position_ms   INTEGER NOT NULL,
+        created_at    INTEGER NOT NULL,
+        frame_uri     TEXT,
+        note          TEXT,
+        title         TEXT NOT NULL,
+        episode_label TEXT,
+        filename      TEXT NOT NULL,
+        folder        TEXT,
+        video_uri     TEXT,
+        duration_ms   INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS idx_moments_created ON moments(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_moments_video ON moments(video_id, position_ms);
+    `,
+  },
 ];
 
-export const LATEST_VERSION = 10;
+export const LATEST_VERSION = 11;
