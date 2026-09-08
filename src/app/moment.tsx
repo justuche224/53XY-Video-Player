@@ -35,9 +35,15 @@ export default function MomentScreen() {
   const [noteOpen, setNoteOpen] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     getMoments(db)
-      .then((all) => setMoment(all.find((m) => m.id === momentId) ?? null))
+      .then((all) => {
+        if (!cancelled) setMoment(all.find((m) => m.id === momentId) ?? null);
+      })
       .catch((e) => console.warn('[moments] failed to load moment:', e));
+    return () => {
+      cancelled = true;
+    };
   }, [db, momentId]);
 
   const rewriteManifest = useCallback(async () => {
@@ -76,11 +82,21 @@ export default function MomentScreen() {
   const onSaveNote = useCallback(
     (note: string) => {
       if (!moment) return;
+      const previousNote = moment.note;
       const trimmed = note.trim() || null;
       setMoment({ ...moment, note: trimmed });
       updateMomentNote(db, moment.id, trimmed)
         .then(rewriteManifest)
-        .catch((e) => console.warn('[moments] failed to save note:', e));
+        .catch((e) => {
+          console.warn('[moments] failed to save note:', e);
+          // The optimistic update above is now wrong — the database still has
+          // the old note. Roll local state back so the UI doesn't show a note
+          // that silently reverts next time the moment is opened.
+          setMoment((current) =>
+            current && current.id === moment.id ? { ...current, note: previousNote } : current,
+          );
+          Alert.alert('Note not saved', 'Something went wrong saving your note. Please try again.');
+        });
     },
     [db, moment, rewriteManifest],
   );
@@ -93,9 +109,14 @@ export default function MomentScreen() {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          deleteFrame(moment.frameUri);
+          // Row first, then the file: if the database delete throws, the
+          // frame survives and the row still resolves to it — a leaked JPEG
+          // nothing references, invisible to the user. Deleting the frame
+          // first risks the opposite: a row that outlives its file and
+          // renders permanently broken. Do not reorder this.
           try {
             await deleteMoments(db, [moment.id]);
+            deleteFrame(moment.frameUri);
             await rewriteManifest();
           } catch (e) {
             console.warn('[moments] failed to delete moment:', e);
