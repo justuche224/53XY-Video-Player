@@ -36,6 +36,8 @@ interface BottomBarProps {
   previewFor?: (sec: number) => string | null;
   displayMode: DisplayMode;
   onCycleDisplayMode: () => void;
+  /** 0-1 fractions marking saved moments, passed through to the seekbar. */
+  markers?: number[];
 }
 
 export function BottomBar({
@@ -47,6 +49,7 @@ export function BottomBar({
   previewFor,
   displayMode,
   onCycleDisplayMode,
+  markers,
 }: BottomBarProps) {
   const { spacing, radius } = useTheme();
 
@@ -61,6 +64,7 @@ export function BottomBar({
         durationSec={durationSec}
         onSeek={onSeek}
         previewFor={previewFor}
+        markers={markers}
       />
       <View style={styles.row}>
         <Text style={styles.timeText}>

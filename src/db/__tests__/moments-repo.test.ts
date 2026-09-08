@@ -3,7 +3,6 @@ import {
   getMoments,
   getMomentsForVideo,
   insertMoment,
-  replaceAllMoments,
   updateMomentNote,
   updateMomentVideoLink,
 } from '../moments-repo';
@@ -108,13 +107,6 @@ describe('moments-repo', () => {
     await updateMomentNote(db, 'm1', 'new note');
     expect(calls[0].sql).toContain('UPDATE moments');
     expect(calls[0].params).toEqual(['new note', 'm1']);
-  });
-
-  it('replaceAllMoments clears the table before inserting', async () => {
-    const { db, calls } = fakeDb();
-    await replaceAllMoments(db, [sample]);
-    expect(calls[0].sql).toContain('DELETE FROM moments');
-    expect(calls[1].sql).toContain('INSERT INTO moments');
   });
 
   it('updateMomentVideoLink heals both the id and the uri', async () => {

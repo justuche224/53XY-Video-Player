@@ -1,6 +1,6 @@
 # Moments — captured scenes that outlive the file
 
-**Status:** approved design, not yet planned
+**Status:** implemented — all three phases built. Phases 1, 1.5 and 2 are merged to `main` and device-verified; Phase 3 (durability & polish) is on `feat/moments-durability`, code-reviewed, not yet device-verified. See [HANDOFF.md](../../HANDOFF.md#2-status-table--single-source-of-truth) for current status.
 **Date:** 2026-09-08
 
 ## 1. The problem
@@ -178,14 +178,28 @@ pressure, which is how a stored uri ends up pointing at nothing.
 Parsing is tolerant: unknown fields are ignored, and a row missing a required
 field is skipped rather than failing the whole restore.
 
-On launch, when the `moments` table is empty **and** a manifest exists with at
-least one entry, the app offers **"Restore 47 moments"**. Accepting re-inserts
-the rows, keeping only entries whose JPEG is still present or whose frame was
-already null. This single mechanism covers both uninstall/reinstall and Clear
-Data.
+When the `moments` table is empty **and** a manifest exists with at least one
+entry, the app offers to restore. Accepting re-inserts the rows, keeping only
+entries whose JPEG is still present or whose frame was already null. This
+single mechanism covers both uninstall/reinstall and Clear Data.
 
 Restore is offered, never automatic, and declining does not delete the manifest —
 a later launch offers it again.
+
+**Deviation from this section as shipped (Phase 3):** this section originally
+called for the offer to appear "on launch" — a cold-start modal. It shipped
+instead in the **Moments tab's empty state**, plus an explicit **Restore from
+backup** row in Settings → Player. A cold-start modal interrupts before the
+user has any context and would fire just as readily at someone who simply has
+no moments yet, whereas an empty Moments tab is exactly where a reinstalled
+user looks for them. This still satisfies every real requirement above: the
+offer is never automatic, declining never deletes the manifest, and the offer
+persists across visits (`pendingRestoreCount` re-checks each time the tab or
+the Settings screen gains focus). `restoreMomentsFromManifest` additionally
+refuses to act whenever the table already has rows, even if a caller skipped
+the `pendingRestoreCount` gate — the manifest is a recovery copy of unknown
+age, and restoring over live data would destroy whichever of the two is
+newer.
 
 ### Getting a frame out
 

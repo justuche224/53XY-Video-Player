@@ -17,9 +17,11 @@ interface SeekbarProps {
   onSeek: (sec: number) => void;
   /** When set, dragging shows a preview bubble above the thumb. */
   previewFor?: (sec: number) => string | null;
+  /** 0-1 fractions marking saved moments. Presentational only — not interactive. */
+  markers?: number[];
 }
 
-export function Seekbar({ positionSec, durationSec, onSeek, previewFor }: SeekbarProps) {
+export function Seekbar({ positionSec, durationSec, onSeek, previewFor, markers }: SeekbarProps) {
   const { colors } = useTheme();
 
   // Layout width stored in a shared value so it is worklet-accessible
@@ -119,6 +121,13 @@ export function Seekbar({ positionSec, durationSec, onSeek, previewFor }: Seekba
           <Animated.View
             style={[styles.filled, { backgroundColor: colors.primary }, filledStyle]}
           />
+          {markers?.map((fraction, i) => (
+            <View
+              key={`${fraction}-${i}`}
+              pointerEvents="none"
+              style={[styles.marker, { left: `${fraction * 100}%` }]}
+            />
+          ))}
         </View>
         {/* thumb */}
         <Animated.View
@@ -150,6 +159,13 @@ const styles = StyleSheet.create({
   filled: {
     height: TRACK_HEIGHT,
     borderRadius: TRACK_HEIGHT / 2,
+  },
+  marker: {
+    position: 'absolute',
+    top: 0,
+    width: 2,
+    height: TRACK_HEIGHT,
+    backgroundColor: 'rgba(255,255,255,0.9)',
   },
   thumb: {
     position: 'absolute',

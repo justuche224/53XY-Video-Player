@@ -174,6 +174,21 @@ export function invalidateMomentsDir(): void {
   cachedDir = null;
 }
 
+/** Total bytes the saved frames occupy. Unreadable files count as zero. */
+export function frameBytes(moments: Moment[]): number {
+  let total = 0;
+  for (const moment of moments) {
+    if (!moment.frameUri) continue;
+    try {
+      const file = new File(moment.frameUri);
+      if (file.exists) total += file.size;
+    } catch (e) {
+      console.warn('[moments] could not size frame:', moment.frameUri, e);
+    }
+  }
+  return total;
+}
+
 /** Splits a file uri into its parent directory uri and its own basename. */
 function splitParentAndName(fileUri: string): { parentUri: string; name: string } {
   const trimmed = normalizeDirUri(fileUri);

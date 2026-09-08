@@ -7,7 +7,8 @@ import { FrameGrabber } from '@/native/frame-grabber';
 import { captureMoment, type CaptureInput } from './capture';
 import { planMomentMigration } from './migrate-moments';
 import { normalizeDirUri, pickMomentsDir } from './moments-dir';
-import { deleteManifest, ensureMomentsDir, moveMomentFrames, writeManifest } from './storage';
+import { syncManifest } from './moments-store';
+import { deleteManifest, ensureMomentsDir, moveMomentFrames } from './storage';
 import type { Moment } from './types';
 
 function newMomentId(): string {
@@ -24,7 +25,7 @@ export function useCaptureMoment(): (input: CaptureInput) => Promise<Moment> {
       return captureMoment(input, {
         grabFrame: (uri, options) => FrameGrabber.grabFrame(uri, options),
         insert: (moment) => insertMoment(db, moment),
-        syncManifest: async () => writeManifest(dir, await getMoments(db)),
+        syncManifest: () => syncManifest(db),
         momentsDir: dir,
         now: Date.now,
         newId: newMomentId,
@@ -58,7 +59,7 @@ export function useMigrateMoments(): () => Promise<void> {
       if (plan.length === 0) return;
 
       await moveMomentFrames(plan, (move) => updateMomentFrameUri(db, move.id, move.toUri));
-      writeManifest(dir, await getMoments(db));
+      await syncManifest(db);
 
       // The migration only ever moves frames OUT of the fallback directory,
       // so once it succeeds that directory's manifest is stale — leaving it
@@ -81,7 +82,7 @@ export function useUpdateMomentNote(): (id: string, note: string) => Promise<voi
     async (id: string, note: string) => {
       await updateMomentNote(db, id, note.trim() || null);
       try {
-        writeManifest(ensureMomentsDir(), await getMoments(db));
+        await syncManifest(db);
       } catch (error) {
         // Same reasoning as capture: the row is saved; the mirror can lag.
         console.warn('[moments] manifest sync failed after note edit, moments.json may be stale:', error);

@@ -16,7 +16,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { getDisplayMode, getProgressMap, setDisplayMode, upsertProgress } from '@/db/progress-repo';
+import { getMomentsForVideo } from '@/db/moments-repo';
 import { buildProgress, shouldWrite } from '@/player/progress-writer';
+import { markerFractions } from '@/player/moment-markers';
 import {
   cycleMode, isDisplayMode, maxPinchScale, modeLabel, restingScale, snapZoom,
   type DisplayMode, type ZoomState,
@@ -425,6 +427,27 @@ export default function PlayerScreen() {
       cancelled = true;
     };
   }, [db, videoId]);
+
+  // Saved moments for this video, drawn as ticks on the seekbar. Deliberately
+  // does not refresh when a moment is captured mid-playback — the marks are
+  // correct on the next open.
+  const [momentPositionsMs, setMomentPositionsMs] = useState<number[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    getMomentsForVideo(db, videoId)
+      .then((rows) => {
+        if (!cancelled) setMomentPositionsMs(rows.map((m) => m.positionMs));
+      })
+      .catch((e) => console.warn('[moments] failed to load seekbar markers:', e));
+    return () => {
+      cancelled = true;
+    };
+  }, [db, videoId]);
+
+  const seekbarMarkers = useMemo(
+    () => markerFractions(momentPositionsMs, durationSec * 1000),
+    [momentPositionsMs, durationSec],
+  );
 
   // Drive the resting scale. Re-runs on rotation and when naturalSize arrives
   // (e.g. persisted crop applied before sourceLoad). Never during a pinch.
@@ -1239,6 +1262,7 @@ export default function PlayerScreen() {
                 previewFor={previewFor}
                 displayMode={displayMode}
                 onCycleDisplayMode={handleCycleDisplayMode}
+                markers={seekbarMarkers}
               />
               {snackbarVisible && (
                 <View style={styles.snackbarContainer}>
