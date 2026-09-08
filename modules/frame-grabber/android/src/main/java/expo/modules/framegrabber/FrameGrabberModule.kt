@@ -19,6 +19,13 @@ class GrabOptions : Record {
   @Field var minScore: Double = 0.0
   @Field var quality: Double = 0.8
   @Field var outPath: String = ""
+  /**
+   * Seek to the exact frame instead of the nearest keyframe. Costs a decode
+   * forward from the preceding keyframe, so it is opt-in: poster frames and
+   * scrub previews do not care which frame in the neighbourhood they get, and
+   * a saved moment cares about nothing else.
+   */
+  @Field var exact: Boolean = false
 }
 
 class FrameGrabberModule : Module() {
@@ -61,8 +68,9 @@ class FrameGrabberModule : Module() {
         var bestPositionMs = 0.0
 
         for (positionMs in options.positionsMs) {
-          val bitmap = grabScaled(retriever, (positionMs * 1000).toLong(), options.targetWidth)
-            ?: continue
+          val bitmap =
+            grabScaled(retriever, (positionMs * 1000).toLong(), options.targetWidth, options.exact)
+              ?: continue
           val score = FrameScorer.score(bitmap)
           if (score > bestScore) {
             bestBitmap?.recycle()
@@ -98,8 +106,12 @@ class FrameGrabberModule : Module() {
   }
 
   /**
-   * OPTION_CLOSEST_SYNC snaps to the nearest keyframe — sub-second precision is
-   * irrelevant for a poster frame and exact seeking is dramatically slower.
+   * `exact = false` uses OPTION_CLOSEST_SYNC, which snaps to the nearest
+   * keyframe — sub-second precision is irrelevant for a poster frame and exact
+   * seeking is dramatically slower. `exact = true` uses OPTION_CLOSEST and pays
+   * that cost, which is what a saved moment needs: at a 5-10s GOP the keyframe
+   * next to the user's position can be an entirely different shot.
+   *
    * The scale box is square so the aspect-preserving fit yields `targetWidth`
    * for landscape video and caps height for portrait.
    */
@@ -107,17 +119,15 @@ class FrameGrabberModule : Module() {
     retriever: MediaMetadataRetriever,
     timeUs: Long,
     targetWidth: Int,
+    exact: Boolean,
   ): Bitmap? {
+    val option =
+      if (exact) MediaMetadataRetriever.OPTION_CLOSEST
+      else MediaMetadataRetriever.OPTION_CLOSEST_SYNC
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-      return retriever.getScaledFrameAtTime(
-        timeUs,
-        MediaMetadataRetriever.OPTION_CLOSEST_SYNC,
-        targetWidth,
-        targetWidth,
-      )
+      return retriever.getScaledFrameAtTime(timeUs, option, targetWidth, targetWidth)
     }
-    val full = retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-      ?: return null
+    val full = retriever.getFrameAtTime(timeUs, option) ?: return null
     // Fit inside a targetWidth x targetWidth box on the longer edge, matching the
     // API >= O_MR1 path above. Scaling by width alone overshoots for portrait video:
     // a 1080x1920 source at targetWidth=640 would come out 640x1137 (longest edge

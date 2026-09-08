@@ -11,6 +11,12 @@ export interface GrabFrameOptions {
   quality: number;
   /** Absolute destination path; parent directories are created. */
   outPath: string;
+  /**
+   * Seek to the exact frame rather than the nearest keyframe. Slower, and only
+   * worth it when the caller asked for one specific frame (a saved moment).
+   * Defaults to false, which is what thumbnails and scrub previews want.
+   */
+  exact?: boolean;
 }
 
 export interface GrabFrameResult {
