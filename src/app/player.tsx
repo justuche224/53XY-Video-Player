@@ -61,6 +61,15 @@ import { SystemVolume } from '@/native/system-volume';
 import { useSubtitles } from '@/subtitles/use-subtitles';
 import { SubtitleOverlay } from '@/components/player/subtitle-overlay';
 import { SubtitleDelayBar } from '@/components/player/subtitle-delay-bar';
+import { MomentNoteSheet } from '@/components/player/moment-note-sheet';
+import { MomentSnackbar } from '@/components/player/moment-snackbar';
+import { MomentsStorageSheet } from '@/components/moments-storage-sheet';
+import { useCaptureMoment, useMigrateMoments, useUpdateMomentNote } from '@/moments/use-capture-moment';
+import { useEmbeddedCue } from '@/player/use-embedded-cue';
+import { momentsDirIsShared, invalidateMomentsDir } from '@/moments/storage';
+import { getSetting, setSetting } from '@/db/settings-repo';
+import { openAllFilesAccessSettings } from '@/subtitles/storage-access';
+import type { Moment } from '@/moments/types';
 
 // Vertical-swipe sensitivity: a drag of ~(screen height / VERTICAL_GAIN) spans
 // the full 0→1 brightness/volume range.
@@ -158,6 +167,9 @@ export default function PlayerScreen() {
     // is already enabled in app.config.ts.
     p.showNowPlayingNotification = true;
   });
+
+  // Embedded subtitle cues, kept in a ref rather than state — see the hook.
+  const embeddedCueRef = useEmbeddedCue(player);
 
   const { backgroundPlay } = useBackgroundPlay();
   const { pictureInPicture } = usePictureInPicture();
@@ -271,6 +283,9 @@ export default function PlayerScreen() {
   const [sleepRemainingSec, setSleepRemainingSec] = useState<number | null>(null);
   const [sleepSheetVisible, setSleepSheetVisible] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [savedMoment, setSavedMoment] = useState<Moment | null>(null);
+  const [noteSheetFor, setNoteSheetFor] = useState<Moment | null>(null);
+  const [showStorageSheet, setShowStorageSheet] = useState(false);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Ref mirrors so the playToEnd listener binds once per player yet always
   // reads current values (same pattern as controlsVisibleRef).
@@ -458,6 +473,102 @@ export default function PlayerScreen() {
     if (subtitles.error) showToast(subtitles.error);
   }, [subtitles.error, showToast]);
 
+  // ── Moment capture: bookmark button + note sheet ──────────────────────────
+  const captureMoment = useCaptureMoment();
+  const updateMomentNote = useUpdateMomentNote();
+  const migrateMoments = useMigrateMoments();
+
+  // Position comes from the cached ref, never player.currentTime: expo-video
+  // can have released the shared object, and reading through it throws.
+  //
+  // `exact: true` decodes forward from the preceding keyframe and can take
+  // seconds on a large 4K HEVC file. captureInFlightRef guards against a
+  // second tap starting a near-duplicate moment and a second concurrent
+  // MediaMetadataRetriever alongside the playback decoder.
+  const captureInFlightRef = useRef(false);
+  const handleCaptureMoment = useCallback(async () => {
+    if (captureInFlightRef.current) return;
+    const video = videosRef.current.find((v) => v.id === videoId);
+    if (!video) return;
+
+    captureInFlightRef.current = true;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      const moment = await captureMoment({
+        video: {
+          id: video.id,
+          uri: video.uri,
+          filename: video.filename,
+          folder: video.folder,
+          durationMs: video.durationMs,
+        },
+        positionMs: Math.round(lastPositionSecRef.current * 1000),
+        // External sidecar cues come from our own parser; embedded cues come
+        // from ExoPlayer via the patched subtitleCueChange event. Only one can
+        // be active at a time, so first non-empty wins.
+        note: subtitles.activeText || embeddedCueRef.current,
+      });
+      setSavedMoment(moment);
+
+      // Nag at most once, and only when the capture actually landed in the
+      // fallback directory — a user with shared storage already working has
+      // nothing to fix.
+      if (!momentsDirIsShared()) {
+        try {
+          const shown = await getSetting(db, 'moments.storagePromptShown');
+          if (shown !== '1') {
+            setShowStorageSheet(true);
+            await setSetting(db, 'moments.storagePromptShown', '1');
+          }
+        } catch (error) {
+          console.warn('[moments] storage prompt check failed:', error);
+        }
+      }
+    } catch (error) {
+      console.warn('[moments] failed to capture moment:', error);
+      showToast('Could not save moment');
+    } finally {
+      captureInFlightRef.current = false;
+    }
+  }, [captureMoment, videoId, subtitles.activeText, showToast, db]);
+
+  const handleSaveNote = useCallback(
+    (note: string) => {
+      if (!noteSheetFor) return;
+      const { id } = noteSheetFor;
+      void updateMomentNote(id, note).catch(() => showToast('Could not save note'));
+    },
+    [noteSheetFor, updateMomentNote, showToast],
+  );
+
+  // Typing a note while the video plays means missing the next scene. Pause on
+  // open and resume on close, but only if it was actually playing — reopening
+  // the sheet on a paused video must not start playback.
+  //
+  // `playing` is read through a ref and NOT listed as a dependency, which is
+  // load-bearing. player.pause() flips `playing` to false; if it were a
+  // dependency, that flip would re-run the effect, fire the cleanup, and call
+  // player.play() again — resuming the video underneath the open sheet.
+  const playingRef = useRef(playing);
+  useEffect(() => {
+    playingRef.current = playing;
+  }, [playing]);
+
+  const resumeAfterNoteRef = useRef(false);
+  useEffect(() => {
+    if (!noteSheetFor) return;
+    resumeAfterNoteRef.current = playingRef.current;
+    player.pause();
+    return () => {
+      // Guarded like the other gesture callbacks: the screen can unmount while
+      // the note sheet is still open (back gesture, sleep timer firing), which
+      // releases the player before this cleanup runs `player.play()`.
+      if (resumeAfterNoteRef.current) {
+        ignoreIfReleased(() => player.play(), 'resumeAfterNoteSheet');
+      }
+    };
+  }, [noteSheetFor, player]);
+
   // ── End of video: end-of-video sleep timer wins; else autoplay countdown ─
   useEffect(() => {
     const sub = player.addListener('playToEnd', () => {
@@ -592,6 +703,21 @@ export default function PlayerScreen() {
         setOrientationLocked(false);
       };
     }, []),
+  );
+
+  // ── Notice a storage-permission grant made while we were away ────────────
+  useFocusEffect(
+    useCallback(() => {
+      // The user may have just returned from the system settings screen with
+      // All files access newly granted. The cached directory is stale, so
+      // re-probe; if moments can now reach shared storage, move the ones
+      // already saved so a single install does not end up split across two
+      // locations.
+      if (momentsDirIsShared()) return;
+      invalidateMomentsDir();
+      if (!momentsDirIsShared()) return;
+      void migrateMoments();
+    }, [migrateMoments]),
   );
 
   // Rebuild the gesture subtree after every sensor-driven orientation change
@@ -943,6 +1069,9 @@ export default function PlayerScreen() {
   // ── Top-bar right slot: sleep + lock + rotate + tracks buttons ───────────
   const topBarRight = (
     <View style={styles.topBarActions}>
+      <ChromeButton onPress={() => void handleCaptureMoment()}>
+        <MaterialIcons name="bookmark-add" size={22} color="#fff" />
+      </ChromeButton>
       <ChromeButton onPress={() => setSleepSheetVisible(true)}>
         <MaterialIcons name="bedtime" size={22} color={sleepTimer ? '#9C8CFF' : '#fff'} />
         {sleepTimer?.kind === 'minutes' && sleepRemainingSec !== null && (
@@ -1111,6 +1240,20 @@ export default function PlayerScreen() {
               </View>
             )}
 
+            {savedMoment && (
+              <View style={styles.snackbarContainer} pointerEvents="box-none">
+                <MomentSnackbar
+                  key={savedMoment.id}
+                  positionSec={savedMoment.positionMs / 1000}
+                  onEdit={() => {
+                    setNoteSheetFor(savedMoment);
+                    setSavedMoment(null);
+                  }}
+                  onDismiss={() => setSavedMoment(null)}
+                />
+              </View>
+            )}
+
             {/* Subtitle delay bar: same placement rationale as the autoplay
                 card above — inside PlayerGestures so its slider and nudge
                 buttons get the gesture-arena relation (blocksExternalGesture),
@@ -1143,6 +1286,14 @@ export default function PlayerScreen() {
             />
           )}
 
+          {noteSheetFor && (
+            <MomentNoteSheet
+              initialNote={noteSheetFor.note ?? ''}
+              onSave={handleSaveNote}
+              onClose={() => setNoteSheetFor(null)}
+            />
+          )}
+
           {tracksSheetVisible && (
             <TracksSheet
               player={player}
@@ -1164,6 +1315,16 @@ export default function PlayerScreen() {
         <View style={styles.snackbarContainer} pointerEvents="none">
           <PlayerToast message={toast} />
         </View>
+      )}
+
+      {showStorageSheet && (
+        <MomentsStorageSheet
+          onOpenSettings={() => {
+            setShowStorageSheet(false);
+            void openAllFilesAccessSettings();
+          }}
+          onDismiss={() => setShowStorageSheet(false)}
+        />
       )}
     </GestureHandlerRootView>
   );

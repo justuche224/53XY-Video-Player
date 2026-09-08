@@ -1,3 +1,73 @@
+diff --git a/node_modules/expo-video/android/src/main/java/expo/modules/video/player/PlayerEvent.kt b/node_modules/expo-video/android/src/main/java/expo/modules/video/player/PlayerEvent.kt
+index 5fcf3e5..c1831f9 100644
+--- a/node_modules/expo-video/android/src/main/java/expo/modules/video/player/PlayerEvent.kt
++++ b/node_modules/expo-video/android/src/main/java/expo/modules/video/player/PlayerEvent.kt
+@@ -17,6 +17,7 @@ import expo.modules.video.records.PlaybackError
+ import expo.modules.video.records.PlaybackRateChangedEventPayload
+ import expo.modules.video.records.SourceChangedEventPayload
+ import expo.modules.video.records.StatusChangedEventPayload
++import expo.modules.video.records.SubtitleCueChangedEventPayload
+ import expo.modules.video.records.SubtitleTrack
+ import expo.modules.video.records.SubtitleTrackChangedEventPayload
+ import expo.modules.video.records.AudioTrackChangedEventPayload
+@@ -79,6 +80,11 @@ sealed class PlayerEvent {
+     override val jsEventPayload = SubtitleTrackChangedEventPayload(subtitleTrack, oldSubtitleTrack)
+   }
+ 
++  data class SubtitleCueChanged(val text: String) : PlayerEvent() {
++    override val name = "subtitleCueChange"
++    override val jsEventPayload = SubtitleCueChangedEventPayload(text)
++  }
++
+   data class AudioTrackChanged(val audioTrack: AudioTrack?, val oldAudioTrack: AudioTrack?) : PlayerEvent() {
+     override val name = "audioTrackChange"
+     override val jsEventPayload = AudioTrackChangedEventPayload(audioTrack, oldAudioTrack)
+diff --git a/node_modules/expo-video/android/src/main/java/expo/modules/video/player/VideoPlayer.kt b/node_modules/expo-video/android/src/main/java/expo/modules/video/player/VideoPlayer.kt
+index 8bae522..beef216 100644
+--- a/node_modules/expo-video/android/src/main/java/expo/modules/video/player/VideoPlayer.kt
++++ b/node_modules/expo-video/android/src/main/java/expo/modules/video/player/VideoPlayer.kt
+@@ -15,6 +15,7 @@ import androidx.media3.common.Player.STATE_BUFFERING
+ import androidx.media3.common.Timeline
+ import androidx.media3.common.TrackSelectionParameters
+ import androidx.media3.common.Tracks
++import androidx.media3.common.text.CueGroup
+ import androidx.media3.common.util.UnstableApi
+ import androidx.media3.exoplayer.DecoderReuseEvaluation
+ import androidx.media3.exoplayer.DefaultRenderersFactory
+@@ -237,6 +238,18 @@ class VideoPlayer(val context: Context, appContext: AppContext, source: VideoSou
+       this@VideoPlayer.playing = isPlaying
+     }
+ 
++    override fun onCues(cueGroup: CueGroup) {
++      // ExoPlayer already decodes and renders the selected embedded subtitle
++      // track; this is the only place its text is observable. Forwarded so JS
++      // can seed a captured moment's note with the line on screen — expo-video
++      // otherwise exposes track selection but never the cues themselves.
++      val text = cueGroup.cues
++        .mapNotNull { it.text?.toString() }
++        .filter { it.isNotBlank() }
++        .joinToString("\n")
++      sendEvent(PlayerEvent.SubtitleCueChanged(text))
++    }
++
+     override fun onTracksChanged(tracks: Tracks) {
+       val oldSubtitleTracks = ArrayList(subtitles.availableSubtitleTracks)
+       val oldAudioTracks = ArrayList(audioTracks.availableAudioTracks)
+diff --git a/node_modules/expo-video/android/src/main/java/expo/modules/video/records/VideoEventPayloads.kt b/node_modules/expo-video/android/src/main/java/expo/modules/video/records/VideoEventPayloads.kt
+index 2cbc397..81def6e 100644
+--- a/node_modules/expo-video/android/src/main/java/expo/modules/video/records/VideoEventPayloads.kt
++++ b/node_modules/expo-video/android/src/main/java/expo/modules/video/records/VideoEventPayloads.kt
+@@ -50,6 +50,10 @@ class SubtitleTrackChangedEventPayload(
+   @Field val oldSubtitleTrack: SubtitleTrack?
+ ) : VideoEventPayload
+ 
++class SubtitleCueChangedEventPayload(
++  @Field val text: String
++) : VideoEventPayload
++
+ class AudioTrackChangedEventPayload(
+   @Field val audioTrack: AudioTrack?,
+   @Field val oldAudioTrack: AudioTrack?
 diff --git a/node_modules/expo-video/android/src/main/java/expo/modules/video/utils/DataSourceUtils.kt b/node_modules/expo-video/android/src/main/java/expo/modules/video/utils/DataSourceUtils.kt
 index 460fb7b..ac26191 100644
 --- a/node_modules/expo-video/android/src/main/java/expo/modules/video/utils/DataSourceUtils.kt
@@ -95,3 +165,21 @@ index 460fb7b..ac26191 100644
  }
  
  @OptIn(UnstableApi::class)
+diff --git a/node_modules/expo-video/build/VideoPlayerEvents.types.d.ts b/node_modules/expo-video/build/VideoPlayerEvents.types.d.ts
+index 2de2f7b..48380ad 100644
+--- a/node_modules/expo-video/build/VideoPlayerEvents.types.d.ts
++++ b/node_modules/expo-video/build/VideoPlayerEvents.types.d.ts
+@@ -43,6 +43,13 @@ export type VideoPlayerEvents = {
+      * Handler for an event emitted when the current subtitle track changes.
+      */
+     subtitleTrackChange(payload: SubtitleTrackChangeEventPayload): void;
++    /**
++     * Fires when the displayed embedded subtitle cue changes. `text` is '' when
++     * no cue is on screen. Patched in locally; not upstream expo-video.
++     */
++    subtitleCueChange(payload: {
++        text: string;
++    }): void;
+     /**
+      * Handler for an event emitted when the available audio tracks change.
+      */

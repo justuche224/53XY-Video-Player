@@ -78,8 +78,8 @@ rather than `Boston.Legal.S02E14.1080p.WEB-DL.x265.mkv`.
 
 ### Trigger
 
-A bookmark icon button in the player's `TopBar` `right` slot, beside the tracks
-button. Playback is never interrupted.
+A bookmark icon button in the player's `TopBar` `right` slot, first in the
+action row. Playback is never interrupted.
 
 ### Pipeline
 

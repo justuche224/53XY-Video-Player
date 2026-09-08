@@ -59,4 +59,25 @@ describe('schema migrations', () => {
       'ALTER TABLE watch_progress ADD COLUMN subtitle_delay_ms INTEGER NOT NULL DEFAULT 0',
     );
   });
+
+  it('migration 11 creates moments with no foreign key to videos', () => {
+    const m11 = MIGRATIONS.find((m) => m.version === 11);
+    expect(m11).toBeDefined();
+    expect(m11!.up).toContain('CREATE TABLE IF NOT EXISTS moments');
+    // \s+ rather than the literal run of spaces: the migration aligns its
+    // column types for readability, and a test that breaks when someone
+    // re-aligns them is testing whitespace, not schema.
+    expect(m11!.up).toMatch(/position_ms\s+INTEGER NOT NULL/);
+    expect(m11!.up).toMatch(/title\s+TEXT NOT NULL/);
+    // The whole point of the feature: a scan removing the video row must not
+    // cascade the user's saved moments away.
+    expect(m11!.up).not.toMatch(/REFERENCES\s+videos/i);
+    expect(m11!.up).not.toMatch(/ON DELETE CASCADE/i);
+  });
+
+  it('migration 11 indexes moments for the tab and for per-video lookup', () => {
+    const m11 = MIGRATIONS.find((m) => m.version === 11);
+    expect(m11!.up).toContain('CREATE INDEX IF NOT EXISTS idx_moments_created');
+    expect(m11!.up).toContain('CREATE INDEX IF NOT EXISTS idx_moments_video');
+  });
 });
