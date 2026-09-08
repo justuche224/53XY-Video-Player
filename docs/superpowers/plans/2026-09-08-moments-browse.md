@@ -1266,7 +1266,7 @@ JS-only — a reload is enough, no rebuild:
 2. **Cards read correctly.** Each shows its frame, the timestamp badge, the episode label and the note.
 3. **Search works** across both note text and title.
 4. **Tap plays from the moment.** The video opens and starts at the captured position — **not** at your saved resume point — and no "Resumed at …" snackbar appears.
-5. **Prev/next is unaffected.** After playing from a moment, skip to the next episode: it must start from its own resume point, not the moment's position.
+5. **A moment's start position doesn't leak.** After playing from a moment, back out and open a *different* video normally through the library (not from a moment): it must resume from its own saved position (or the beginning, if it has none) — never from the moment's captured position, and with no stray "Resumed at …" snackbar.
 6. **Long-press multi-select** enters the contextual bar; delete removes the moments and their frames, and the count in the tab drops.
 7. **Relinking.** Move a video file to another folder, let the library rescan, then play its moment. It should still play at the right position.
 8. **A missing file degrades well.** Delete a video whose moment you kept: the card stays, dimmed, with its frame and note, and Play is disabled rather than crashing.

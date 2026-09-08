@@ -97,10 +97,6 @@ export async function updateMomentFrameUri(
   await db.runAsync('UPDATE moments SET frame_uri = ? WHERE id = ?', [frameUri, id]);
 }
 
-export async function deleteMoment(db: SQLiteDatabase, id: string): Promise<void> {
-  await db.runAsync('DELETE FROM moments WHERE id = ?', [id]);
-}
-
 /**
  * Point a moment at the video it was relinked to. Called after
  * `resolveMomentTarget` returns `relinked`, so the next play is an exact hit

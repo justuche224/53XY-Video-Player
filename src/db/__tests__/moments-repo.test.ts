@@ -1,5 +1,4 @@
 import {
-  deleteMoment,
   deleteMoments,
   getMoments,
   getMomentsForVideo,
@@ -109,13 +108,6 @@ describe('moments-repo', () => {
     await updateMomentNote(db, 'm1', 'new note');
     expect(calls[0].sql).toContain('UPDATE moments');
     expect(calls[0].params).toEqual(['new note', 'm1']);
-  });
-
-  it('deleteMoment removes one row', async () => {
-    const { db, calls } = fakeDb();
-    await deleteMoment(db, 'm1');
-    expect(calls[0].sql).toContain('DELETE FROM moments WHERE id = ?');
-    expect(calls[0].params).toEqual(['m1']);
   });
 
   it('replaceAllMoments clears the table before inserting', async () => {
