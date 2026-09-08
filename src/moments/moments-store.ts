@@ -1,8 +1,8 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { File } from 'expo-file-system';
 
-import { deleteMoments, getMoments, replaceAllMoments } from '@/db/moments-repo';
-import { restorableMoments } from './restore-moments';
+import { deleteMoments, getMoments, insertMoment } from '@/db/moments-repo';
+import { missingFromDb } from './restore-moments';
 import { deleteFrame, ensureMomentsDir, readManifest, writeManifest } from './storage';
 
 function frameExists(uri: string): boolean {
@@ -14,44 +14,49 @@ function frameExists(uri: string): boolean {
 }
 
 /**
- * How many moments the manifest on disk could put back.
+ * How many manifest entries the database is missing.
  *
- * Zero once the table has any rows: the manifest is a recovery copy, and
- * offering to "restore" over live data would be a way to lose the newer of the
- * two. This is what the Moments tab's empty state asks before offering.
+ * Not gated on the table being empty: restore now merges — it only inserts
+ * what is missing — so it is safe (and exactly what a user who captured once
+ * before ever restoring needs) to offer a restore alongside existing rows.
  */
 export async function pendingRestoreCount(db: SQLiteDatabase): Promise<number> {
   try {
     const existing = await getMoments(db);
-    if (existing.length > 0) return 0;
-    return restorableMoments(readManifest(ensureMomentsDir()), frameExists).length;
+    return missingFromDb(readManifest(ensureMomentsDir()), existing, frameExists).length;
   } catch (e) {
     console.warn('[moments] could not check for a restorable manifest:', e);
     return 0;
   }
 }
 
-/** Puts the manifest's usable moments back. Returns how many were restored. */
+/**
+ * Inserts whatever manifest entries the database is missing. Returns how many
+ * were restored.
+ *
+ * Deliberately additive, not a replace: a table that already has rows (e.g.
+ * because the user captured a moment before ever visiting the Moments tab
+ * after a reinstall) must not be wiped and rebuilt from the manifest — that
+ * would destroy the very row `pendingRestoreCount` is now happy to restore
+ * alongside.
+ */
 export async function restoreMomentsFromManifest(db: SQLiteDatabase): Promise<number> {
-  // The manifest is a recovery copy of unknown age. If the table already has
-  // rows, restoring over them would run replaceAllMoments' DELETE FROM moments
-  // and destroy whichever of the two — live data or manifest — is newer. Bail
-  // out before even reading the manifest. This holds even if a caller skips
-  // the pendingRestoreCount() check the UI is expected to make first.
   const existing = await getMoments(db);
-  if (existing.length > 0) return 0;
+  const missing = missingFromDb(readManifest(ensureMomentsDir()), existing, frameExists);
+  if (missing.length === 0) return 0;
 
-  const recovered = restorableMoments(readManifest(ensureMomentsDir()), frameExists);
-  if (recovered.length === 0) return 0;
-  await replaceAllMoments(db, recovered);
-  // Rewrite from what actually landed, so the manifest stops advertising
-  // entries whose frames were missing.
+  for (const moment of missing) {
+    await insertMoment(db, moment);
+  }
+
+  // Rewrite from the resulting database state, so the manifest stops
+  // advertising entries whose frames were missing.
   try {
-    writeManifest(ensureMomentsDir(), recovered);
+    writeManifest(ensureMomentsDir(), await getMoments(db));
   } catch (e) {
     console.warn('[moments] restored but could not rewrite the manifest:', e);
   }
-  return recovered.length;
+  return missing.length;
 }
 
 /**

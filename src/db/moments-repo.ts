@@ -121,20 +121,3 @@ export async function deleteMoments(db: SQLiteDatabase, ids: string[]): Promise<
   const placeholders = ids.map(() => '?').join(',');
   await db.runAsync(`DELETE FROM moments WHERE id IN (${placeholders})`, ids);
 }
-
-/**
- * Swap the whole table for a restored set. Used by the Phase 3 restore flow,
- * which only ever runs against an empty table, but clearing first keeps it
- * idempotent if a restore is ever offered twice.
- */
-export async function replaceAllMoments(
-  db: SQLiteDatabase,
-  moments: Moment[],
-): Promise<void> {
-  await db.withTransactionAsync(async () => {
-    await db.runAsync('DELETE FROM moments');
-    for (const moment of moments) {
-      await db.runAsync(INSERT_SQL, toParams(moment));
-    }
-  });
-}
