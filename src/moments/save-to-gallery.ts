@@ -24,7 +24,7 @@ export async function saveFrameToGallery(
     try {
       const album = await MediaLibrary.Album.get(ALBUM);
       if (album) await album.add([asset]);
-      else await MediaLibrary.Album.create(ALBUM, [asset], false);
+      else await MediaLibrary.Album.create(ALBUM, [asset], true);
     } catch (e) {
       console.warn('[moments] saved the frame but could not file it under the album:', e);
     }
