@@ -40,8 +40,9 @@ export function useUpdateMomentNote(): (id: string, note: string) => Promise<voi
       await updateMomentNote(db, id, note.trim() || null);
       try {
         writeManifest(ensureMomentsDir(), await getMoments(db));
-      } catch {
+      } catch (error) {
         // Same reasoning as capture: the row is saved; the mirror can lag.
+        console.warn('[moments] manifest sync failed after note edit, moments.json may be stale:', error);
       }
     },
     [db],

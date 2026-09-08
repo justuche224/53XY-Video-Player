@@ -61,7 +61,8 @@ export async function captureMoment(
       outPath,
     });
     frameUri = result?.uri ?? null;
-  } catch {
+  } catch (error) {
+    console.warn('[moments] frame grab failed, saving moment without a frame:', error);
     frameUri = null;
   }
 
@@ -87,8 +88,9 @@ export async function captureMoment(
   // edit rewrites it.
   try {
     await deps.syncManifest();
-  } catch {
-    // intentionally swallowed
+  } catch (error) {
+    // intentionally swallowed: see the comment above.
+    console.warn('[moments] manifest sync failed after capture, moments.json may be stale:', error);
   }
 
   return moment;
