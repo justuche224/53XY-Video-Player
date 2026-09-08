@@ -102,6 +102,31 @@ export async function deleteMoment(db: SQLiteDatabase, id: string): Promise<void
 }
 
 /**
+ * Point a moment at the video it was relinked to. Called after
+ * `resolveMomentTarget` returns `relinked`, so the next play is an exact hit
+ * rather than another filename search.
+ */
+export async function updateMomentVideoLink(
+  db: SQLiteDatabase,
+  id: string,
+  videoId: string,
+  videoUri: string,
+): Promise<void> {
+  await db.runAsync('UPDATE moments SET video_id = ?, video_uri = ? WHERE id = ?', [
+    videoId,
+    videoUri,
+    id,
+  ]);
+}
+
+export async function deleteMoments(db: SQLiteDatabase, ids: string[]): Promise<void> {
+  // `IN ()` with no values is a syntax error, not an empty match.
+  if (ids.length === 0) return;
+  const placeholders = ids.map(() => '?').join(',');
+  await db.runAsync(`DELETE FROM moments WHERE id IN (${placeholders})`, ids);
+}
+
+/**
  * Swap the whole table for a restored set. Used by the Phase 3 restore flow,
  * which only ever runs against an empty table, but clearing first keeps it
  * idempotent if a restore is ever offered twice.
