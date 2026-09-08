@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, ToastAndroid, View } from 'react-native';
 
 import { AppBar } from '@/components/app-bar';
 import { ListItem } from '@/components/list-item';
@@ -18,6 +18,7 @@ import {
 } from '@/db/moments-repo';
 import { useLibraryData } from '@/library/library-provider';
 import { resolveMomentTarget } from '@/moments/resolve-moment-video';
+import { saveFrameToGallery } from '@/moments/save-to-gallery';
 import { shareFiles } from '@/moments/share-moments';
 import { deleteFrame, ensureMomentsDir, writeManifest } from '@/moments/storage';
 import type { Moment } from '@/moments/types';
@@ -100,6 +101,17 @@ export default function MomentScreen() {
     },
     [db, moment, rewriteManifest],
   );
+
+  const onSaveToGallery = useCallback(async () => {
+    if (!moment?.frameUri) return;
+    const result = await saveFrameToGallery(moment.frameUri);
+    if (result === 'saved') ToastAndroid.show('Saved to gallery', ToastAndroid.SHORT);
+    else if (result === 'denied') {
+      Alert.alert('Permission needed', 'Allow photo access to save this frame to your gallery.');
+    } else {
+      Alert.alert('Could not save', 'Something went wrong saving the frame.');
+    }
+  }, [moment]);
 
   const onDelete = useCallback(() => {
     if (!moment) return;
@@ -216,6 +228,11 @@ export default function MomentScreen() {
               title="Share frame"
               subtitle={moment.frameUri ? undefined : 'This moment has no saved frame'}
               onPress={moment.frameUri ? () => void shareFiles([moment.frameUri!]) : undefined}
+            />
+            <ListItem
+              title="Save frame to gallery"
+              subtitle={moment.frameUri ? undefined : 'This moment has no saved frame'}
+              onPress={moment.frameUri ? onSaveToGallery : undefined}
             />
             <ListItem title="Delete moment" onPress={onDelete} />
           </SettingsGroup>
