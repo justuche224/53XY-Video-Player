@@ -366,7 +366,10 @@ export default function PlayerScreen() {
     // were "resumed" somewhere they did not ask for is a lie, and its Restart
     // action would throw away the position they came here for.
     const startAtMs = startMs ? Number(startMs) : NaN;
-    if (Number.isFinite(startAtMs) && startAtMs > 0) {
+    // 0 is a legitimate captured position (a moment saved at the very start of
+    // the video) — only the param's absence, already funneled to NaN above,
+    // should fall through to the saved-resume branch below.
+    if (Number.isFinite(startAtMs) && startAtMs >= 0) {
       player.currentTime = startAtMs / 1000;
       lastPositionSecRef.current = startAtMs / 1000;
       honoredStartForRef.current = videoId;
