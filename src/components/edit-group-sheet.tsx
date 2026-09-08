@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { AppText } from './app-text';
 import { IconButton } from './icon-button';
@@ -38,63 +38,72 @@ export function EditGroupSheet({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable
-          style={[
-            styles.sheet,
-            {
-              backgroundColor: colors.surface ?? '#1b1b1b',
-              borderTopLeftRadius: radius.xl,
-              borderTopRightRadius: radius.xl,
-              padding: spacing.lg,
-            },
-          ]}
-          onPress={() => {}}>
-          <View style={styles.header}>
-            <AppText variant="headline" style={{ flex: 1 }}>Move to Group</AppText>
-            <IconButton name="close" accessibilityLabel="Close" onPress={onClose} />
-          </View>
-          
-          <AppText variant="body" style={{ color: colors.onSurfaceVariant, marginBottom: spacing.md }}>
-            Enter a custom group name for the selected videos.
-          </AppText>
-
-          <TextInput
+      {/*
+        A React Native Modal is its own Android window and does not inherit the
+        activity's `windowSoftInputMode="adjustResize"`, so this sheet would sit
+        under the keyboard its own input raises. Padding the bottom shrinks the
+        backdrop by the keyboard's height. Same fix as moment-note-sheet.tsx.
+      */}
+      <KeyboardAvoidingView style={styles.fill} behavior="padding">
+        <Pressable style={styles.backdrop} onPress={onClose}>
+          <Pressable
             style={[
-              styles.input,
-              { color: colors.onSurface, borderColor: colors.outline, marginBottom: spacing.md },
+              styles.sheet,
+              {
+                backgroundColor: colors.surface ?? '#1b1b1b',
+                borderTopLeftRadius: radius.xl,
+                borderTopRightRadius: radius.xl,
+                padding: spacing.lg,
+              },
             ]}
-            placeholder="Custom Group Name..."
-            placeholderTextColor={colors.onSurfaceVariant}
-            value={name}
-            onChangeText={setName}
-            autoFocus
-            onSubmitEditing={handleSave}
-          />
+            onPress={() => {}}>
+            <View style={styles.header}>
+              <AppText variant="headline" style={{ flex: 1 }}>Move to Group</AppText>
+              <IconButton name="close" accessibilityLabel="Close" onPress={onClose} />
+            </View>
           
-          <View style={{ flexDirection: 'row', gap: spacing.md }}>
-            <Pressable
-              style={[styles.button, { flex: 1, backgroundColor: colors.surfaceVariant }]}
-              onPress={handleReset}>
-              <AppText variant="body" style={{ color: colors.onSurface, fontWeight: '600' }}>
-                Reset to Default
-              </AppText>
-            </Pressable>
-            <Pressable
-              style={[styles.button, { flex: 1, backgroundColor: colors.primary }]}
-              onPress={handleSave}>
-              <AppText variant="body" style={{ color: colors.onPrimary, fontWeight: '700' }}>
-                Save
-              </AppText>
-            </Pressable>
-          </View>
+            <AppText variant="body" style={{ color: colors.onSurfaceVariant, marginBottom: spacing.md }}>
+              Enter a custom group name for the selected videos.
+            </AppText>
+
+            <TextInput
+              style={[
+                styles.input,
+                { color: colors.onSurface, borderColor: colors.outline, marginBottom: spacing.md },
+              ]}
+              placeholder="Custom Group Name..."
+              placeholderTextColor={colors.onSurfaceVariant}
+              value={name}
+              onChangeText={setName}
+              autoFocus
+              onSubmitEditing={handleSave}
+            />
+          
+            <View style={{ flexDirection: 'row', gap: spacing.md }}>
+              <Pressable
+                style={[styles.button, { flex: 1, backgroundColor: colors.surfaceVariant }]}
+                onPress={handleReset}>
+                <AppText variant="body" style={{ color: colors.onSurface, fontWeight: '600' }}>
+                  Reset to Default
+                </AppText>
+              </Pressable>
+              <Pressable
+                style={[styles.button, { flex: 1, backgroundColor: colors.primary }]}
+                onPress={handleSave}>
+                <AppText variant="body" style={{ color: colors.onPrimary, fontWeight: '700' }}>
+                  Save
+                </AppText>
+              </Pressable>
+            </View>
+          </Pressable>
         </Pressable>
-      </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   sheet: { width: '100%' },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
