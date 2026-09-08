@@ -89,9 +89,10 @@ button. Playback is never interrupted.
    `player.currentTime`. expo-video releases the shared object before cleanup
    runs, and reading through it throws "Cannot use shared object that was
    already released".
-2. **Note seed** — `cueTextOf(activeCues(cues, positionMs, delayMs))`. If a
-   subtitle is on screen its line becomes the moment's note. If none is loaded,
-   the note starts empty.
+2. **Note seed** — `useSubtitles`' `activeText`, which is the delay-adjusted
+   `cueTextOf(activeCues(...))` the overlay is already rendering. If a subtitle
+   is on screen its line becomes the moment's note; if none is loaded, the note
+   starts empty.
 3. **Frame** — `FrameGrabber.grabFrame(uri, { positionsMs: [positionMs], minScore: 0, targetWidth: MOMENT_WIDTH, quality: MOMENT_QUALITY, exact: true, outPath })`.
    `minScore: 0` disables the black/flat-frame rejection that poster selection
    wants and a bookmark must not have — the user asked for *this* frame.
