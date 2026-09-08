@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppBar } from '@/components/app-bar';
 import { ContextualAppBar } from '@/components/contextual-app-bar';
 import { MomentCard } from '@/components/moment-card';
+import { PressableScale } from '@/components/pressable-scale';
 import { Screen } from '@/components/screen';
 import { SearchBar } from '@/components/search-bar';
 import { SectionHeader } from '@/components/section-header';
@@ -15,6 +16,7 @@ import { TAB_BAR_CLEARANCE } from '@/components/tab-bar';
 import { deleteMoments, getMoments } from '@/db/moments-repo';
 import { useLibraryData } from '@/library/library-provider';
 import { chunkMoments, filterMoments, groupMoments } from '@/moments/group-moments';
+import { pendingRestoreCount, restoreMomentsFromManifest } from '@/moments/moments-store';
 import { resolveMomentTarget } from '@/moments/resolve-moment-video';
 import { deleteFrame, ensureMomentsDir, writeManifest } from '@/moments/storage';
 import type { Moment } from '@/moments/types';
@@ -33,6 +35,7 @@ export default function MomentsScreen() {
   const [moments, setMoments] = useState<Moment[]>([]);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [restorable, setRestorable] = useState(0);
 
   const load = useCallback(() => {
     getMoments(db)
@@ -48,7 +51,14 @@ export default function MomentsScreen() {
       .catch((e) => console.warn('[moments] failed to load moments:', e));
   }, [db]);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(
+    useCallback(() => {
+      load();
+      pendingRestoreCount(db)
+        .then(setRestorable)
+        .catch((e) => console.warn('[moments] could not check for a backup:', e));
+    }, [db, load]),
+  );
 
   const sections = useMemo(
     () =>
@@ -181,9 +191,36 @@ export default function MomentsScreen() {
             <Text style={{ color: colors.onSurface, fontSize: 18, fontWeight: '600', marginTop: spacing.md }}>
               No moments yet
             </Text>
-            <Text style={{ color: colors.onSurfaceVariant ?? '#888', marginTop: 8, textAlign: 'center' }}>
-              Tap the bookmark button while watching to save a scene.
-            </Text>
+            {restorable > 0 ? (
+              <>
+                <Text style={{ color: colors.onSurfaceVariant ?? '#888', marginTop: 8, textAlign: 'center' }}>
+                  {restorable === 1
+                    ? '1 moment was found in your backup folder.'
+                    : `${restorable} moments were found in your backup folder.`}
+                </Text>
+                <PressableScale
+                  onPress={() => {
+                    restoreMomentsFromManifest(db)
+                      .then(() => {
+                        load();
+                        setRestorable(0);
+                      })
+                      .catch((e) => {
+                        console.warn('[moments] restore failed:', e);
+                        Alert.alert('Restore failed', 'Could not read the moments backup folder.');
+                      });
+                  }}
+                  style={{ marginTop: spacing.lg }}>
+                  <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '700' }}>
+                    Restore them
+                  </Text>
+                </PressableScale>
+              </>
+            ) : (
+              <Text style={{ color: colors.onSurfaceVariant ?? '#888', marginTop: 8, textAlign: 'center' }}>
+                Tap the bookmark button while watching to save a scene.
+              </Text>
+            )}
           </View>
         }
         contentContainerStyle={{ paddingBottom: spacing.xl + TAB_BAR_CLEARANCE + insets.bottom }}
