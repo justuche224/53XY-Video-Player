@@ -76,7 +76,7 @@ import type { Moment } from '@/moments/types';
 const VERTICAL_GAIN = 2;
 
 export default function PlayerScreen() {
-  const { videoId, uri, title, groupKey, mode, playlistId, queueToken } = useLocalSearchParams<{
+  const { videoId, uri, title, groupKey, mode, playlistId, queueToken, startMs } = useLocalSearchParams<{
     videoId: string;
     uri: string;
     title: string;
@@ -84,6 +84,7 @@ export default function PlayerScreen() {
     mode?: string;
     playlistId?: string;
     queueToken?: string;
+    startMs?: string;
   }>();
   const router = useRouter();
 
@@ -341,6 +342,18 @@ export default function PlayerScreen() {
     // the multi-second black screen before playback began.
     player.play();
 
+    // A moment asked for one specific position. It beats the saved resume
+    // point, and the resume snackbar must stay hidden — telling the user they
+    // were "resumed" somewhere they did not ask for is a lie, and its Restart
+    // action would throw away the position they came here for.
+    const startAtMs = startMs ? Number(startMs) : NaN;
+    if (Number.isFinite(startAtMs) && startAtMs > 0) {
+      player.currentTime = startAtMs / 1000;
+      lastPositionSecRef.current = startAtMs / 1000;
+      router.setParams({ startMs: '' });
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       try {
@@ -360,7 +373,7 @@ export default function PlayerScreen() {
     return () => {
       cancelled = true;
     };
-  }, [player, videoId, db]);
+  }, [player, videoId, db, startMs, router]);
 
   // Natural video size: library scan dims as fallback, corrected by sourceLoad
   // (availableVideoTracks[0].size, in px) once the container is parsed.
