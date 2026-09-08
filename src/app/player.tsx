@@ -61,6 +61,10 @@ import { SystemVolume } from '@/native/system-volume';
 import { useSubtitles } from '@/subtitles/use-subtitles';
 import { SubtitleOverlay } from '@/components/player/subtitle-overlay';
 import { SubtitleDelayBar } from '@/components/player/subtitle-delay-bar';
+import { MomentNoteSheet } from '@/components/player/moment-note-sheet';
+import { MomentSnackbar } from '@/components/player/moment-snackbar';
+import { useCaptureMoment, useUpdateMomentNote } from '@/moments/use-capture-moment';
+import type { Moment } from '@/moments/types';
 
 // Vertical-swipe sensitivity: a drag of ~(screen height / VERTICAL_GAIN) spans
 // the full 0→1 brightness/volume range.
@@ -271,6 +275,8 @@ export default function PlayerScreen() {
   const [sleepRemainingSec, setSleepRemainingSec] = useState<number | null>(null);
   const [sleepSheetVisible, setSleepSheetVisible] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [savedMoment, setSavedMoment] = useState<Moment | null>(null);
+  const [noteSheetFor, setNoteSheetFor] = useState<Moment | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Ref mirrors so the playToEnd listener binds once per player yet always
   // reads current values (same pattern as controlsVisibleRef).
@@ -457,6 +463,67 @@ export default function PlayerScreen() {
   useEffect(() => {
     if (subtitles.error) showToast(subtitles.error);
   }, [subtitles.error, showToast]);
+
+  // ── Moment capture: bookmark button + note sheet ──────────────────────────
+  const captureMoment = useCaptureMoment();
+  const updateMomentNote = useUpdateMomentNote();
+
+  // Position comes from the cached ref, never player.currentTime: expo-video
+  // can have released the shared object, and reading through it throws.
+  const handleCaptureMoment = useCallback(async () => {
+    const video = videosRef.current.find((v) => v.id === videoId);
+    if (!video) return;
+
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      const moment = await captureMoment({
+        video: {
+          id: video.id,
+          uri: video.uri,
+          filename: video.filename,
+          folder: video.folder,
+          durationMs: video.durationMs,
+        },
+        positionMs: Math.round(lastPositionSecRef.current * 1000),
+        note: subtitles.activeText,
+      });
+      setSavedMoment(moment);
+    } catch {
+      showToast('Could not save moment');
+    }
+  }, [captureMoment, videoId, subtitles.activeText, showToast]);
+
+  const handleSaveNote = useCallback(
+    (note: string) => {
+      if (!noteSheetFor) return;
+      const { id } = noteSheetFor;
+      void updateMomentNote(id, note).catch(() => showToast('Could not save note'));
+    },
+    [noteSheetFor, updateMomentNote, showToast],
+  );
+
+  // Typing a note while the video plays means missing the next scene. Pause on
+  // open and resume on close, but only if it was actually playing — reopening
+  // the sheet on a paused video must not start playback.
+  //
+  // `playing` is read through a ref and NOT listed as a dependency, which is
+  // load-bearing. player.pause() flips `playing` to false; if it were a
+  // dependency, that flip would re-run the effect, fire the cleanup, and call
+  // player.play() again — resuming the video underneath the open sheet.
+  const playingRef = useRef(playing);
+  useEffect(() => {
+    playingRef.current = playing;
+  }, [playing]);
+
+  const resumeAfterNoteRef = useRef(false);
+  useEffect(() => {
+    if (!noteSheetFor) return;
+    resumeAfterNoteRef.current = playingRef.current;
+    player.pause();
+    return () => {
+      if (resumeAfterNoteRef.current) player.play();
+    };
+  }, [noteSheetFor, player]);
 
   // ── End of video: end-of-video sleep timer wins; else autoplay countdown ─
   useEffect(() => {
@@ -943,6 +1010,9 @@ export default function PlayerScreen() {
   // ── Top-bar right slot: sleep + lock + rotate + tracks buttons ───────────
   const topBarRight = (
     <View style={styles.topBarActions}>
+      <ChromeButton onPress={() => void handleCaptureMoment()}>
+        <MaterialIcons name="bookmark-add" size={22} color="#fff" />
+      </ChromeButton>
       <ChromeButton onPress={() => setSleepSheetVisible(true)}>
         <MaterialIcons name="bedtime" size={22} color={sleepTimer ? '#9C8CFF' : '#fff'} />
         {sleepTimer?.kind === 'minutes' && sleepRemainingSec !== null && (
@@ -1111,6 +1181,19 @@ export default function PlayerScreen() {
               </View>
             )}
 
+            {savedMoment && (
+              <View style={styles.snackbarContainer} pointerEvents="box-none">
+                <MomentSnackbar
+                  positionSec={savedMoment.positionMs / 1000}
+                  onEdit={() => {
+                    setNoteSheetFor(savedMoment);
+                    setSavedMoment(null);
+                  }}
+                  onDismiss={() => setSavedMoment(null)}
+                />
+              </View>
+            )}
+
             {/* Subtitle delay bar: same placement rationale as the autoplay
                 card above — inside PlayerGestures so its slider and nudge
                 buttons get the gesture-arena relation (blocksExternalGesture),
@@ -1140,6 +1223,14 @@ export default function PlayerScreen() {
               remainingSec={sleepRemainingSec}
               onSet={setSleepTimer}
               onClose={() => setSleepSheetVisible(false)}
+            />
+          )}
+
+          {noteSheetFor && (
+            <MomentNoteSheet
+              initialNote={noteSheetFor.note ?? ''}
+              onSave={handleSaveNote}
+              onClose={() => setNoteSheetFor(null)}
             />
           )}
 
