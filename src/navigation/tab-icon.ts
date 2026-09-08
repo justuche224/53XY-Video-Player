@@ -14,6 +14,8 @@ export function tabLabelFor(routeName: string): string {
       return 'Playlists';
     case 'history':
       return 'History';
+    case 'moments':
+      return 'Moments';
     case 'settings':
       return 'Settings';
     default:
@@ -29,6 +31,8 @@ export function tabIconFor(routeName: string): TabIcon {
       return { active: 'list', inactive: 'list-outline' };
     case 'history':
       return { active: 'time', inactive: 'time-outline' };
+    case 'moments':
+      return { active: 'bookmark', inactive: 'bookmark-outline' };
     case 'settings':
       return { active: 'settings', inactive: 'settings-outline' };
     default:

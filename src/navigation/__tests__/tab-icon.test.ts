@@ -11,6 +11,11 @@ describe('tabIconFor', () => {
   it('falls back to a generic icon for unknown routes', () => {
     expect(tabIconFor('whatever')).toEqual({ active: 'ellipse', inactive: 'ellipse-outline' });
   });
+
+  it('labels and icons the moments tab', () => {
+    expect(tabLabelFor('moments')).toBe('Moments');
+    expect(tabIconFor('moments')).toEqual({ active: 'bookmark', inactive: 'bookmark-outline' });
+  });
 });
 
 describe('tabLabelFor', () => {
