@@ -27,7 +27,11 @@ export default function PlayerSettingsScreen() {
   const { autoplayNext, setAutoplayNext } = useAutoplayNext();
   const { subtitleSize, setSubtitleSize } = useSubtitleSize();
 
-  const [momentsShared, setMomentsShared] = useState(() => momentsDirIsShared());
+  // `momentsDirIsShared()` is not a pure read — through `ensureMomentsDir()`
+  // it creates directories and a `.nomedia` file — so it must not run during
+  // render. Start from a plain default and let the focus effect below fill
+  // in the real answer.
+  const [momentsShared, setMomentsShared] = useState(false);
 
   // Re-probe on focus: the user may have just granted All files access from
   // the system settings screen and come straight back here rather than to

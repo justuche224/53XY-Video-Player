@@ -524,7 +524,8 @@ export default function PlayerScreen() {
           console.warn('[moments] storage prompt check failed:', error);
         }
       }
-    } catch {
+    } catch (error) {
+      console.warn('[moments] failed to capture moment:', error);
       showToast('Could not save moment');
     } finally {
       captureInFlightRef.current = false;
