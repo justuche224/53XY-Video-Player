@@ -357,8 +357,11 @@ Append to the `describe('schema migrations', ...)` block in `src/db/__tests__/sc
     const m11 = MIGRATIONS.find((m) => m.version === 11);
     expect(m11).toBeDefined();
     expect(m11!.up).toContain('CREATE TABLE IF NOT EXISTS moments');
-    expect(m11!.up).toContain('position_ms   INTEGER NOT NULL');
-    expect(m11!.up).toContain('title         TEXT NOT NULL');
+    // \s+ rather than the literal run of spaces: the migration aligns its
+    // column types for readability, and a test that breaks when someone
+    // re-aligns them is testing whitespace, not schema.
+    expect(m11!.up).toMatch(/position_ms\s+INTEGER NOT NULL/);
+    expect(m11!.up).toMatch(/title\s+TEXT NOT NULL/);
     // The whole point of the feature: a scan removing the video row must not
     // cascade the user's saved moments away.
     expect(m11!.up).not.toMatch(/REFERENCES\s+videos/i);
@@ -1769,7 +1772,7 @@ Then, after the `showToast` definition (around line 449) so `showToast` is alrea
   );
 ```
 
-Confirm `Haptics` is already imported in `player.tsx` (it is used for the long-press-to-2× feedback). If it is not, add `import * as Haptics from 'expo-haptics';`.
+`Haptics` is already imported at `src/app/player.tsx:6` for the long-press-to-2× feedback, and `useCallback`/`useRef`/`useState` at line 12. No import changes are needed beyond Step 1's.
 
 - [ ] **Step 3: Add the bookmark button to the top bar**
 
@@ -1824,15 +1827,25 @@ Typing a note while the film runs on underneath loses the user their place. Add 
   // Typing a note while the video plays means missing the next scene. Pause on
   // open and resume on close, but only if it was actually playing — reopening
   // the sheet on a paused video must not start playback.
+  //
+  // `playing` is read through a ref and NOT listed as a dependency, which is
+  // load-bearing. player.pause() flips `playing` to false; if it were a
+  // dependency, that flip would re-run the effect, fire the cleanup, and call
+  // player.play() again — resuming the video underneath the open sheet.
+  const playingRef = useRef(playing);
+  useEffect(() => {
+    playingRef.current = playing;
+  }, [playing]);
+
   const resumeAfterNoteRef = useRef(false);
   useEffect(() => {
     if (!noteSheetFor) return;
-    resumeAfterNoteRef.current = playing;
+    resumeAfterNoteRef.current = playingRef.current;
     player.pause();
     return () => {
       if (resumeAfterNoteRef.current) player.play();
     };
-  }, [noteSheetFor, player, playing]);
+  }, [noteSheetFor, player]);
 ```
 
 - [ ] **Step 7: Typecheck, test, commit**
