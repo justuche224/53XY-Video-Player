@@ -11,6 +11,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="index" />
       <Tabs.Screen name="playlists" />
       <Tabs.Screen name="history" />
+      <Tabs.Screen name="moments" />
       <Tabs.Screen name="settings" />
     </Tabs>
   );

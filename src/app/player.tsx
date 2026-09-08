@@ -76,7 +76,7 @@ import type { Moment } from '@/moments/types';
 const VERTICAL_GAIN = 2;
 
 export default function PlayerScreen() {
-  const { videoId, uri, title, groupKey, mode, playlistId, queueToken } = useLocalSearchParams<{
+  const { videoId, uri, title, groupKey, mode, playlistId, queueToken, startMs } = useLocalSearchParams<{
     videoId: string;
     uri: string;
     title: string;
@@ -84,6 +84,7 @@ export default function PlayerScreen() {
     mode?: string;
     playlistId?: string;
     queueToken?: string;
+    startMs?: string;
   }>();
   const router = useRouter();
 
@@ -310,6 +311,15 @@ export default function PlayerScreen() {
   // never has to read the player — which may already be released on unmount.
   const lastPositionSecRef = useRef<number>(0);
   const lastDurationSecRef = useRef<number>(0);
+  // Set to a videoId right after its `startMs` has been applied below, then
+  // consumed (reset to null) on the very next run of the resume effect —
+  // which is the echo caused by that same branch clearing `startMs` via
+  // `router.setParams`. `startMs` is a dependency of that effect, so clearing
+  // it re-fires the effect; without this guard the echo run sees `startMs`
+  // as '', falls straight into the saved-progress branch, and immediately
+  // reverts the video to its old resume point with a "Resumed at …"
+  // snackbar — defeating the whole feature. Do not "simplify" this away.
+  const honoredStartForRef = useRef<string | null>(null);
 
   // ── Flush progress for the currently active video id ────────────────────
   // Reads cached values (not the player) so it is safe to call from unmount
@@ -330,6 +340,16 @@ export default function PlayerScreen() {
   // prev/next switch), so keying on [player, videoId] re-runs resume against
   // the new player; the subscription effects below likewise re-bind to it.
   useEffect(() => {
+    // Echo run from this same effect clearing `startMs` a moment ago (see the
+    // guard's declaration above) — this video already got its position from
+    // a moment, there is nothing left to do, and consuming the flag here
+    // lets a later, genuine revisit to this same video (e.g. next then prev
+    // within the same screen) resume normally instead of being suppressed.
+    if (honoredStartForRef.current === videoId) {
+      honoredStartForRef.current = null;
+      return;
+    }
+
     currentVideoIdRef.current = videoId;
     // Reset cached position/duration for the new player so a quick exit before
     // the first timeUpdate doesn't flush stale values under the new video id.
@@ -340,6 +360,22 @@ export default function PlayerScreen() {
     // getProgressMap (serialized on the SQLite connection) was the main cause of
     // the multi-second black screen before playback began.
     player.play();
+
+    // A moment asked for one specific position. It beats the saved resume
+    // point, and the resume snackbar must stay hidden — telling the user they
+    // were "resumed" somewhere they did not ask for is a lie, and its Restart
+    // action would throw away the position they came here for.
+    const startAtMs = startMs ? Number(startMs) : NaN;
+    // 0 is a legitimate captured position (a moment saved at the very start of
+    // the video) — only the param's absence, already funneled to NaN above,
+    // should fall through to the saved-resume branch below.
+    if (Number.isFinite(startAtMs) && startAtMs >= 0) {
+      player.currentTime = startAtMs / 1000;
+      lastPositionSecRef.current = startAtMs / 1000;
+      honoredStartForRef.current = videoId;
+      router.setParams({ startMs: '' });
+      return;
+    }
 
     let cancelled = false;
     (async () => {
@@ -360,7 +396,7 @@ export default function PlayerScreen() {
     return () => {
       cancelled = true;
     };
-  }, [player, videoId, db]);
+  }, [player, videoId, db, startMs, router]);
 
   // Natural video size: library scan dims as fallback, corrected by sourceLoad
   // (availableVideoTracks[0].size, in px) once the container is parsed.

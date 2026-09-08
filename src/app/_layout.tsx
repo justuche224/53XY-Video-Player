@@ -54,6 +54,7 @@ export default function RootLayout() {
                   <Stack.Screen name="group" />
                   <Stack.Screen name="player" options={{ animation: 'default' }} />
                   <Stack.Screen name="playlist" />
+                  <Stack.Screen name="moment" />
                   <Stack.Screen name="add-to-playlist" />
                   <Stack.Screen name="settings/player" />
                   <Stack.Screen name="settings/library-filters" />

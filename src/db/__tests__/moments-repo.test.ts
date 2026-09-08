@@ -1,10 +1,11 @@
 import {
-  deleteMoment,
+  deleteMoments,
   getMoments,
   getMomentsForVideo,
   insertMoment,
   replaceAllMoments,
   updateMomentNote,
+  updateMomentVideoLink,
 } from '../moments-repo';
 import type { Moment } from '@/moments/types';
 
@@ -109,17 +110,33 @@ describe('moments-repo', () => {
     expect(calls[0].params).toEqual(['new note', 'm1']);
   });
 
-  it('deleteMoment removes one row', async () => {
-    const { db, calls } = fakeDb();
-    await deleteMoment(db, 'm1');
-    expect(calls[0].sql).toContain('DELETE FROM moments WHERE id = ?');
-    expect(calls[0].params).toEqual(['m1']);
-  });
-
   it('replaceAllMoments clears the table before inserting', async () => {
     const { db, calls } = fakeDb();
     await replaceAllMoments(db, [sample]);
     expect(calls[0].sql).toContain('DELETE FROM moments');
     expect(calls[1].sql).toContain('INSERT INTO moments');
+  });
+
+  it('updateMomentVideoLink heals both the id and the uri', async () => {
+    const { db, calls } = fakeDb();
+    await updateMomentVideoLink(db, 'm1', 'v99', 'file:///new/path.mkv');
+    expect(calls[0].sql).toContain('UPDATE moments');
+    expect(calls[0].sql).toContain('video_id = ?');
+    expect(calls[0].sql).toContain('video_uri = ?');
+    expect(calls[0].params).toEqual(['v99', 'file:///new/path.mkv', 'm1']);
+  });
+
+  it('deleteMoments removes every id in one statement', async () => {
+    const { db, calls } = fakeDb();
+    await deleteMoments(db, ['m1', 'm2', 'm3']);
+    expect(calls[0].sql).toContain('DELETE FROM moments WHERE id IN (?,?,?)');
+    expect(calls[0].params).toEqual(['m1', 'm2', 'm3']);
+  });
+
+  it('deleteMoments does nothing for an empty list', async () => {
+    // An empty IN () is a SQL syntax error, so this must short-circuit.
+    const { db, calls } = fakeDb();
+    await deleteMoments(db, []);
+    expect(calls).toEqual([]);
   });
 });

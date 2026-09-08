@@ -1,6 +1,14 @@
 // src/components/player/moment-note-sheet.tsx
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { PressableScale } from '@/components/pressable-scale';
 import { useTheme } from '@/theme/theme-provider';
@@ -23,58 +31,70 @@ export function MomentNoteSheet({ initialNote, onSave, onClose }: MomentNoteShee
 
   return (
     <Modal transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable
-          style={[
-            styles.sheet,
-            {
-              backgroundColor: colors.surface ?? '#1e1e1e',
-              borderRadius: radius.xl,
-              paddingTop: spacing.lg,
-              paddingBottom: spacing.xl,
-              paddingHorizontal: spacing.lg,
-              marginHorizontal: spacing.md,
-            },
-          ]}>
-          <View style={[styles.handle, { backgroundColor: colors.outline ?? '#555' }]} />
-          <Text style={[styles.header, { color: colors.onSurface }]}>Note</Text>
-
-          <TextInput
-            value={note}
-            onChangeText={setNote}
-            autoFocus
-            multiline
-            placeholder="What happens here?"
-            placeholderTextColor={colors.onSurfaceVariant ?? '#999'}
+      {/*
+        The activity is already `windowSoftInputMode="adjustResize"`, but a
+        React Native Modal is its own Android window and does not inherit that,
+        so the sheet would sit under the keyboard it just raised with autoFocus.
+        Padding the bottom shrinks the flex-end backdrop, which lifts the sheet
+        by exactly the keyboard's height.
+      */}
+      <KeyboardAvoidingView style={styles.fill} behavior="padding">
+        <Pressable style={styles.backdrop} onPress={onClose}>
+          <Pressable
             style={[
-              styles.input,
+              styles.sheet,
               {
-                color: colors.onSurface,
-                backgroundColor: colors.surfaceVariant ?? 'rgba(255,255,255,0.06)',
-                borderRadius: radius.md,
-                padding: spacing.md,
-                marginTop: spacing.sm,
+                backgroundColor: colors.surface ?? '#1e1e1e',
+                borderRadius: radius.xl,
+                paddingTop: spacing.lg,
+                paddingBottom: spacing.xl,
+                paddingHorizontal: spacing.lg,
+                marginHorizontal: spacing.md,
               },
-            ]}
-          />
+            ]}>
+            <View style={[styles.handle, { backgroundColor: colors.outline ?? '#555' }]} />
+            <Text style={[styles.header, { color: colors.onSurface }]}>Note</Text>
 
-          <View style={[styles.actions, { marginTop: spacing.lg }]}>
-            <PressableScale onPress={onClose}>
-              <Text style={[styles.action, { color: colors.onSurfaceVariant ?? '#999' }]}>
-                Cancel
-              </Text>
-            </PressableScale>
-            <PressableScale onPress={save}>
-              <Text style={[styles.action, { color: colors.primary, marginLeft: 24 }]}>Save</Text>
-            </PressableScale>
-          </View>
+            <TextInput
+              value={note}
+              onChangeText={setNote}
+              autoFocus
+              multiline
+              placeholder="What happens here?"
+              placeholderTextColor={colors.onSurfaceVariant ?? '#999'}
+              style={[
+                styles.input,
+                {
+                  color: colors.onSurface,
+                  backgroundColor: colors.surfaceVariant ?? 'rgba(255,255,255,0.06)',
+                  borderRadius: radius.md,
+                  padding: spacing.md,
+                  marginTop: spacing.sm,
+                },
+              ]}
+            />
+
+            <View style={[styles.actions, { marginTop: spacing.lg }]}>
+              <PressableScale onPress={onClose}>
+                <Text style={[styles.action, { color: colors.onSurfaceVariant ?? '#999' }]}>
+                  Cancel
+                </Text>
+              </PressableScale>
+              <PressableScale onPress={save}>
+                <Text style={[styles.action, { color: colors.primary, marginLeft: 24 }]}>Save</Text>
+              </PressableScale>
+            </View>
+          </Pressable>
         </Pressable>
-      </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  fill: {
+    flex: 1,
+  },
   backdrop: {
     flex: 1,
     justifyContent: 'flex-end',
