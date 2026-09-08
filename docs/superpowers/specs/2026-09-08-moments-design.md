@@ -1,6 +1,6 @@
 # Moments — captured scenes that outlive the file
 
-**Status:** implemented — all three phases built. Phases 1, 1.5 and 2 are merged to `main` and device-verified; Phase 3 (durability & polish) is on `feat/moments-durability`, code-reviewed, not yet device-verified. See [HANDOFF.md](../../HANDOFF.md#2-status-table--single-source-of-truth) for current status.
+**Status:** implemented — all three phases built. Phases 1, 1.5 and 2 are merged to `main` and device-verified; Phase 3 (durability & polish) is merged too, code-reviewed but not yet device-verified. See [HANDOFF.md](../../HANDOFF.md#2-status-table--single-source-of-truth) for current status.
 **Date:** 2026-09-08
 
 ## 1. The problem
