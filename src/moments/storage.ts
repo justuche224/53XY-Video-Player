@@ -3,7 +3,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { fromManifestJson, toManifestJson } from './manifest';
 import type { MomentMove } from './migrate-moments';
 import { MANIFEST_FILENAME, SHARED_MOMENTS_DIR } from './moment-policy';
-import { pickMomentsDir } from './moments-dir';
+import { normalizeDirUri, pickMomentsDir } from './moments-dir';
 import type { Moment } from './types';
 
 /**
@@ -136,12 +136,32 @@ export function deleteFrame(frameUri: string | null): void {
 }
 
 /**
+ * Best-effort: removes the `moments.json` manifest under `dir`, if present.
+ * Used to clean up the stale copy left in the old directory after a
+ * successful migration — a leftover manifest is cosmetic, not a reason to
+ * fail anything, so this never throws.
+ */
+export function deleteManifest(dir: string): void {
+  try {
+    const file = new File(new Directory(dir), MANIFEST_FILENAME);
+    if (file.exists) file.delete();
+  } catch (error) {
+    console.warn('[moments] failed to delete stale manifest:', dir, error);
+  }
+}
+
+/**
  * True when moments are being written to shared storage — i.e. when they will
  * survive an uninstall. False means the app fell back to its own document
  * directory, which is wiped with the app.
+ *
+ * `ensureMomentsDir()` returns a native `Directory.uri`, which always carries
+ * a trailing slash; `SHARED_MOMENTS_DIR` does not. Both sides go through
+ * `normalizeDirUri` so the comparison is not sensitive to that difference —
+ * see `moments-dir.ts`.
  */
 export function momentsDirIsShared(): boolean {
-  return ensureMomentsDir() === SHARED_MOMENTS_DIR;
+  return normalizeDirUri(ensureMomentsDir()) === normalizeDirUri(SHARED_MOMENTS_DIR);
 }
 
 /**
@@ -154,26 +174,77 @@ export function invalidateMomentsDir(): void {
   cachedDir = null;
 }
 
+/** Splits a file uri into its parent directory uri and its own basename. */
+function splitParentAndName(fileUri: string): { parentUri: string; name: string } {
+  const trimmed = normalizeDirUri(fileUri);
+  const slash = trimmed.lastIndexOf('/');
+  return { parentUri: trimmed.slice(0, slash), name: trimmed.slice(slash + 1) };
+}
+
 /**
  * Move planned frames into the current directory. Returns the moves that
- * actually happened. Best-effort per file: one unmovable frame must not
- * abandon the rest, and a frame that fails to move keeps its old uri, which
- * still resolves.
+ * actually happened — either just now, or on a previous, interrupted run.
+ * `onMoved`, when given, is awaited right after each successful move (before
+ * the next one starts) so a caller that persists the new uri to a database
+ * narrows the window in which a process death can leave the file moved but
+ * the database still pointing at the old path to a single frame.
+ *
+ * Best-effort per file: one unmovable frame must not abandon the rest, and a
+ * frame that fails to move keeps its old uri, which still resolves.
  *
  * expo-file-system's `File.move()` is async (`Promise<void>`); the
- * synchronous counterpart callers of this function depend on is
- * `File.moveSync()`, which also requires the destination to be a `File`/
- * `Directory` instance rather than a bare uri string. See
+ * synchronous counterpart this function uses is `File.moveSync()`, which also
+ * requires the destination to be a `File`/`Directory` instance rather than a
+ * bare uri string. See
  * `node_modules/expo-file-system/build/internal/NativeFileSystem.types.d.ts`.
+ *
+ * The destination file must NOT be constructed from a bare not-yet-existing
+ * uri: expo-file-system's Android implementation validates WRITE permission
+ * on the destination path by calling `java.io.File(path).canWrite()` for any
+ * path outside the app sandbox (`FilePermissionService.getExternalPathPermissions`),
+ * and `canWrite()` on a path that does not exist is always `false` —
+ * `MANAGE_EXTERNAL_STORAGE` does not change that. So the destination is
+ * created first through its PARENT directory (which does exist, and whose
+ * permission check therefore succeeds — same reasoning as
+ * `ensureChildDirectory` above), and `moveSync` is then called with
+ * `{ overwrite: true }` so it replaces that placeholder instead of throwing
+ * `DestinationAlreadyExistsException`. Verified against
+ * `CopyMoveStrategy.LocalFile` in expo-file-system's Android source: a
+ * File→File move with `overwrite: true` deletes the existing (empty) target
+ * and then renames the source onto it, so the frame ends up at exactly
+ * `move.toUri` — the uri the caller writes into the database.
  */
-export function moveMomentFrames(moves: MomentMove[]): MomentMove[] {
+export async function moveMomentFrames(
+  moves: MomentMove[],
+  onMoved?: (move: MomentMove) => void | Promise<void>,
+): Promise<MomentMove[]> {
   const moved: MomentMove[] = [];
   for (const move of moves) {
     try {
       const source = new File(move.fromUri);
-      if (!source.exists) continue;
-      source.moveSync(new File(move.toUri));
+      if (!source.exists) {
+        // The process may have died between moving this frame and writing
+        // its new uri to the database on a previous run: the file is already
+        // at the destination, but planMomentMigration re-planned it from a
+        // stale database row. Heal the row rather than orphaning the frame
+        // silently and forever.
+        if (new File(move.toUri).exists) {
+          moved.push(move);
+          if (onMoved) await onMoved(move);
+        } else {
+          console.warn(
+            `[moments] frame ${move.id} is missing at both the old and new path, it is lost:`,
+            move,
+          );
+        }
+        continue;
+      }
+
+      const { parentUri, name } = splitParentAndName(move.toUri);
+      const dest = ensureChildFile(new Directory(parentUri), name, 'image/jpeg');
+      source.moveSync(dest, { overwrite: true });
       moved.push(move);
+      if (onMoved) await onMoved(move);
     } catch (error) {
       console.warn(`[moments] could not move frame ${move.id}:`, error);
     }

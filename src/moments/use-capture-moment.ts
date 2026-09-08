@@ -1,3 +1,4 @@
+import { Paths } from 'expo-file-system';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
 
@@ -5,7 +6,8 @@ import { getMoments, insertMoment, updateMomentFrameUri, updateMomentNote } from
 import { FrameGrabber } from '@/native/frame-grabber';
 import { captureMoment, type CaptureInput } from './capture';
 import { planMomentMigration } from './migrate-moments';
-import { ensureMomentsDir, moveMomentFrames, writeManifest } from './storage';
+import { normalizeDirUri, pickMomentsDir } from './moments-dir';
+import { deleteManifest, ensureMomentsDir, moveMomentFrames, writeManifest } from './storage';
 import type { Moment } from './types';
 
 function newMomentId(): string {
@@ -37,10 +39,13 @@ export function useCaptureMoment(): (input: CaptureInput) => Promise<Moment> {
  * storage (once `momentsDirIsShared()` turns true) and updates the DB to
  * match. Called from the player screen's focus effect after re-probing.
  *
- * Only rows whose file actually moved get their `frame_uri` rewritten —
- * `moveMomentFrames` is best-effort per file, and a frame left behind must
- * keep the uri that still resolves rather than being pointed at a path that
- * holds no file.
+ * Each row is updated right after its own file moves, inside
+ * `moveMomentFrames`'s loop, rather than in a second pass afterwards — a
+ * process killed mid-migration (very plausible: the user has just come back
+ * from the system Settings app, and a backgrounded RN process is a prime kill
+ * target) can then orphan at most the one frame it was working on, not the
+ * whole batch. `moveMomentFrames` itself heals a row left orphaned by an
+ * earlier interrupted run, so a second attempt catches up.
  */
 export function useMigrateMoments(): () => Promise<void> {
   const db = useSQLiteContext();
@@ -52,11 +57,16 @@ export function useMigrateMoments(): () => Promise<void> {
       const plan = planMomentMigration(moments, dir);
       if (plan.length === 0) return;
 
-      const moved = moveMomentFrames(plan);
-      for (const move of moved) {
-        await updateMomentFrameUri(db, move.id, move.toUri);
-      }
+      await moveMomentFrames(plan, (move) => updateMomentFrameUri(db, move.id, move.toUri));
       writeManifest(dir, await getMoments(db));
+
+      // The migration only ever moves frames OUT of the fallback directory,
+      // so once it succeeds that directory's manifest is stale — leaving it
+      // behind means two contradictory moments.json files on disk.
+      const fallbackDir = pickMomentsDir(false, Paths.document.uri);
+      if (normalizeDirUri(fallbackDir) !== normalizeDirUri(dir)) {
+        deleteManifest(fallbackDir);
+      }
     } catch (error) {
       console.warn('[moments] migration to shared storage failed:', error);
     }

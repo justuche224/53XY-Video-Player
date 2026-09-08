@@ -1,5 +1,30 @@
-import { framePath, frameFileName, pickMomentsDir } from '../moments-dir';
+import { framePath, frameFileName, normalizeDirUri, pickMomentsDir } from '../moments-dir';
 import { SHARED_MOMENTS_DIR } from '../moment-policy';
+
+describe('normalizeDirUri', () => {
+  it('strips a trailing slash', () => {
+    expect(normalizeDirUri('file:///storage/emulated/0/53XY/Moments/')).toBe(
+      'file:///storage/emulated/0/53XY/Moments',
+    );
+  });
+
+  it('leaves a uri with no trailing slash unchanged', () => {
+    expect(normalizeDirUri(SHARED_MOMENTS_DIR)).toBe(SHARED_MOMENTS_DIR);
+  });
+
+  it('makes a native Directory.uri (always trailing-slashed) compare equal to a hand-written constant', () => {
+    // This is the exact CRITICAL 1 bug: ensureMomentsDir() returns
+    // Directory.uri, which the native side always terminates with "/", while
+    // SHARED_MOMENTS_DIR does not — a bare `===` between them is never true.
+    const nativeUri = `${SHARED_MOMENTS_DIR}/`;
+    expect(nativeUri).not.toBe(SHARED_MOMENTS_DIR);
+    expect(normalizeDirUri(nativeUri)).toBe(normalizeDirUri(SHARED_MOMENTS_DIR));
+  });
+
+  it('only strips one trailing slash', () => {
+    expect(normalizeDirUri('file:///a/b//')).toBe('file:///a/b/');
+  });
+});
 
 describe('pickMomentsDir', () => {
   it('prefers shared storage, so moments survive uninstall', () => {
