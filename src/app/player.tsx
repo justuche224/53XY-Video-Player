@@ -63,7 +63,12 @@ import { SubtitleOverlay } from '@/components/player/subtitle-overlay';
 import { SubtitleDelayBar } from '@/components/player/subtitle-delay-bar';
 import { MomentNoteSheet } from '@/components/player/moment-note-sheet';
 import { MomentSnackbar } from '@/components/player/moment-snackbar';
-import { useCaptureMoment, useUpdateMomentNote } from '@/moments/use-capture-moment';
+import { MomentsStorageSheet } from '@/components/moments-storage-sheet';
+import { useCaptureMoment, useMigrateMoments, useUpdateMomentNote } from '@/moments/use-capture-moment';
+import { useEmbeddedCue } from '@/player/use-embedded-cue';
+import { momentsDirIsShared, invalidateMomentsDir } from '@/moments/storage';
+import { getSetting, setSetting } from '@/db/settings-repo';
+import { openAllFilesAccessSettings } from '@/subtitles/storage-access';
 import type { Moment } from '@/moments/types';
 
 // Vertical-swipe sensitivity: a drag of ~(screen height / VERTICAL_GAIN) spans
@@ -162,6 +167,9 @@ export default function PlayerScreen() {
     // is already enabled in app.config.ts.
     p.showNowPlayingNotification = true;
   });
+
+  // Embedded subtitle cues, kept in a ref rather than state — see the hook.
+  const embeddedCueRef = useEmbeddedCue(player);
 
   const { backgroundPlay } = useBackgroundPlay();
   const { pictureInPicture } = usePictureInPicture();
@@ -277,6 +285,7 @@ export default function PlayerScreen() {
   const [toast, setToast] = useState<string | null>(null);
   const [savedMoment, setSavedMoment] = useState<Moment | null>(null);
   const [noteSheetFor, setNoteSheetFor] = useState<Moment | null>(null);
+  const [showStorageSheet, setShowStorageSheet] = useState(false);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Ref mirrors so the playToEnd listener binds once per player yet always
   // reads current values (same pattern as controlsVisibleRef).
@@ -467,6 +476,7 @@ export default function PlayerScreen() {
   // ── Moment capture: bookmark button + note sheet ──────────────────────────
   const captureMoment = useCaptureMoment();
   const updateMomentNote = useUpdateMomentNote();
+  const migrateMoments = useMigrateMoments();
 
   // Position comes from the cached ref, never player.currentTime: expo-video
   // can have released the shared object, and reading through it throws.
@@ -493,15 +503,33 @@ export default function PlayerScreen() {
           durationMs: video.durationMs,
         },
         positionMs: Math.round(lastPositionSecRef.current * 1000),
-        note: subtitles.activeText,
+        // External sidecar cues come from our own parser; embedded cues come
+        // from ExoPlayer via the patched subtitleCueChange event. Only one can
+        // be active at a time, so first non-empty wins.
+        note: subtitles.activeText || embeddedCueRef.current,
       });
       setSavedMoment(moment);
+
+      // Nag at most once, and only when the capture actually landed in the
+      // fallback directory — a user with shared storage already working has
+      // nothing to fix.
+      if (!momentsDirIsShared()) {
+        try {
+          const shown = await getSetting(db, 'moments.storagePromptShown');
+          if (shown !== '1') {
+            setShowStorageSheet(true);
+            await setSetting(db, 'moments.storagePromptShown', '1');
+          }
+        } catch (error) {
+          console.warn('[moments] storage prompt check failed:', error);
+        }
+      }
     } catch {
       showToast('Could not save moment');
     } finally {
       captureInFlightRef.current = false;
     }
-  }, [captureMoment, videoId, subtitles.activeText, showToast]);
+  }, [captureMoment, videoId, subtitles.activeText, showToast, db]);
 
   const handleSaveNote = useCallback(
     (note: string) => {
@@ -674,6 +702,21 @@ export default function PlayerScreen() {
         setOrientationLocked(false);
       };
     }, []),
+  );
+
+  // ── Notice a storage-permission grant made while we were away ────────────
+  useFocusEffect(
+    useCallback(() => {
+      // The user may have just returned from the system settings screen with
+      // All files access newly granted. The cached directory is stale, so
+      // re-probe; if moments can now reach shared storage, move the ones
+      // already saved so a single install does not end up split across two
+      // locations.
+      if (momentsDirIsShared()) return;
+      invalidateMomentsDir();
+      if (!momentsDirIsShared()) return;
+      void migrateMoments();
+    }, [migrateMoments]),
   );
 
   // Rebuild the gesture subtree after every sensor-driven orientation change
@@ -1271,6 +1314,16 @@ export default function PlayerScreen() {
         <View style={styles.snackbarContainer} pointerEvents="none">
           <PlayerToast message={toast} />
         </View>
+      )}
+
+      {showStorageSheet && (
+        <MomentsStorageSheet
+          onOpenSettings={() => {
+            setShowStorageSheet(false);
+            void openAllFilesAccessSettings();
+          }}
+          onDismiss={() => setShowStorageSheet(false)}
+        />
       )}
     </GestureHandlerRootView>
   );

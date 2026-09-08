@@ -89,6 +89,14 @@ export async function updateMomentNote(
   await db.runAsync('UPDATE moments SET note = ? WHERE id = ?', [note, id]);
 }
 
+export async function updateMomentFrameUri(
+  db: SQLiteDatabase,
+  id: string,
+  frameUri: string,
+): Promise<void> {
+  await db.runAsync('UPDATE moments SET frame_uri = ? WHERE id = ?', [frameUri, id]);
+}
+
 export async function deleteMoment(db: SQLiteDatabase, id: string): Promise<void> {
   await db.runAsync('DELETE FROM moments WHERE id = ?', [id]);
 }
