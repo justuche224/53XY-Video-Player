@@ -2,6 +2,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, SectionList, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { AppBar } from '@/components/app-bar';
@@ -26,6 +27,7 @@ export default function MomentsScreen() {
   const { colors, spacing } = useTheme();
   const db = useSQLiteContext();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { videos } = useLibraryData();
 
   const [moments, setMoments] = useState<Moment[]>([]);
@@ -116,6 +118,7 @@ export default function MomentsScreen() {
               writeManifest(ensureMomentsDir(), remaining);
             } catch (e) {
               console.warn('[moments] failed to delete moments:', e);
+              Alert.alert('Delete failed', 'Something went wrong deleting these moments. Please try again.');
             }
           },
         },
@@ -130,8 +133,11 @@ export default function MomentsScreen() {
   }, [clearSelection, moments, selected]);
 
   return (
-    <Screen style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
-      {selected.size > 0 ? (
+    <Screen
+      edges={['left', 'right']}
+      style={{ paddingHorizontal: spacing.lg, paddingTop: insets.top + spacing.lg }}>
+      <AppBar title="Moments" />
+      {selected.size > 0 && (
         <ContextualAppBar
           selectedCount={selected.size}
           onClearSelection={clearSelection}
@@ -139,8 +145,6 @@ export default function MomentsScreen() {
           onDelete={onDelete}
           overflowActions={[]}
         />
-      ) : (
-        <AppBar title="Moments" />
       )}
 
       <View style={{ marginBottom: spacing.sm }}>
@@ -182,7 +186,7 @@ export default function MomentsScreen() {
             </Text>
           </View>
         }
-        contentContainerStyle={{ paddingBottom: spacing.xl + TAB_BAR_CLEARANCE }}
+        contentContainerStyle={{ paddingBottom: spacing.xl + TAB_BAR_CLEARANCE + insets.bottom }}
         bounces
         overScrollMode="always"
       />
