@@ -1,6 +1,6 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { AppText } from './app-text';
 import { IconButton } from './icon-button';
@@ -52,89 +52,98 @@ export function AddToPlaylistSheet({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable
-          style={[
-            styles.sheet,
-            {
-              backgroundColor: colors.surface ?? '#1b1b1b',
-              borderTopLeftRadius: radius.xl,
-              borderTopRightRadius: radius.xl,
-              padding: spacing.lg,
-              maxHeight: '80%',
-            },
-          ]}
-          onPress={() => {}}>
-          <View style={styles.header}>
-            <AppText variant="headline" style={{ flex: 1 }}>Add to Playlist</AppText>
-            {creating ? (
-              <IconButton name="close" accessibilityLabel="Cancel new playlist" onPress={() => setCreating(false)} />
-            ) : (
-              <IconButton name="add" accessibilityLabel="Create new playlist" onPress={() => setCreating(true)} />
-            )}
-          </View>
-
-          {creating ? (
-            <View style={{ gap: spacing.md, marginTop: spacing.md }}>
-              <TextInput
-                style={[
-                  styles.input,
-                  { color: colors.onSurface, borderColor: colors.outline },
-                ]}
-                placeholder="New playlist name..."
-                placeholderTextColor={colors.onSurfaceVariant}
-                value={newName}
-                onChangeText={setNewName}
-                autoFocus
-                onSubmitEditing={handleCreate}
-              />
-              <Pressable
-                style={[styles.button, { backgroundColor: colors.primary }]}
-                onPress={handleCreate}>
-                <AppText variant="body" style={{ color: colors.onPrimary, fontWeight: '700' }}>
-                  Create & Add
-                </AppText>
-              </Pressable>
-            </View>
-          ) : (
-            <FlatList
-              data={playlists}
-              keyExtractor={(item) => item.id}
-              style={{ marginTop: spacing.md }}
-              ListEmptyComponent={
-                <AppText variant="body" style={{ color: colors.onSurfaceVariant, textAlign: 'center', marginTop: spacing.xl }}>
-                  No playlists yet. Create one to get started!
-                </AppText>
-              }
-              renderItem={({ item }) => (
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.row,
-                    { backgroundColor: pressed ? colors.surfaceVariant : 'transparent' },
-                  ]}
-                  onPress={() => handleSelect(item.id)}>
-                  <View style={{ flex: 1, paddingVertical: spacing.md }}>
-                    <AppText variant="title">{item.name}</AppText>
-                    <AppText variant="body" style={{ color: colors.onSurfaceVariant }}>
-                      {item.itemCount} item{item.itemCount === 1 ? '' : 's'}
-                    </AppText>
-                  </View>
-                  <IconButton
-                    name="add-circle-outline"
-                    accessibilityLabel={`Add to ${item.name}`}
-                    onPress={() => handleSelect(item.id)}
-                  />
-                </Pressable>
+      {/*
+        A React Native Modal is its own Android window and does not inherit the
+        activity's `windowSoftInputMode="adjustResize"`, so this sheet would sit
+        under the keyboard its own input raises. Padding the bottom shrinks the
+        backdrop by the keyboard's height. Same fix as moment-note-sheet.tsx.
+      */}
+      <KeyboardAvoidingView style={styles.fill} behavior="padding">
+        <Pressable style={styles.backdrop} onPress={onClose}>
+          <Pressable
+            style={[
+              styles.sheet,
+              {
+                backgroundColor: colors.surface ?? '#1b1b1b',
+                borderTopLeftRadius: radius.xl,
+                borderTopRightRadius: radius.xl,
+                padding: spacing.lg,
+                maxHeight: '80%',
+              },
+            ]}
+            onPress={() => {}}>
+            <View style={styles.header}>
+              <AppText variant="headline" style={{ flex: 1 }}>Add to Playlist</AppText>
+              {creating ? (
+                <IconButton name="close" accessibilityLabel="Cancel new playlist" onPress={() => setCreating(false)} />
+              ) : (
+                <IconButton name="add" accessibilityLabel="Create new playlist" onPress={() => setCreating(true)} />
               )}
-            />
-          )}
+            </View>
+
+            {creating ? (
+              <View style={{ gap: spacing.md, marginTop: spacing.md }}>
+                <TextInput
+                  style={[
+                    styles.input,
+                    { color: colors.onSurface, borderColor: colors.outline },
+                  ]}
+                  placeholder="New playlist name..."
+                  placeholderTextColor={colors.onSurfaceVariant}
+                  value={newName}
+                  onChangeText={setNewName}
+                  autoFocus
+                  onSubmitEditing={handleCreate}
+                />
+                <Pressable
+                  style={[styles.button, { backgroundColor: colors.primary }]}
+                  onPress={handleCreate}>
+                  <AppText variant="body" style={{ color: colors.onPrimary, fontWeight: '700' }}>
+                    Create & Add
+                  </AppText>
+                </Pressable>
+              </View>
+            ) : (
+              <FlatList
+                data={playlists}
+                keyExtractor={(item) => item.id}
+                style={{ marginTop: spacing.md }}
+                ListEmptyComponent={
+                  <AppText variant="body" style={{ color: colors.onSurfaceVariant, textAlign: 'center', marginTop: spacing.xl }}>
+                    No playlists yet. Create one to get started!
+                  </AppText>
+                }
+                renderItem={({ item }) => (
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.row,
+                      { backgroundColor: pressed ? colors.surfaceVariant : 'transparent' },
+                    ]}
+                    onPress={() => handleSelect(item.id)}>
+                    <View style={{ flex: 1, paddingVertical: spacing.md }}>
+                      <AppText variant="title">{item.name}</AppText>
+                      <AppText variant="body" style={{ color: colors.onSurfaceVariant }}>
+                        {item.itemCount} item{item.itemCount === 1 ? '' : 's'}
+                      </AppText>
+                    </View>
+                    <IconButton
+                      name="add-circle-outline"
+                      accessibilityLabel={`Add to ${item.name}`}
+                      onPress={() => handleSelect(item.id)}
+                    />
+                  </Pressable>
+                )}
+              />
+            )}
+          </Pressable>
         </Pressable>
-      </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   sheet: { width: '100%' },
   header: { flexDirection: 'row', alignItems: 'center' },
