@@ -33,6 +33,14 @@ export async function pendingRestoreCount(db: SQLiteDatabase): Promise<number> {
 
 /** Puts the manifest's usable moments back. Returns how many were restored. */
 export async function restoreMomentsFromManifest(db: SQLiteDatabase): Promise<number> {
+  // The manifest is a recovery copy of unknown age. If the table already has
+  // rows, restoring over them would run replaceAllMoments' DELETE FROM moments
+  // and destroy whichever of the two — live data or manifest — is newer. Bail
+  // out before even reading the manifest. This holds even if a caller skips
+  // the pendingRestoreCount() check the UI is expected to make first.
+  const existing = await getMoments(db);
+  if (existing.length > 0) return 0;
+
   const recovered = restorableMoments(readManifest(ensureMomentsDir()), frameExists);
   if (recovered.length === 0) return 0;
   await replaceAllMoments(db, recovered);
