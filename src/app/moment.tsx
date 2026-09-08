@@ -118,10 +118,11 @@ export default function MomentScreen() {
             await deleteMoments(db, [moment.id]);
             deleteFrame(moment.frameUri);
             await rewriteManifest();
+            router.back();
           } catch (e) {
             console.warn('[moments] failed to delete moment:', e);
+            Alert.alert('Delete failed', 'Something went wrong deleting this moment. Please try again.');
           }
-          router.back();
         },
       },
     ]);
@@ -131,6 +132,19 @@ export default function MomentScreen() {
     return (
       <Screen style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
         <AppBar title="Moment" variant="detail" onBack={() => router.back()} />
+        <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1, paddingBottom: spacing.xl * 2 }}>
+          <Ionicons name="bookmark-outline" size={64} color={colors.onSurfaceVariant ?? '#444'} />
+          <Text
+            style={{
+              color: colors.onSurface,
+              fontSize: 18,
+              fontWeight: '600',
+              marginTop: spacing.md,
+              textAlign: 'center',
+            }}>
+            This moment is no longer available.
+          </Text>
+        </View>
       </Screen>
     );
   }
@@ -200,6 +214,7 @@ export default function MomentScreen() {
             />
             <ListItem
               title="Share frame"
+              subtitle={moment.frameUri ? undefined : 'This moment has no saved frame'}
               onPress={moment.frameUri ? () => void shareFiles([moment.frameUri!]) : undefined}
             />
             <ListItem title="Delete moment" onPress={onDelete} />
