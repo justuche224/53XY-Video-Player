@@ -43,8 +43,13 @@ export function ensureMomentsDir(): string {
   const directory = new Directory(dir);
   if (!directory.exists) directory.create({ intermediates: true });
 
-  const nomedia = new File(directory, '.nomedia');
-  if (!nomedia.exists) nomedia.create();
+  try {
+    const nomedia = new File(directory, '.nomedia');
+    if (!nomedia.exists) nomedia.create();
+  } catch {
+    // A moment that saves but is visible to the gallery beats a moment that
+    // never saves — gallery hygiene is not worth failing every capture over.
+  }
 
   cachedDir = dir;
   return dir;
