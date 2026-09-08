@@ -470,10 +470,18 @@ export default function PlayerScreen() {
 
   // Position comes from the cached ref, never player.currentTime: expo-video
   // can have released the shared object, and reading through it throws.
+  //
+  // `exact: true` decodes forward from the preceding keyframe and can take
+  // seconds on a large 4K HEVC file. captureInFlightRef guards against a
+  // second tap starting a near-duplicate moment and a second concurrent
+  // MediaMetadataRetriever alongside the playback decoder.
+  const captureInFlightRef = useRef(false);
   const handleCaptureMoment = useCallback(async () => {
+    if (captureInFlightRef.current) return;
     const video = videosRef.current.find((v) => v.id === videoId);
     if (!video) return;
 
+    captureInFlightRef.current = true;
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       const moment = await captureMoment({
@@ -490,6 +498,8 @@ export default function PlayerScreen() {
       setSavedMoment(moment);
     } catch {
       showToast('Could not save moment');
+    } finally {
+      captureInFlightRef.current = false;
     }
   }, [captureMoment, videoId, subtitles.activeText, showToast]);
 
@@ -521,7 +531,12 @@ export default function PlayerScreen() {
     resumeAfterNoteRef.current = playingRef.current;
     player.pause();
     return () => {
-      if (resumeAfterNoteRef.current) player.play();
+      // Guarded like the other gesture callbacks: the screen can unmount while
+      // the note sheet is still open (back gesture, sleep timer firing), which
+      // releases the player before this cleanup runs `player.play()`.
+      if (resumeAfterNoteRef.current) {
+        ignoreIfReleased(() => player.play(), 'resumeAfterNoteSheet');
+      }
     };
   }, [noteSheetFor, player]);
 
@@ -1184,6 +1199,7 @@ export default function PlayerScreen() {
             {savedMoment && (
               <View style={styles.snackbarContainer} pointerEvents="box-none">
                 <MomentSnackbar
+                  key={savedMoment.id}
                   positionSec={savedMoment.positionMs / 1000}
                   onEdit={() => {
                     setNoteSheetFor(savedMoment);
