@@ -16,9 +16,9 @@ import { TAB_BAR_CLEARANCE } from '@/components/tab-bar';
 import { deleteMoments, getMoments } from '@/db/moments-repo';
 import { useLibraryData } from '@/library/library-provider';
 import { chunkMoments, filterMoments, groupMoments } from '@/moments/group-moments';
-import { pendingRestoreCount, restoreMomentsFromManifest } from '@/moments/moments-store';
+import { pendingRestoreCount, restoreMomentsFromManifest, syncManifest } from '@/moments/moments-store';
 import { resolveMomentTarget } from '@/moments/resolve-moment-video';
-import { deleteFrame, ensureMomentsDir, writeManifest } from '@/moments/storage';
+import { deleteFrame } from '@/moments/storage';
 import type { Moment } from '@/moments/types';
 import { shareFiles } from '@/moments/share-moments';
 import { useTheme } from '@/theme/theme-provider';
@@ -125,7 +125,7 @@ export default function MomentsScreen() {
               const remaining = await getMoments(db);
               setMoments(remaining);
               clearSelection();
-              writeManifest(ensureMomentsDir(), remaining);
+              await syncManifest(db);
             } catch (e) {
               console.warn('[moments] failed to delete moments:', e);
               Alert.alert('Delete failed', 'Something went wrong deleting these moments. Please try again.');

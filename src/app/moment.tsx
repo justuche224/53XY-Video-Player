@@ -17,10 +17,11 @@ import {
   updateMomentVideoLink,
 } from '@/db/moments-repo';
 import { useLibraryData } from '@/library/library-provider';
+import { syncManifest } from '@/moments/moments-store';
 import { resolveMomentTarget } from '@/moments/resolve-moment-video';
 import { saveFrameToGallery } from '@/moments/save-to-gallery';
 import { shareFiles } from '@/moments/share-moments';
-import { deleteFrame, ensureMomentsDir, writeManifest } from '@/moments/storage';
+import { deleteFrame } from '@/moments/storage';
 import type { Moment } from '@/moments/types';
 import { formatTime } from '@/player/format-time';
 import { useTheme } from '@/theme/theme-provider';
@@ -49,7 +50,7 @@ export default function MomentScreen() {
 
   const rewriteManifest = useCallback(async () => {
     try {
-      writeManifest(ensureMomentsDir(), await getMoments(db));
+      await syncManifest(db);
     } catch (e) {
       console.warn('[moments] failed to rewrite manifest:', e);
     }

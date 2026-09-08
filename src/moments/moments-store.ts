@@ -2,7 +2,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { File } from 'expo-file-system';
 
 import { deleteMoments, getMoments, insertMoment } from '@/db/moments-repo';
-import { missingFromDb } from './restore-moments';
+import { mergeManifest, missingFromDb } from './restore-moments';
 import { deleteFrame, ensureMomentsDir, readManifest, writeManifest } from './storage';
 
 function frameExists(uri: string): boolean {
@@ -11,6 +11,28 @@ function frameExists(uri: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Rewrites moments.json as the merge of the database with whatever is
+ * currently on disk, instead of overwriting it from the database alone.
+ *
+ * This is the one write every "routine" caller — capture, migration, note
+ * edits, and per-moment deletes — should use. An unconditional
+ * `writeManifest(dir, await getMoments(db))` can erase a manifest-only entry
+ * the database has never seen (e.g. the rest of a backup right after a
+ * reinstall) as a side effect of an unrelated write; merging means a
+ * manifest-only entry only ever disappears when its frame file is actually
+ * gone. See `mergeManifest`'s doc comment for the full reasoning.
+ *
+ * `clearAllMoments` is the deliberate exception: it is an explicit "delete
+ * everything" and writes `[]` directly.
+ */
+export async function syncManifest(db: SQLiteDatabase): Promise<void> {
+  const dir = ensureMomentsDir();
+  const dbMoments = await getMoments(db);
+  const manifestMoments = readManifest(dir);
+  writeManifest(dir, mergeManifest(dbMoments, manifestMoments, frameExists));
 }
 
 /**

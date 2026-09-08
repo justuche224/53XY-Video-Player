@@ -1,5 +1,4 @@
-import { File, Paths } from 'expo-file-system';
-import type { SQLiteDatabase } from 'expo-sqlite';
+import { Paths } from 'expo-file-system';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
 
@@ -8,34 +7,12 @@ import { FrameGrabber } from '@/native/frame-grabber';
 import { captureMoment, type CaptureInput } from './capture';
 import { planMomentMigration } from './migrate-moments';
 import { normalizeDirUri, pickMomentsDir } from './moments-dir';
-import { mergeManifest } from './restore-moments';
-import { deleteManifest, ensureMomentsDir, moveMomentFrames, readManifest, writeManifest } from './storage';
+import { syncManifest } from './moments-store';
+import { deleteManifest, ensureMomentsDir, moveMomentFrames } from './storage';
 import type { Moment } from './types';
 
 function newMomentId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function frameExists(uri: string): boolean {
-  try {
-    return new File(uri).exists;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Rewrites moments.json as the merge of the database and whatever is
- * currently on disk, rather than an unconditional overwrite from the
- * database. An overwrite here would erase any manifest-only entry the first
- * time any of these call sites runs — e.g. the first capture after a
- * reinstall, when the manifest still holds every pre-reinstall moment but the
- * (empty) database has none of them yet. See `mergeManifest`.
- */
-async function syncManifest(db: SQLiteDatabase, dir: string): Promise<void> {
-  const dbMoments = await getMoments(db);
-  const manifestMoments = readManifest(dir);
-  writeManifest(dir, mergeManifest(dbMoments, manifestMoments, frameExists));
 }
 
 /** Captures the current frame and persists it. Throws only if the DB write fails. */
@@ -48,7 +25,7 @@ export function useCaptureMoment(): (input: CaptureInput) => Promise<Moment> {
       return captureMoment(input, {
         grabFrame: (uri, options) => FrameGrabber.grabFrame(uri, options),
         insert: (moment) => insertMoment(db, moment),
-        syncManifest: () => syncManifest(db, dir),
+        syncManifest: () => syncManifest(db),
         momentsDir: dir,
         now: Date.now,
         newId: newMomentId,
@@ -82,7 +59,7 @@ export function useMigrateMoments(): () => Promise<void> {
       if (plan.length === 0) return;
 
       await moveMomentFrames(plan, (move) => updateMomentFrameUri(db, move.id, move.toUri));
-      await syncManifest(db, dir);
+      await syncManifest(db);
 
       // The migration only ever moves frames OUT of the fallback directory,
       // so once it succeeds that directory's manifest is stale — leaving it
@@ -105,7 +82,7 @@ export function useUpdateMomentNote(): (id: string, note: string) => Promise<voi
     async (id: string, note: string) => {
       await updateMomentNote(db, id, note.trim() || null);
       try {
-        await syncManifest(db, ensureMomentsDir());
+        await syncManifest(db);
       } catch (error) {
         // Same reasoning as capture: the row is saved; the mirror can lag.
         console.warn('[moments] manifest sync failed after note edit, moments.json may be stale:', error);
