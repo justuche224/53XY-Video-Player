@@ -1,5 +1,3 @@
-import * as Application from 'expo-application';
-import * as IntentLauncher from 'expo-intent-launcher';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState, type ReactNode } from 'react';
 import { BackHandler, View } from 'react-native';
@@ -19,6 +17,7 @@ import { isLastSlide, nextSlideIndex, prevSlideIndex } from '@/onboarding/policy
 import { SLIDES, type SlideKey } from '@/onboarding/slides';
 import { useOnboarding } from '@/onboarding/onboarding-provider';
 import { useMediaAccess } from '@/permissions/media-access-provider';
+import { openAppSettings } from '@/permissions/open-app-settings';
 import { openAllFilesAccessSettings } from '@/subtitles/storage-access';
 import { useTheme } from '@/theme/theme-provider';
 
@@ -56,11 +55,7 @@ export default function OnboardingScreen() {
     if (videoAccess === 'blocked') {
       // Requesting again after a permanent denial resolves silently without
       // showing a dialog, so send the user where the toggle actually is.
-      const pkg = Application.applicationId;
-      await IntentLauncher.startActivityAsync(
-        'android.settings.APPLICATION_DETAILS_SETTINGS',
-        pkg ? { data: `package:${pkg}` } : undefined,
-      );
+      await openAppSettings();
       return;
     }
     if (videoAccess === 'askable') await requestVideoAccess();

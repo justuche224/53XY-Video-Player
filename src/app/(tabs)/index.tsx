@@ -28,6 +28,7 @@ import { HintChip } from '@/components/onboarding/hint-chip';
 import { shouldShowHomeHint } from '@/onboarding/coach';
 import { SETTING_KEYS } from '@/onboarding/policy';
 import { useCoachFlag } from '@/onboarding/use-coach-flag';
+import { openAppSettings } from '@/permissions/open-app-settings';
 import { resolveLastPlayed } from '@/player/resume-last';
 import { selectionQueueIds } from '@/player/queue';
 import { stashQueue } from '@/player/queue-store';
@@ -291,36 +292,47 @@ export default function LibraryScreen() {
   // rows have none and take the full inset from the container.
   const gutter = layout === 'grid' ? spacing.sm : spacing.lg;
 
+  // The hero bleeds edge-to-edge by cancelling the list's horizontal padding
+  // on just that inner wrapper. The hint chip sits below it, outside that
+  // negative-margin wrapper with its own `gutter` margin — inside the wrapper
+  // it would inherit the bleed and its rounded corners would run flush to
+  // both screen edges. It also renders below the hero rather than above it:
+  // the hero is a signature screen element and a tip must not push it down.
   const listHeader = (
-    <View style={{ marginHorizontal: -gutter }}>
+    <View>
+      <View style={{ marginHorizontal: -gutter }}>
+        {status === 'denied' ? (
+          <HomeHeroPlaceholder
+            message="Media permission denied"
+            hint="Enable it in system settings to scan your library."
+            action={{ label: 'Open settings', onPress: () => void openAppSettings() }}
+          />
+        ) : heroVideo ? (
+          <HomeHero
+            video={heroVideo}
+            kind={heroKind}
+            percent={progress.get(heroVideo.id)?.percent ?? 0}
+            onPlay={() => openVideo(heroVideo)}
+            onOpenGroup={
+              heroGroup && heroGroup.count > 1 ? () => openGroup(heroGroup) : undefined
+            }
+          />
+        ) : (
+          <HomeHeroPlaceholder
+            message={refreshing ? 'Scanning your library…' : status === 'ready' ? 'No videos found' : 'Loading…'}
+            hint={status === 'ready' && !refreshing ? 'Try adjusting your filters or search query.' : undefined}
+          />
+        )}
+      </View>
       {showHint ? (
-        <HintChip
-          icon="hand-left-outline"
-          text="Long-press any video to select, share, or move it to another group."
-          onDismiss={homeCoach.dismiss}
-        />
+        <View style={{ marginHorizontal: gutter, marginTop: spacing.md }}>
+          <HintChip
+            icon="hand-left-outline"
+            text="Long-press any video to select, share, or move it to another group."
+            onDismiss={homeCoach.dismiss}
+          />
+        </View>
       ) : null}
-      {status === 'denied' ? (
-        <HomeHeroPlaceholder
-          message="Media permission denied"
-          hint="Enable it in system settings to scan your library."
-        />
-      ) : heroVideo ? (
-        <HomeHero
-          video={heroVideo}
-          kind={heroKind}
-          percent={progress.get(heroVideo.id)?.percent ?? 0}
-          onPlay={() => openVideo(heroVideo)}
-          onOpenGroup={
-            heroGroup && heroGroup.count > 1 ? () => openGroup(heroGroup) : undefined
-          }
-        />
-      ) : (
-        <HomeHeroPlaceholder
-          message={refreshing ? 'Scanning your library…' : status === 'ready' ? 'No videos found' : 'Loading…'}
-          hint={status === 'ready' && !refreshing ? 'Try adjusting your filters or search query.' : undefined}
-        />
-      )}
     </View>
   );
 
