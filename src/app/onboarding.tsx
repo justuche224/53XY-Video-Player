@@ -1,7 +1,7 @@
 import * as Application from 'expo-application';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { BackHandler, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, useReducedMotion } from 'react-native-reanimated';
 
@@ -9,14 +9,21 @@ import { AppText } from '@/components/app-text';
 import { PillButton } from '@/components/pill-button';
 import { PressableScale } from '@/components/pressable-scale';
 import { Screen } from '@/components/screen';
+import { MockupContinuity } from '@/components/onboarding/mockup-continuity';
+import { MockupGrouping } from '@/components/onboarding/mockup-grouping';
 import { PagerDots } from '@/components/onboarding/pager-dots';
 import { SlideFrame } from '@/components/onboarding/slide-frame';
 import { isLastSlide, nextSlideIndex, prevSlideIndex } from '@/onboarding/policy';
-import { SLIDES } from '@/onboarding/slides';
+import { SLIDES, type SlideKey } from '@/onboarding/slides';
 import { useOnboarding } from '@/onboarding/onboarding-provider';
 import { useMediaAccess } from '@/permissions/media-access-provider';
 import { openAllFilesAccessSettings } from '@/subtitles/storage-access';
 import { useTheme } from '@/theme/theme-provider';
+
+const MOCKUPS: Partial<Record<SlideKey, () => ReactNode>> = {
+  grouping: MockupGrouping,
+  continuity: MockupContinuity,
+};
 
 export default function OnboardingScreen() {
   const { colors, spacing } = useTheme();
@@ -135,7 +142,14 @@ export default function OnboardingScreen() {
           entering={reducedMotion ? undefined : FadeIn.duration(220)}
           exiting={reducedMotion ? undefined : FadeOut.duration(140)}
         >
-          <SlideFrame headline={slide.headline} body={slide.body} mockup={null} />
+          <SlideFrame
+            headline={slide.headline}
+            body={slide.body}
+            mockup={(() => {
+              const Mockup = MOCKUPS[slide.key];
+              return Mockup ? <Mockup /> : null;
+            })()}
+          />
         </Animated.View>
 
         <View
