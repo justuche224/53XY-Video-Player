@@ -1,3 +1,4 @@
+import * as SplashScreen from 'expo-splash-screen';
 import React, { type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -10,6 +11,15 @@ export class ErrorBoundary extends React.Component<{ children: ReactNode }, Stat
 
   static getDerivedStateFromError(error: Error): State {
     return { error };
+  }
+
+  componentDidCatch() {
+    // A render-phase throw below this boundary (e.g. SQLiteProviderNonSuspense
+    // rethrowing a failed DB open/migration) means SplashGate never mounts, so
+    // its hideAsync() call never happens — the error screen below would render
+    // underneath a native splash that never hides. hideAsync() is safe to call
+    // more than once, so there is no harm in this racing the normal hide.
+    void SplashScreen.hideAsync();
   }
 
   render() {

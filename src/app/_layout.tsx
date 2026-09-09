@@ -35,17 +35,36 @@ function ThemedStatusBar() {
 }
 
 /**
- * The splash currently hides on fonts alone. It must also wait for the
- * onboarding gate to resolve from SQLite, or the user sees a frame of Home
- * before it snaps to the tour. `useOnboarding` needs to be inside the
- * provider, so the hide is extracted into this small child component.
+ * The splash must wait for the onboarding gate to resolve from SQLite, or the
+ * user sees a frame of Home before it snaps to the tour. `useOnboarding`
+ * needs to be inside the provider, so the hide is extracted into this small
+ * child component. Fonts are no longer a condition here — `RootLayout`
+ * already blocks rendering this whole tree until fonts settle (loaded or
+ * failed), so by the time this mounts fonts are a non-issue.
  */
-function SplashGate({ fontsLoaded }: { fontsLoaded: boolean }) {
+function SplashGate() {
   const { status } = useOnboarding();
   useEffect(() => {
-    if (fontsLoaded && status !== 'resolving') SplashScreen.hideAsync();
-  }, [fontsLoaded, status]);
+    if (status !== 'resolving') SplashScreen.hideAsync();
+  }, [status]);
   return null;
+}
+
+/**
+ * Belt-and-suspenders: hides the splash unconditionally after a timeout, no
+ * matter what state the gate, fonts, or DB init are in. Covers every render-
+ * phase throw below `ErrorBoundary` that isn't the SQLite one already handled
+ * there, and a `getSetting` that hangs rather than rejects (the gate's own
+ * `.catch` only covers rejection, not a promise that never settles).
+ * `hideAsync()` is safe to call more than once.
+ */
+function useSplashWatchdog(timeoutMs = 5000) {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void SplashScreen.hideAsync();
+    }, timeoutMs);
+    return () => clearTimeout(timer);
+  }, [timeoutMs]);
 }
 
 /**
@@ -58,9 +77,15 @@ function GatedLibraryProvider({ children }: { children: ReactNode }) {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({ SpaceGrotesk_600SemiBold, SpaceGrotesk_700Bold });
+  // `error` is non-null when a font fails to load (bad network on first run,
+  // corrupt cache, etc). Previously only `fontsLoaded` gated the return below,
+  // so a font failure left it false forever and RootLayout returned `null`
+  // forever — a permanently blank app behind a splash that never hides.
+  // Degrading to system fonts on failure is strictly better than a brick.
+  const [fontsLoaded, fontsError] = useFonts({ SpaceGrotesk_600SemiBold, SpaceGrotesk_700Bold });
+  useSplashWatchdog();
 
-  if (!fontsLoaded) return null;
+  if (!fontsLoaded && !fontsError) return null;
 
   return (
     <ErrorBoundary>
@@ -71,7 +96,7 @@ export default function RootLayout() {
               <MediaAccessProvider>
                 <GatedLibraryProvider>
                   <ThemeProvider>
-                    <SplashGate fontsLoaded={fontsLoaded} />
+                    <SplashGate />
                     <OnboardingGate />
                     <ThemedStatusBar />
                     <ThumbnailSweep />
