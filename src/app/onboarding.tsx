@@ -1,8 +1,8 @@
 import * as Application from 'expo-application';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { BackHandler, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { AppState, BackHandler, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, useReducedMotion } from 'react-native-reanimated';
 
 import { AppText } from '@/components/app-text';
@@ -15,13 +15,14 @@ import { isLastSlide, nextSlideIndex, prevSlideIndex } from '@/onboarding/policy
 import { SLIDES } from '@/onboarding/slides';
 import { useOnboarding } from '@/onboarding/onboarding-provider';
 import { useMediaAccess } from '@/permissions/media-access-provider';
+import { openAllFilesAccessSettings } from '@/subtitles/storage-access';
 import { useTheme } from '@/theme/theme-provider';
 
 export default function OnboardingScreen() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
   const { complete } = useOnboarding();
-  const { videoAccess, requestVideoAccess } = useMediaAccess();
+  const { videoAccess, requestVideoAccess, allFilesAccess, recheckAllFilesAccess } = useMediaAccess();
   const reducedMotion = useReducedMotion();
   const [index, setIndex] = useState(0);
   const slide = SLIDES[index];
@@ -55,6 +56,16 @@ export default function OnboardingScreen() {
     advance();
   }, [videoAccess, requestVideoAccess, advance]);
 
+  // MANAGE_EXTERNAL_STORAGE has no runtime dialog — granting it is a trip to
+  // a system settings screen. Re-probe when the app comes back to the
+  // foreground rather than assuming the trip succeeded.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') recheckAllFilesAccess();
+    });
+    return () => sub.remove();
+  }, [recheckAllFilesAccess]);
+
   /**
    * One switch over `slide.action`, with an arm for every action from the
    * start. Tasks 5 and 6 replace the 'video-access' and 'all-files' arms in
@@ -71,7 +82,23 @@ export default function OnboardingScreen() {
           />
         );
       case 'all-files':
-        return <PillButton label="Next" onPress={advance} />; // Task 6 replaces this arm
+        return allFilesAccess ? (
+          <PillButton label="Next" onPress={advance} />
+        ) : (
+          <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
+            <PressableScale
+              onPress={advance}
+              accessibilityRole="button"
+              accessibilityLabel="Skip storage access for now"
+              style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 }}
+            >
+              <AppText variant="label" color={colors.onSurfaceVariant ?? colors.onSurface}>
+                Not now
+              </AppText>
+            </PressableScale>
+            <PillButton label="Allow" onPress={() => void openAllFilesAccessSettings()} />
+          </View>
+        );
       case 'finish':
         return <PillButton label="Start watching" onPress={advance} />;
       case 'next':
