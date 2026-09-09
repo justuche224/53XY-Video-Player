@@ -10,7 +10,9 @@ import { PillButton } from '@/components/pill-button';
 import { PressableScale } from '@/components/pressable-scale';
 import { Screen } from '@/components/screen';
 import { MockupContinuity } from '@/components/onboarding/mockup-continuity';
+import { MockupGestures } from '@/components/onboarding/mockup-gestures';
 import { MockupGrouping } from '@/components/onboarding/mockup-grouping';
+import { MockupMoments } from '@/components/onboarding/mockup-moments';
 import { PagerDots } from '@/components/onboarding/pager-dots';
 import { SlideFrame } from '@/components/onboarding/slide-frame';
 import { isLastSlide, nextSlideIndex, prevSlideIndex } from '@/onboarding/policy';
@@ -23,6 +25,8 @@ import { useTheme } from '@/theme/theme-provider';
 const MOCKUPS: Partial<Record<SlideKey, () => ReactNode>> = {
   grouping: MockupGrouping,
   continuity: MockupContinuity,
+  gestures: MockupGestures,
+  moments: MockupMoments,
 };
 
 export default function OnboardingScreen() {
