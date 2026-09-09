@@ -12,6 +12,7 @@ import { MIGRATIONS } from '@/db/schema';
 import { FilterSettingsProvider } from '@/library/filter-settings';
 import { LibraryProvider } from '@/library/library-provider';
 import { ThumbnailSweep } from '@/media/thumbnail-sweep';
+import { MediaAccessProvider } from '@/permissions/media-access-provider';
 import { ThemeProvider, useTheme } from '@/theme/theme-provider';
 
 SplashScreen.preventAutoHideAsync();
@@ -45,24 +46,26 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SQLiteProvider databaseName="p53xy.db" onInit={onDbInit}>
           <FilterSettingsProvider>
-            <LibraryProvider>
-              <ThemeProvider>
-                <ThemedStatusBar />
-                <ThumbnailSweep />
-                <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
-                  <Stack.Screen name="(tabs)" />
-                  <Stack.Screen name="group" />
-                  <Stack.Screen name="player" options={{ animation: 'default' }} />
-                  <Stack.Screen name="playlist" />
-                  <Stack.Screen name="moment" />
-                  <Stack.Screen name="add-to-playlist" />
-                  <Stack.Screen name="settings/player" />
-                  <Stack.Screen name="settings/library-filters" />
-                  <Stack.Screen name="settings/hidden-folders" />
-                  <Stack.Screen name="settings/about" />
-                </Stack>
-              </ThemeProvider>
-            </LibraryProvider>
+            <MediaAccessProvider>
+              <LibraryProvider>
+                <ThemeProvider>
+                  <ThemedStatusBar />
+                  <ThumbnailSweep />
+                  <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+                    <Stack.Screen name="(tabs)" />
+                    <Stack.Screen name="group" />
+                    <Stack.Screen name="player" options={{ animation: 'default' }} />
+                    <Stack.Screen name="playlist" />
+                    <Stack.Screen name="moment" />
+                    <Stack.Screen name="add-to-playlist" />
+                    <Stack.Screen name="settings/player" />
+                    <Stack.Screen name="settings/library-filters" />
+                    <Stack.Screen name="settings/hidden-folders" />
+                    <Stack.Screen name="settings/about" />
+                  </Stack>
+                </ThemeProvider>
+              </LibraryProvider>
+            </MediaAccessProvider>
           </FilterSettingsProvider>
         </SQLiteProvider>
       </GestureHandlerRootView>

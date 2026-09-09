@@ -1,4 +1,3 @@
-import { usePermissions } from 'expo-media-library';
 import { useSQLiteContext } from 'expo-sqlite';
 import {
   createContext,
@@ -15,6 +14,7 @@ import { deleteProgressByIds } from '@/db/progress-repo';
 import { getManualGroupsMap } from '@/db/manual-groups-repo';
 import { deletePreviewFramesByIds } from '@/db/preview-frames-repo';
 import { scanVideos } from '@/media/media-scanner';
+import { useMediaAccess } from '@/permissions/media-access-provider';
 import { applyFilters } from './filter-videos';
 import { useFilterSettings } from './filter-settings';
 import { groupByFolder, groupByName } from './group-videos';
@@ -48,9 +48,15 @@ const toMessage = (e: unknown) => (e instanceof Error ? e.message : String(e));
  * reconciles. Mounted once at the app root so every screen shares one in-memory
  * copy instead of re-reading the whole videos table on each navigation.
  */
-export function LibraryProvider({ children }: { children: ReactNode }) {
+export function LibraryProvider({
+  children,
+  autoRequest = true,
+}: {
+  children: ReactNode;
+  autoRequest?: boolean;
+}) {
   const db = useSQLiteContext();
-  const [permission, requestPermission] = usePermissions({ granularPermissions: ['video'] });
+  const { videoAccess, requestVideoAccess } = useMediaAccess();
   const [videos, setVideos] = useState<LibraryVideo[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -93,10 +99,13 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     async function refresh() {
-      if (!permission) return; // permission still resolving
-      if (!permission.granted) {
-        if (permission.canAskAgain) await requestPermission();
-        else setPermDenied(true);
+      if (videoAccess === 'unknown') return; // permission still resolving
+      if (videoAccess !== 'granted') {
+        // While the onboarding tour is pending it owns the timing of the
+        // system dialog — firing it here would put it behind the carousel,
+        // before the slide that explains why we need it.
+        if (autoRequest && videoAccess === 'askable') await requestVideoAccess();
+        else if (videoAccess === 'blocked') setPermDenied(true);
         return;
       }
       setPermDenied(false);
@@ -128,7 +137,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [permission, requestPermission, db, token]);
+  }, [videoAccess, requestVideoAccess, autoRequest, db, token]);
 
   const reload = useCallback(() => setToken((t) => t + 1), []);
 
