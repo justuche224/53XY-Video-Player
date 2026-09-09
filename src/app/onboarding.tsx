@@ -79,7 +79,7 @@ export default function OnboardingScreen() {
               onPress={finish}
               accessibilityRole="button"
               accessibilityLabel="Skip the tour"
-              hitSlop={12}
+              style={{ minHeight: 44, justifyContent: 'center' }}
             >
               <AppText variant="label" color={colors.onSurfaceVariant ?? colors.onSurface}>
                 Skip
