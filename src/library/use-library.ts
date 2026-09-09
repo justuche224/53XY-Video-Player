@@ -7,7 +7,7 @@ import { useLibraryData } from './library-provider';
 import type { Group } from './types';
 
 export interface LibraryState {
-  status: 'loading' | 'ready' | 'denied' | 'error';
+  status: 'loading' | 'ready' | 'denied' | 'needs-permission' | 'error';
   refreshing: boolean;
   groups: Group[];
   error?: string;

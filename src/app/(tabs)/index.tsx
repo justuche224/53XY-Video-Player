@@ -29,6 +29,7 @@ import { shouldShowHomeHint } from '@/onboarding/coach';
 import { SETTING_KEYS } from '@/onboarding/policy';
 import { useCoachFlag } from '@/onboarding/use-coach-flag';
 import { openAppSettings } from '@/permissions/open-app-settings';
+import { useMediaAccess } from '@/permissions/media-access-provider';
 import { resolveLastPlayed } from '@/player/resume-last';
 import { selectionQueueIds } from '@/player/queue';
 import { stashQueue } from '@/player/queue-store';
@@ -83,6 +84,7 @@ export default function LibraryScreen() {
   const [progress, setProgress] = useState<ProgressMap>(new Map());
   const { status, refreshing, groups } = useLibrary(mode);
   const { videos, reload } = useLibraryData();
+  const { requestVideoAccess } = useMediaAccess();
   const [resumeTarget, setResumeTarget] = useState<LibraryVideo | null>(null);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [playlistVideoIds, setPlaylistVideoIds] = useState<string[]>([]);
@@ -306,6 +308,12 @@ export default function LibraryScreen() {
             message="Media permission denied"
             hint="Enable it in system settings to scan your library."
             action={{ label: 'Open settings', onPress: () => void openAppSettings() }}
+          />
+        ) : status === 'needs-permission' ? (
+          <HomeHeroPlaceholder
+            message="53XY needs access to your videos"
+            hint="Grant media access so it can scan your library."
+            action={{ label: 'Grant access', onPress: () => void requestVideoAccess() }}
           />
         ) : heroVideo ? (
           <HomeHero

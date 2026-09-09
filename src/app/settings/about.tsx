@@ -16,9 +16,12 @@ export default function AboutScreen() {
   const { restart } = useOnboarding();
 
   // About is a *pushed* route, so the stack starts as [(tabs), settings/about].
-  // dismissAll() collapses that back to [(tabs)] first — synchronously, before
-  // `restart()` (async: several settings writes, then flips `status`) has any
-  // chance to fire the gate's redirect. That ordering matters: if the gate's
+  // dismissAll() collapses that back to [(tabs)] first — it only queues a
+  // POP_TO_TOP on expo-router's routingQueue (flushed by a useSyncExternalStore
+  // effect on the next render), but that queueing itself is synchronous, and it
+  // happens before `restart()` (async: several settings writes, then flips
+  // `status`) has any chance to fire the gate's redirect. That ordering matters:
+  // if the gate's
   // `replace('/onboarding')` landed first, it would swap only the top of the
   // still-two-deep stack, leaving [(tabs), onboarding], and finishing the tour
   // would then land on [(tabs), (tabs)] — Android back from Home would pop to

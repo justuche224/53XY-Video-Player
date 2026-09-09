@@ -20,7 +20,7 @@ import { useFilterSettings } from './filter-settings';
 import { groupByFolder, groupByName } from './group-videos';
 import type { Group, LibraryVideo } from './types';
 
-export type LibraryStatus = 'loading' | 'ready' | 'denied' | 'error';
+export type LibraryStatus = 'loading' | 'ready' | 'denied' | 'needs-permission' | 'error';
 
 interface LibraryData {
   videos: LibraryVideo[];
@@ -61,6 +61,7 @@ export function LibraryProvider({
   const [loaded, setLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [permDenied, setPermDenied] = useState(false);
+  const [needsPermission, setNeedsPermission] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [token, setToken] = useState(0);
 
@@ -104,11 +105,26 @@ export function LibraryProvider({
         // While the onboarding tour is pending it owns the timing of the
         // system dialog — firing it here would put it behind the carousel,
         // before the slide that explains why we need it.
-        if (autoRequest && videoAccess === 'askable') await requestVideoAccess();
-        else if (videoAccess === 'blocked') setPermDenied(true);
+        if (videoAccess === 'askable') {
+          if (autoRequest) {
+            setNeedsPermission(false);
+            await requestVideoAccess();
+          } else {
+            // Auto-ask is withheld this run (see `shouldAutoRequestAfterTour`) —
+            // most often a user who declined during onboarding. That must not
+            // read as a genuinely empty, scanned library: give the UI its own
+            // status so it can offer a way to grant access instead of lying.
+            setPermDenied(false);
+            setNeedsPermission(true);
+          }
+        } else if (videoAccess === 'blocked') {
+          setNeedsPermission(false);
+          setPermDenied(true);
+        }
         return;
       }
       setPermDenied(false);
+      setNeedsPermission(false);
       setRefreshing(true);
       try {
         const scanned = await scanVideos();
@@ -145,9 +161,11 @@ export function LibraryProvider({
     ? 'error'
     : permDenied && videos.length === 0
       ? 'denied'
-      : loaded
-        ? 'ready'
-        : 'loading';
+      : needsPermission && videos.length === 0
+        ? 'needs-permission'
+        : loaded
+          ? 'ready'
+          : 'loading';
 
   return (
     <LibraryContext.Provider
