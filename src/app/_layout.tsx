@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts, SpaceGrotesk_600SemiBold, SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 
 import { ErrorBoundary } from '@/components/error-boundary';
 import { runMigrations } from '@/db/migrate';
@@ -12,6 +12,8 @@ import { MIGRATIONS } from '@/db/schema';
 import { FilterSettingsProvider } from '@/library/filter-settings';
 import { LibraryProvider } from '@/library/library-provider';
 import { ThumbnailSweep } from '@/media/thumbnail-sweep';
+import { OnboardingGate } from '@/onboarding/onboarding-gate';
+import { OnboardingProvider, useOnboarding } from '@/onboarding/onboarding-provider';
 import { MediaAccessProvider } from '@/permissions/media-access-provider';
 import { ThemeProvider, useTheme } from '@/theme/theme-provider';
 
@@ -32,12 +34,31 @@ function ThemedStatusBar() {
   return <StatusBar style={isDark ? 'light' : 'dark'} />;
 }
 
+/**
+ * The splash currently hides on fonts alone. It must also wait for the
+ * onboarding gate to resolve from SQLite, or the user sees a frame of Home
+ * before it snaps to the tour. `useOnboarding` needs to be inside the
+ * provider, so the hide is extracted into this small child component.
+ */
+function SplashGate({ fontsLoaded }: { fontsLoaded: boolean }) {
+  const { status } = useOnboarding();
+  useEffect(() => {
+    if (fontsLoaded && status !== 'resolving') SplashScreen.hideAsync();
+  }, [fontsLoaded, status]);
+  return null;
+}
+
+/**
+ * LibraryProvider must not fire the media permission dialog while the tour
+ * is pending — the tour owns the timing of that dialog.
+ */
+function GatedLibraryProvider({ children }: { children: ReactNode }) {
+  const { status } = useOnboarding();
+  return <LibraryProvider autoRequest={status === 'done'}>{children}</LibraryProvider>;
+}
+
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({ SpaceGrotesk_600SemiBold, SpaceGrotesk_700Bold });
-
-  useEffect(() => {
-    if (fontsLoaded) SplashScreen.hideAsync();
-  }, [fontsLoaded]);
 
   if (!fontsLoaded) return null;
 
@@ -46,26 +67,31 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SQLiteProvider databaseName="p53xy.db" onInit={onDbInit}>
           <FilterSettingsProvider>
-            <MediaAccessProvider>
-              <LibraryProvider>
-                <ThemeProvider>
-                  <ThemedStatusBar />
-                  <ThumbnailSweep />
-                  <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
-                    <Stack.Screen name="(tabs)" />
-                    <Stack.Screen name="group" />
-                    <Stack.Screen name="player" options={{ animation: 'default' }} />
-                    <Stack.Screen name="playlist" />
-                    <Stack.Screen name="moment" />
-                    <Stack.Screen name="add-to-playlist" />
-                    <Stack.Screen name="settings/player" />
-                    <Stack.Screen name="settings/library-filters" />
-                    <Stack.Screen name="settings/hidden-folders" />
-                    <Stack.Screen name="settings/about" />
-                  </Stack>
-                </ThemeProvider>
-              </LibraryProvider>
-            </MediaAccessProvider>
+            <OnboardingProvider>
+              <MediaAccessProvider>
+                <GatedLibraryProvider>
+                  <ThemeProvider>
+                    <SplashGate fontsLoaded={fontsLoaded} />
+                    <OnboardingGate />
+                    <ThemedStatusBar />
+                    <ThumbnailSweep />
+                    <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+                      <Stack.Screen name="onboarding" options={{ animation: 'fade' }} />
+                      <Stack.Screen name="(tabs)" />
+                      <Stack.Screen name="group" />
+                      <Stack.Screen name="player" options={{ animation: 'default' }} />
+                      <Stack.Screen name="playlist" />
+                      <Stack.Screen name="moment" />
+                      <Stack.Screen name="add-to-playlist" />
+                      <Stack.Screen name="settings/player" />
+                      <Stack.Screen name="settings/library-filters" />
+                      <Stack.Screen name="settings/hidden-folders" />
+                      <Stack.Screen name="settings/about" />
+                    </Stack>
+                  </ThemeProvider>
+                </GatedLibraryProvider>
+              </MediaAccessProvider>
+            </OnboardingProvider>
           </FilterSettingsProvider>
         </SQLiteProvider>
       </GestureHandlerRootView>
