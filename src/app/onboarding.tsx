@@ -1,3 +1,5 @@
+import * as Application from 'expo-application';
+import * as IntentLauncher from 'expo-intent-launcher';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { BackHandler, View } from 'react-native';
@@ -12,12 +14,14 @@ import { SlideFrame } from '@/components/onboarding/slide-frame';
 import { isLastSlide, nextSlideIndex, prevSlideIndex } from '@/onboarding/policy';
 import { SLIDES } from '@/onboarding/slides';
 import { useOnboarding } from '@/onboarding/onboarding-provider';
+import { useMediaAccess } from '@/permissions/media-access-provider';
 import { useTheme } from '@/theme/theme-provider';
 
 export default function OnboardingScreen() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
   const { complete } = useOnboarding();
+  const { videoAccess, requestVideoAccess } = useMediaAccess();
   const reducedMotion = useReducedMotion();
   const [index, setIndex] = useState(0);
   const slide = SLIDES[index];
@@ -36,6 +40,21 @@ export default function OnboardingScreen() {
     setIndex((i) => nextSlideIndex(i, SLIDES.length));
   }, [last, finish]);
 
+  const askVideoAccess = useCallback(async () => {
+    if (videoAccess === 'blocked') {
+      // Requesting again after a permanent denial resolves silently without
+      // showing a dialog, so send the user where the toggle actually is.
+      const pkg = Application.applicationId;
+      await IntentLauncher.startActivityAsync(
+        'android.settings.APPLICATION_DETAILS_SETTINGS',
+        pkg ? { data: `package:${pkg}` } : undefined,
+      );
+      return;
+    }
+    if (videoAccess === 'askable') await requestVideoAccess();
+    advance();
+  }, [videoAccess, requestVideoAccess, advance]);
+
   /**
    * One switch over `slide.action`, with an arm for every action from the
    * start. Tasks 5 and 6 replace the 'video-access' and 'all-files' arms in
@@ -45,7 +64,12 @@ export default function OnboardingScreen() {
   const renderFooterAction = () => {
     switch (slide.action) {
       case 'video-access':
-        return <PillButton label="Next" onPress={advance} />; // Task 5 replaces this arm
+        return (
+          <PillButton
+            label={videoAccess === 'granted' ? 'Next' : 'Allow access to your videos'}
+            onPress={videoAccess === 'granted' ? advance : askVideoAccess}
+          />
+        );
       case 'all-files':
         return <PillButton label="Next" onPress={advance} />; // Task 6 replaces this arm
       case 'finish':
