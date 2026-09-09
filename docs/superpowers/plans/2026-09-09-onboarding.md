@@ -2240,10 +2240,46 @@ frame — not a glance.
       mockup shows its settled final state, nothing animates, nothing is blank.
 - [ ] Rotate to landscape mid-tour, if the device allows it.
 
+**Startup error paths** (added after the final review found the splash could
+never hide on a startup throw — this is the path that most needs proving)
+- [ ] Force a database failure — `adb shell run-as <pkg>` and corrupt
+      `p53xy.db`, or temporarily throw from `onDbInit` — and confirm the splash
+      hides and the "Something went wrong" screen is actually **visible**.
+      Untested, this path is a bricked app on first launch.
+- [ ] Confirm a healthy cold start still hides the splash well before the 5s
+      watchdog, with no flash of a half-mounted screen.
+
+**Permission journeys, separately**
+- [ ] Decline on slide 1, then finish the tour: **no** second system dialog may
+      appear during the slide-6 → Home transition.
+- [ ] That same user lands on Home: it must show the permission prompt with a
+      working "Grant access" button, **not** "No videos found".
+- [ ] Decline twice so the permission goes permanently denied: Home must offer
+      the Open-settings route out.
+- [ ] Skip on slide 1: same as declining — no ambush dialog mid-transition.
+- [ ] Existing install, permission already granted: slide 1 reads "Next", no
+      dialog, and the library is already populated by slide 6.
+
+**Replay path**
+- [ ] Settings → About → "Show the tour again", finish it, then press back from
+      Home. It must exit the app in **one** press, not two.
+- [ ] Watch for a double fade or flash when the tour opens from About.
+
+**Resume behaviour**
+- [ ] Background and foreground the app several times, on Home and in the
+      player, watching for jank at resume — each resume re-probes both
+      permissions, and one probe lists the storage root synchronously.
+
 **Coach marks**
 - [ ] Open the player for the first time after the tour: the gesture card
       appears above everything, "Got it" dismisses it, and it does not come
       back on the next open.
+- [ ] **Open the player in landscape with the card armed**, then repeat with
+      Android Display size and Font size at maximum. "Got it" must be on screen
+      and tappable — an unreachable button here makes the player unusable.
+- [ ] Hardware back while the card is up: it must dismiss the card (and not
+      come back next open), not exit the player.
+- [ ] Swipe and double-tap the card's scrim: nothing behind it may respond.
 - [ ] **After dismissing, exercise the full player gesture set** — double-tap
       left/centre/right, brightness and volume swipes, long-press 2×, pinch
       zoom, pause, subtitle select, lock. This is the RNGH arena the card sits
