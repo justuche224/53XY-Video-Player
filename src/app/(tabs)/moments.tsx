@@ -3,11 +3,11 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, SectionList, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 
 import { AppBar } from '@/components/app-bar';
 import { ContextualAppBar } from '@/components/contextual-app-bar';
 import { MomentCard } from '@/components/moment-card';
+import { MomentsEmptyState } from '@/components/onboarding/moments-empty-state';
 import { PressableScale } from '@/components/pressable-scale';
 import { Screen } from '@/components/screen';
 import { SearchBar } from '@/components/search-bar';
@@ -186,42 +186,36 @@ export default function MomentsScreen() {
         renderSectionHeader={({ section }) => <SectionHeader title={section.title} />}
         stickySectionHeadersEnabled
         ListEmptyComponent={
-          <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 2 }}>
-            <Ionicons name="bookmark-outline" size={64} color={colors.onSurfaceVariant ?? '#444'} />
-            <Text style={{ color: colors.onSurface, fontSize: 18, fontWeight: '600', marginTop: spacing.md }}>
-              No moments yet
-            </Text>
-            {restorable > 0 ? (
-              <>
-                <Text style={{ color: colors.onSurfaceVariant ?? '#888', marginTop: 8, textAlign: 'center' }}>
-                  {restorable === 1
-                    ? '1 moment was found in your backup folder.'
-                    : `${restorable} moments were found in your backup folder.`}
-                </Text>
-                <PressableScale
-                  onPress={() => {
-                    restoreMomentsFromManifest(db)
-                      .then(() => {
-                        load();
-                        setRestorable(0);
-                      })
-                      .catch((e) => {
-                        console.warn('[moments] restore failed:', e);
-                        Alert.alert('Restore failed', 'Could not read the moments backup folder.');
-                      });
-                  }}
-                  style={{ marginTop: spacing.lg }}>
-                  <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '700' }}>
-                    Restore them
+          <MomentsEmptyState
+            restoreSlot={
+              restorable > 0 ? (
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ color: colors.onSurfaceVariant ?? '#888', marginTop: 8, textAlign: 'center' }}>
+                    {restorable === 1
+                      ? '1 moment was found in your backup folder.'
+                      : `${restorable} moments were found in your backup folder.`}
                   </Text>
-                </PressableScale>
-              </>
-            ) : (
-              <Text style={{ color: colors.onSurfaceVariant ?? '#888', marginTop: 8, textAlign: 'center' }}>
-                Tap the bookmark button while watching to save a scene.
-              </Text>
-            )}
-          </View>
+                  <PressableScale
+                    onPress={() => {
+                      restoreMomentsFromManifest(db)
+                        .then(() => {
+                          load();
+                          setRestorable(0);
+                        })
+                        .catch((e) => {
+                          console.warn('[moments] restore failed:', e);
+                          Alert.alert('Restore failed', 'Could not read the moments backup folder.');
+                        });
+                    }}
+                    style={{ marginTop: spacing.lg }}>
+                    <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '700' }}>
+                      Restore them
+                    </Text>
+                  </PressableScale>
+                </View>
+              ) : null
+            }
+          />
         }
         contentContainerStyle={{ paddingBottom: spacing.xl + TAB_BAR_CLEARANCE + insets.bottom }}
         bounces
