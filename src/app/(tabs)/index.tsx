@@ -24,6 +24,10 @@ import { getProgressMap, type ProgressMap } from '@/db/progress-repo';
 import { getSetting, setSetting } from '@/db/settings-repo';
 import { getHistory } from '@/db/history-repo';
 import { setManualGroup } from '@/db/manual-groups-repo';
+import { HintChip } from '@/components/onboarding/hint-chip';
+import { shouldShowHomeHint } from '@/onboarding/coach';
+import { SETTING_KEYS } from '@/onboarding/policy';
+import { useCoachFlag } from '@/onboarding/use-coach-flag';
 import { resolveLastPlayed } from '@/player/resume-last';
 import { selectionQueueIds } from '@/player/queue';
 import { stashQueue } from '@/player/queue-store';
@@ -83,6 +87,26 @@ export default function LibraryScreen() {
   const [playlistVideoIds, setPlaylistVideoIds] = useState<string[]>([]);
   const [ungroupVideoIds, setUngroupVideoIds] = useState<string[]>([]);
   const [infoVideoId, setInfoVideoId] = useState<string | null>(null);
+
+  const homeCoach = useCoachFlag(SETTING_KEYS.homeCoach);
+  const [visits, setVisits] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      getSetting(db, SETTING_KEYS.homeVisits).then((raw) => {
+        if (cancelled) return;
+        const next = (Number.parseInt(raw ?? '0', 10) || 0) + 1;
+        setVisits(next);
+        void setSetting(db, SETTING_KEYS.homeVisits, String(next));
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [db]),
+  );
+
+  const showHint = homeCoach.ready && shouldShowHomeHint(homeCoach.dismissed, visits);
 
   // Clear selection on back press
   useEffect(() => {
@@ -269,6 +293,13 @@ export default function LibraryScreen() {
 
   const listHeader = (
     <View style={{ marginHorizontal: -gutter }}>
+      {showHint ? (
+        <HintChip
+          icon="hand-left-outline"
+          text="Long-press any video to select, share, or move it to another group."
+          onDismiss={homeCoach.dismiss}
+        />
+      ) : null}
       {status === 'denied' ? (
         <HomeHeroPlaceholder
           message="Media permission denied"
