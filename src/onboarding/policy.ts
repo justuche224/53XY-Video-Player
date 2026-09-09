@@ -6,6 +6,8 @@
  */
 export const ONBOARDING_VERSION = 1;
 
+export type OnboardingStatus = 'resolving' | 'needed' | 'done';
+
 /** Keys in the existing `settings` key/value table. No migration needed. */
 export const SETTING_KEYS = {
   onboardingVersion: 'onboarding_version',
@@ -44,4 +46,25 @@ export function prevSlideIndex(current: number): number {
 
 export function isLastSlide(current: number, total: number): boolean {
   return current === total - 1;
+}
+
+/**
+ * Whether LibraryProvider's own automatic video-permission ask is allowed to
+ * fire.
+ *
+ * The tour's video-access slide already owns the explicit ask while it is
+ * showing, and tapping Skip is a deliberate decline of it. Either way, once
+ * the tour has been shown this run (`status` passed through `'needed'`), the
+ * automatic ask must never fire again when `status` reaches `'done'` — that
+ * transition would otherwise ambush the user with a system permission dialog
+ * exactly as they land on Home. `'resolving'` never counts as having shown
+ * the tour: it settles to one of the other two almost immediately on every
+ * app start, tour or not.
+ *
+ * An install that never needed the tour this run (already onboarded — an
+ * existing user, or one restoring settings) never has `tourWasShown` go
+ * true, so it keeps the original automatic ask unchanged.
+ */
+export function shouldAutoRequestAfterTour(status: OnboardingStatus, tourWasShown: boolean): boolean {
+  return status === 'done' && !tourWasShown;
 }

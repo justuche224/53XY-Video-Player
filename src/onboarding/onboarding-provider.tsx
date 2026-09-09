@@ -2,9 +2,9 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { getSetting, setSetting } from '@/db/settings-repo';
-import { ONBOARDING_VERSION, SETTING_KEYS, resolveOnboardingGate } from './policy';
+import { ONBOARDING_VERSION, SETTING_KEYS, resolveOnboardingGate, type OnboardingStatus } from './policy';
 
-export type OnboardingStatus = 'resolving' | 'needed' | 'done';
+export type { OnboardingStatus };
 
 interface Onboarding {
   status: OnboardingStatus;

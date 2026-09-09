@@ -4,6 +4,7 @@ import {
   nextSlideIndex,
   prevSlideIndex,
   resolveOnboardingGate,
+  shouldAutoRequestAfterTour,
 } from '../policy';
 import { SLIDES } from '../slides';
 
@@ -51,6 +52,25 @@ describe('pager bounds', () => {
   it('knows the last slide', () => {
     expect(isLastSlide(5, 6)).toBe(true);
     expect(isLastSlide(4, 6)).toBe(false);
+  });
+});
+
+describe('shouldAutoRequestAfterTour', () => {
+  it('asks automatically once the tour is done, if the tour never gated it', () => {
+    expect(shouldAutoRequestAfterTour('done', false)).toBe(true);
+  });
+
+  it('never asks automatically once the tour has been shown, even after it finishes', () => {
+    expect(shouldAutoRequestAfterTour('done', true)).toBe(false);
+  });
+
+  it('never asks while the tour is still pending', () => {
+    expect(shouldAutoRequestAfterTour('needed', false)).toBe(false);
+    expect(shouldAutoRequestAfterTour('needed', true)).toBe(false);
+  });
+
+  it('never asks while onboarding status is still resolving', () => {
+    expect(shouldAutoRequestAfterTour('resolving', false)).toBe(false);
   });
 });
 

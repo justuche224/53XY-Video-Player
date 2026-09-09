@@ -74,15 +74,21 @@ export function MediaAccessProvider({ children }: { children: ReactNode }) {
     return () => sub.remove();
   }, [recheckVideoAccess, recheckAllFilesAccess]);
 
+  // Memoized on the derived `videoAccess` string, not the raw `permission`
+  // object: `getPermission()` calls `setStatus()` with a brand-new object on
+  // every foreground re-probe, even when nothing actually changed, which used
+  // to churn this context's identity — and every `useLibrary` consumer's —
+  // app-wide on every foreground.
+  const videoAccess = resolveVideoAccess(permission);
   const value = useMemo<MediaAccess>(
     () => ({
-      videoAccess: resolveVideoAccess(permission),
+      videoAccess,
       requestVideoAccess,
       recheckVideoAccess,
       allFilesAccess,
       recheckAllFilesAccess,
     }),
-    [permission, requestVideoAccess, recheckVideoAccess, allFilesAccess, recheckAllFilesAccess],
+    [videoAccess, requestVideoAccess, recheckVideoAccess, allFilesAccess, recheckAllFilesAccess],
   );
 
   return <MediaAccessContext.Provider value={value}>{children}</MediaAccessContext.Provider>;
