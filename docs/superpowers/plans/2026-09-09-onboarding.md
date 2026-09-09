@@ -19,7 +19,12 @@
 - **Design tokens only.** Colors come from `useTheme().colors` (Material You). Spacing from `spacing` (4/8 scale). Radii from `radius` — the stated shape rule for this feature is: **actions are `radius.pill`, cards `radius.md`, mockup chrome `radius.sm`.** Never a raw hex except the existing `ON_ARTWORK` constants.
 - **One accent.** The Material You `colors.primary` is the only accent. No second hue. The app's violet brand seed (`#5E4FA6`) is a Material You *source color*, not a gradient CTA — do not add gradient buttons.
 - **No emoji in UI chrome.** Icons are `@expo/vector-icons` Ionicons, matching the rest of the app.
-- **One label per intent.** The primary advance action is **"Next"** on every slide that has one; the final action is **"Start watching"**; the permission actions are **"Allow"** and **"Not now"**; the coach-mark dismiss label is **"Got it"**. Do not introduce "Get started", "Continue", or "Begin".
+- **One label per intent.** The primary advance action is **"Next"** on every slide that has one; the final action is **"Start watching"**; the permission actions are **"Allow access to your videos"** (slide 1) and
+  **"Allow"** / **"Not now"** (slide 5); the coach-mark dismiss label is **"Got
+  it"**. The two grant CTAs are deliberately different: slide 1's is the first
+  button the user ever sees and has to say what it grants, while slide 5 sits
+  under a paragraph that has already explained the ask. Do not introduce "Get
+  started", "Continue", or "Begin".
 - **Reduced motion.** Every animated mockup checks `useReducedMotion()` from `react-native-reanimated` and renders its settled final frame when true — the pattern already used in `src/components/home-hero.tsx:48`.
 - **Text sizing.** Use `AppText` variants (`display`/`headline`/`title`/`body`/`meta`), never raw `<Text>` with inline `fontSize`.
 - **Tap targets ≥ 44dp.** `PressableScale` does not currently forward
