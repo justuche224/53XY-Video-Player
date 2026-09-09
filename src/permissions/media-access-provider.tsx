@@ -1,5 +1,6 @@
 import { usePermissions } from 'expo-media-library';
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { AppState } from 'react-native';
 
 import { invalidateMomentsDir } from '@/moments/storage';
 import { canReadFolder } from '@/subtitles/storage-access';
@@ -11,6 +12,7 @@ const EXTERNAL_STORAGE_ROOT = 'file:///storage/emulated/0';
 interface MediaAccess {
   videoAccess: VideoAccess;
   requestVideoAccess: () => Promise<void>;
+  recheckVideoAccess: () => Promise<void>;
   allFilesAccess: boolean;
   recheckAllFilesAccess: () => void;
 }
@@ -27,12 +29,22 @@ const MediaAccessContext = createContext<MediaAccess | null>(null);
  * would not reliably wake the other, leaving the library unscanned.
  */
 export function MediaAccessProvider({ children }: { children: ReactNode }) {
-  const [permission, requestPermission] = usePermissions({ granularPermissions: ['video'] });
+  const [permission, requestPermission, getPermission] = usePermissions({ granularPermissions: ['video'] });
   const [allFilesAccess, setAllFilesAccess] = useState(() => canReadFolder(EXTERNAL_STORAGE_ROOT));
 
   const requestVideoAccess = useCallback(async () => {
     await requestPermission();
   }, [requestPermission]);
+
+  /**
+   * Re-probe without prompting. `usePermissions` only fetches on mount, so
+   * without this a user who is `'blocked'`, gets deep-linked to app settings,
+   * flips the toggle and comes back would still read as `'blocked'` until the
+   * app restarts.
+   */
+  const recheckVideoAccess = useCallback(async () => {
+    await getPermission();
+  }, [getPermission]);
 
   /**
    * Re-probe after the user comes back from the system settings trip.
@@ -47,14 +59,30 @@ export function MediaAccessProvider({ children }: { children: ReactNode }) {
     setAllFilesAccess(canReadFolder(EXTERNAL_STORAGE_ROOT));
   }, []);
 
+  // MANAGE_EXTERNAL_STORAGE and a blocked video permission both route through
+  // a system settings screen with no runtime dialog on return, so re-probe
+  // both the moment the app comes back to the foreground. This lives here
+  // rather than in the onboarding screen so the whole app benefits, not just
+  // the tour.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void recheckVideoAccess();
+        recheckAllFilesAccess();
+      }
+    });
+    return () => sub.remove();
+  }, [recheckVideoAccess, recheckAllFilesAccess]);
+
   const value = useMemo<MediaAccess>(
     () => ({
       videoAccess: resolveVideoAccess(permission),
       requestVideoAccess,
+      recheckVideoAccess,
       allFilesAccess,
       recheckAllFilesAccess,
     }),
-    [permission, requestVideoAccess, allFilesAccess, recheckAllFilesAccess],
+    [permission, requestVideoAccess, recheckVideoAccess, allFilesAccess, recheckAllFilesAccess],
   );
 
   return <MediaAccessContext.Provider value={value}>{children}</MediaAccessContext.Provider>;

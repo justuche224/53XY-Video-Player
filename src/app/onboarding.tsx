@@ -1,8 +1,8 @@
 import * as Application from 'expo-application';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { AppState, BackHandler, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { BackHandler, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, useReducedMotion } from 'react-native-reanimated';
 
 import { AppText } from '@/components/app-text';
@@ -22,7 +22,7 @@ export default function OnboardingScreen() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
   const { complete } = useOnboarding();
-  const { videoAccess, requestVideoAccess, allFilesAccess, recheckAllFilesAccess } = useMediaAccess();
+  const { videoAccess, requestVideoAccess, allFilesAccess } = useMediaAccess();
   const reducedMotion = useReducedMotion();
   const [index, setIndex] = useState(0);
   const slide = SLIDES[index];
@@ -55,16 +55,6 @@ export default function OnboardingScreen() {
     if (videoAccess === 'askable') await requestVideoAccess();
     advance();
   }, [videoAccess, requestVideoAccess, advance]);
-
-  // MANAGE_EXTERNAL_STORAGE has no runtime dialog — granting it is a trip to
-  // a system settings screen. Re-probe when the app comes back to the
-  // foreground rather than assuming the trip succeeded.
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') recheckAllFilesAccess();
-    });
-    return () => sub.remove();
-  }, [recheckAllFilesAccess]);
 
   /**
    * One switch over `slide.action`, with an arm for every action from the
