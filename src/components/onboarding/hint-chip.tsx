@@ -1,4 +1,3 @@
-import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeOut, useReducedMotion } from 'react-native-reanimated';
 
