@@ -320,7 +320,15 @@ own — the hook must be hoisted.
   - `resolveVideoAccess(permission: { granted: boolean; canAskAgain: boolean } | null): VideoAccess`
   - `type VideoAccess = 'unknown' | 'granted' | 'askable' | 'blocked'`
   - `MediaAccessProvider({ children }: { children: ReactNode })`
-  - `useMediaAccess(): { videoAccess: VideoAccess; requestVideoAccess: () => Promise<void>; allFilesAccess: boolean; recheckAllFilesAccess: () => void }`
+  - `useMediaAccess(): { videoAccess: VideoAccess; requestVideoAccess: () => Promise<void>; recheckVideoAccess: () => Promise<void>; allFilesAccess: boolean; recheckAllFilesAccess: () => void }`
+
+> **Amended after the Task 5/6 review.** `usePermissions` returns a third
+> element, `getPermission`, and only fetches on mount. Without an explicit
+> re-read, a user who is `blocked`, deep-links to app settings, grants there and
+> returns is still `blocked` in memory until the app restarts — stranded on the
+> very recovery path the deep link exists to offer. `MediaAccessProvider`
+> therefore also owns an `AppState` listener that re-probes **both** permissions
+> on foreground; no screen registers its own.
   - `LibraryProvider` gains prop `autoRequest?: boolean` (default `true`).
 
 - [ ] **Step 1: Write the failing test**
