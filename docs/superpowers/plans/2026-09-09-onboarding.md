@@ -27,7 +27,10 @@
   started", "Continue", or "Begin".
 - **Reduced motion.** Every animated mockup checks `useReducedMotion()` from `react-native-reanimated` and renders its settled final frame when true — the pattern already used in `src/components/home-hero.tsx:48`.
 - **Text sizing.** Use `AppText` variants (`display`/`headline`/`title`/`body`/`meta`), never raw `<Text>` with inline `fontSize`.
-- **Tap targets ≥ 44dp.** `PressableScale` does not currently forward
+- **Tap targets ≥ 44dp.** A bare `AppText variant="label"` is only 18dp tall
+  and `PressableScale` adds no padding, so text buttons need
+  `style={{ minHeight: 44, justifyContent: 'center' }}` — `hitSlop` alone does
+  not get there. `PressableScale` does not currently forward
   `accessibilityLabel` / `accessibilityRole` / `hitSlop`; Task 4 adds them as
   optional pass-throughs (matching `IconButton`'s existing contract) and every
   later task relies on that.
@@ -981,7 +984,7 @@ export default function OnboardingScreen() {
               onPress={finish}
               accessibilityRole="button"
               accessibilityLabel="Skip the tour"
-              hitSlop={12}
+              style={{ minHeight: 44, justifyContent: 'center' }}
             >
               <AppText variant="label" color={colors.onSurfaceVariant ?? colors.onSurface}>
                 Skip
@@ -1153,7 +1156,7 @@ including the `'video-access'` arm Task 5 wrote:
               onPress={advance}
               accessibilityRole="button"
               accessibilityLabel="Skip storage access for now"
-              hitSlop={12}
+              style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 }}
             >
               <AppText variant="label" color={colors.onSurfaceVariant ?? colors.onSurface}>
                 Not now
