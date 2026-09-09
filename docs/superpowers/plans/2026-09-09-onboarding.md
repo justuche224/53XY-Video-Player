@@ -19,10 +19,13 @@
 - **Design tokens only.** Colors come from `useTheme().colors` (Material You). Spacing from `spacing` (4/8 scale). Radii from `radius` — the stated shape rule for this feature is: **actions are `radius.pill`, cards `radius.md`, mockup chrome `radius.sm`.** Never a raw hex except the existing `ON_ARTWORK` constants.
 - **One accent.** The Material You `colors.primary` is the only accent. No second hue. The app's violet brand seed (`#5E4FA6`) is a Material You *source color*, not a gradient CTA — do not add gradient buttons.
 - **No emoji in UI chrome.** Icons are `@expo/vector-icons` Ionicons, matching the rest of the app.
-- **One label per intent.** The primary advance action is **"Next"** on every slide that has one; the final action is **"Start watching"**; the permission actions are **"Allow"** and **"Not now"**. Do not introduce "Get started", "Continue", or "Begin".
+- **One label per intent.** The primary advance action is **"Next"** on every slide that has one; the final action is **"Start watching"**; the permission actions are **"Allow"** and **"Not now"**; the coach-mark dismiss label is **"Got it"**. Do not introduce "Get started", "Continue", or "Begin".
 - **Reduced motion.** Every animated mockup checks `useReducedMotion()` from `react-native-reanimated` and renders its settled final frame when true — the pattern already used in `src/components/home-hero.tsx:48`.
 - **Text sizing.** Use `AppText` variants (`display`/`headline`/`title`/`body`/`meta`), never raw `<Text>` with inline `fontSize`.
-- **Tap targets ≥ 44dp.**
+- **Tap targets ≥ 44dp.** `PressableScale` does not currently forward
+  `accessibilityLabel` / `accessibilityRole` / `hitSlop`; Task 4 adds them as
+  optional pass-throughs (matching `IconButton`'s existing contract) and every
+  later task relies on that.
 - **Device verification is the user's.** No device is available to the implementer. Every task ends green on `npx jest --testPathIgnorePatterns "/node_modules/|/\.claude/"` and `npx tsc --noEmit`; on-device checks are collected in the checklist at the end of this plan for the user to run.
 
 ---
@@ -764,7 +767,49 @@ wiring in Tasks 5–6.
   - `SlideFrame({ headline, body, mockup }: { headline: string; body: string; mockup: ReactNode })` — the shared slide composition. Actions are rendered by the screen, not the frame, so the footer stays pinned while the frame cross-fades.
   - `PagerDots({ count, index })`
 
-- [ ] **Step 1: Write `PagerDots`**
+- [ ] **Step 1: Forward accessibility props on `PressableScale`**
+
+`src/components/pressable-scale.tsx` does not currently accept
+`accessibilityLabel`, `accessibilityRole` or `hitSlop`, and the onboarding
+text buttons need all three. Add them as optional pass-throughs, matching the
+contract `IconButton` already has:
+
+```tsx
+export function PressableScale({
+  onPress,
+  onLongPress,
+  disabled,
+  children,
+  style,
+  morph,
+  accessibilityLabel,
+  accessibilityRole,
+  hitSlop,
+}: {
+  onPress?: () => void;
+  onLongPress?: () => void;
+  disabled?: boolean;
+  children: ReactNode;
+  style?: StyleProp<ViewStyle>;
+  morph?: { from: number; to: number };
+  accessibilityLabel?: string;
+  accessibilityRole?: AccessibilityRole;
+  hitSlop?: number;
+}) {
+```
+
+and forward them on the `AnimatedPressable`:
+
+```tsx
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole={accessibilityRole}
+      hitSlop={hitSlop}
+```
+
+Add `type AccessibilityRole` to the existing `react-native` type import. Do not
+change any existing behaviour — every current caller omits all three.
+
+- [ ] **Step 2: Write `PagerDots`**
 
 Create `src/components/onboarding/pager-dots.tsx`:
 
@@ -800,7 +845,7 @@ export function PagerDots({ count, index }: { count: number; index: number }) {
 }
 ```
 
-- [ ] **Step 2: Write `SlideFrame`**
+- [ ] **Step 3: Write `SlideFrame`**
 
 Create `src/components/onboarding/slide-frame.tsx`:
 
@@ -845,7 +890,7 @@ export function SlideFrame({
 }
 ```
 
-- [ ] **Step 3: Write the carousel screen**
+- [ ] **Step 4: Write the carousel screen**
 
 Replace `src/app/onboarding.tsx` entirely:
 
@@ -853,7 +898,6 @@ Replace `src/app/onboarding.tsx` entirely:
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { BackHandler, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeOut, useReducedMotion } from 'react-native-reanimated';
 
 import { AppText } from '@/components/app-text';
@@ -869,7 +913,6 @@ import { useTheme } from '@/theme/theme-provider';
 
 export default function OnboardingScreen() {
   const { colors, spacing } = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { complete } = useOnboarding();
   const reducedMotion = useReducedMotion();
@@ -890,6 +933,26 @@ export default function OnboardingScreen() {
     setIndex((i) => nextSlideIndex(i, SLIDES.length));
   }, [last, finish]);
 
+  /**
+   * One switch over `slide.action`, with an arm for every action from the
+   * start. Tasks 5 and 6 replace the 'video-access' and 'all-files' arms in
+   * place — appending a separate ternary instead would drop whichever arm was
+   * written first.
+   */
+  const renderFooterAction = () => {
+    switch (slide.action) {
+      case 'video-access':
+        return <PillButton label="Next" onPress={advance} />; // Task 5 replaces this arm
+      case 'all-files':
+        return <PillButton label="Next" onPress={advance} />; // Task 6 replaces this arm
+      case 'finish':
+        return <PillButton label="Start watching" onPress={advance} />;
+      case 'next':
+      default:
+        return <PillButton label="Next" onPress={advance} />;
+    }
+  };
+
   // Android hardware back walks the pager, and is a no-op on slide 1 — an
   // accidental back press should not close the app the user just installed.
   useFocusEffect(
@@ -904,7 +967,9 @@ export default function OnboardingScreen() {
 
   return (
     <Screen>
-      <View style={{ flex: 1, paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom + spacing.lg }}>
+      {/* `Screen` already applies the safe-area insets — do not add
+          useSafeAreaInsets() padding on top of it or they double up. */}
+      <View style={{ flex: 1, paddingTop: spacing.md, paddingBottom: spacing.lg }}>
         <View style={{ alignItems: 'flex-end', paddingHorizontal: spacing.xl, height: 44, justifyContent: 'center' }}>
           {last ? null : (
             <PressableScale
@@ -939,7 +1004,7 @@ export default function OnboardingScreen() {
           }}
         >
           <PagerDots count={SLIDES.length} index={index} />
-          <PillButton label={last ? 'Start watching' : 'Next'} onPress={advance} />
+          {renderFooterAction()}
         </View>
       </View>
     </Screen>
@@ -947,19 +1012,15 @@ export default function OnboardingScreen() {
 }
 ```
 
-> Check `src/components/pill-button.tsx`'s actual prop names before wiring it
-> and adapt this call — the plan assumes `{ label, onPress }`. If it differs,
-> match the existing component rather than changing it.
-
-- [ ] **Step 4: Typecheck**
+- [ ] **Step 5: Typecheck**
 
 Run: `npx tsc --noEmit && npx jest --testPathIgnorePatterns "/node_modules/|/\.claude/"`
 Expected: clean.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/components/onboarding src/app/onboarding.tsx
+git add src/components/pressable-scale.tsx src/components/onboarding src/app/onboarding.tsx
 git commit -m "feat(onboarding): carousel shell with pager, skip and back handling"
 ```
 
@@ -1009,19 +1070,18 @@ Note `Application.applicationId`, not the config-derived package id — the dev,
 preview and production variants install side by side and the JS config is not a
 reliable witness to which is running (HANDOFF §4).
 
-- [ ] **Step 2: Render the right footer per slide action**
+- [ ] **Step 2: Replace the `'video-access'` arm of `renderFooterAction`**
 
-Replace the single `PillButton` in the footer with a switch on `slide.action`:
+Edit that one arm in place — leave the other three exactly as they are:
 
 ```tsx
-          {slide.action === 'video-access' ? (
-            <PillButton
-              label={videoAccess === 'granted' ? 'Next' : 'Allow access to your videos'}
-              onPress={videoAccess === 'granted' ? advance : askVideoAccess}
-            />
-          ) : (
-            <PillButton label={last ? 'Start watching' : 'Next'} onPress={advance} />
-          )}
+      case 'video-access':
+        return (
+          <PillButton
+            label={videoAccess === 'granted' ? 'Next' : 'Allow access to your videos'}
+            onPress={videoAccess === 'granted' ? advance : askVideoAccess}
+          />
+        );
 ```
 
 When access is already granted (an existing install), the CTA collapses to the
@@ -1073,30 +1133,30 @@ and inside the component:
 
 Add `useEffect` to the existing `react` import.
 
-- [ ] **Step 2: Render the two peer actions**
+- [ ] **Step 2: Replace the `'all-files'` arm of `renderFooterAction`**
 
-Extend the footer switch:
+Edit that one arm in place — leave the other three exactly as they are,
+including the `'video-access'` arm Task 5 wrote:
 
 ```tsx
-          {slide.action === 'all-files' ? (
-            allFilesAccess ? (
-              <PillButton label="Next" onPress={advance} />
-            ) : (
-              <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
-                <PressableScale
-                  onPress={advance}
-                  accessibilityRole="button"
-                  accessibilityLabel="Skip storage access for now"
-                  hitSlop={12}
-                >
-                  <AppText variant="label" color={colors.onSurfaceVariant ?? colors.onSurface}>
-                    Not now
-                  </AppText>
-                </PressableScale>
-                <PillButton label="Allow" onPress={() => void openAllFilesAccessSettings()} />
-              </View>
-            )
-          ) : null}
+      case 'all-files':
+        return allFilesAccess ? (
+          <PillButton label="Next" onPress={advance} />
+        ) : (
+          <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
+            <PressableScale
+              onPress={advance}
+              accessibilityRole="button"
+              accessibilityLabel="Skip storage access for now"
+              hitSlop={12}
+            >
+              <AppText variant="label" color={colors.onSurfaceVariant ?? colors.onSurface}>
+                Not now
+              </AppText>
+            </PressableScale>
+            <PillButton label="Allow" onPress={() => void openAllFilesAccessSettings()} />
+          </View>
+        );
 ```
 
 `Not now` is a peer of `Allow`, not a de-emphasized escape: this is a
@@ -1154,6 +1214,7 @@ import Animated, {
   useSharedValue,
   withDelay,
   withTiming,
+  type SharedValue,
 } from 'react-native-reanimated';
 
 import { AppText } from '@/components/app-text';
@@ -1180,33 +1241,9 @@ export function MockupGrouping() {
 
   return (
     <View style={{ width: '100%', gap: spacing.sm }}>
-      {FILES.map((name, i) => {
-        // Each row slides down and fades as the card takes over; the last row
-        // travels least so the stack visibly converges rather than sliding as
-        // a block.
-        const row = useAnimatedStyle(() => ({
-          opacity: 1 - collapse.get(),
-          transform: [{ translateY: collapse.get() * (16 - i * 6) }],
-        }));
-        return (
-          <Animated.View
-            key={name}
-            style={[
-              row,
-              {
-                backgroundColor: colors.surfaceContainerLow ?? colors.surfaceVariant,
-                borderRadius: radius.sm,
-                paddingVertical: spacing.sm,
-                paddingHorizontal: spacing.md,
-              },
-            ]}
-          >
-            <AppText variant="meta" color={colors.onSurfaceVariant ?? colors.onSurface}>
-              {name}
-            </AppText>
-          </Animated.View>
-        );
-      })}
+      {FILES.map((name, i) => (
+        <LooseFileRow key={name} name={name} index={i} collapse={collapse} />
+      ))}
 
       <Animated.View
         style={[
@@ -1231,11 +1268,47 @@ export function MockupGrouping() {
     </View>
   );
 }
-```
 
-> The `useAnimatedStyle` call inside `FILES.map` is a hook in a loop. It is
-> safe **only** because `FILES` is a module constant of fixed length, so the
-> hook order never changes between renders. Do not make `FILES` a prop.
+/**
+ * A child component rather than an inline `useAnimatedStyle` inside the map —
+ * hooks must not be called in a loop, even one over a fixed-length constant.
+ */
+function LooseFileRow({
+  name,
+  index,
+  collapse,
+}: {
+  name: string;
+  index: number;
+  collapse: SharedValue<number>;
+}) {
+  const { colors, spacing, radius } = useTheme();
+  // Each row slides down and fades as the card takes over; the last row
+  // travels least, so the stack visibly converges rather than sliding as a
+  // block.
+  const row = useAnimatedStyle(() => ({
+    opacity: 1 - collapse.get(),
+    transform: [{ translateY: collapse.get() * (16 - index * 6) }],
+  }));
+  return (
+    <Animated.View
+      style={[
+        row,
+        {
+          backgroundColor: colors.surfaceContainerLow ?? colors.surfaceVariant,
+          borderRadius: radius.sm,
+          paddingVertical: spacing.sm,
+          paddingHorizontal: spacing.md,
+        },
+      ]}
+    >
+      <AppText variant="meta" color={colors.onSurfaceVariant ?? colors.onSurface}>
+        {name}
+      </AppText>
+    </Animated.View>
+  );
+}
+```
 
 - [ ] **Step 2: Write `MockupContinuity`**
 
