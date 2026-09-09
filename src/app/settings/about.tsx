@@ -4,13 +4,22 @@ import { View } from 'react-native';
 
 import { AppBar } from '@/components/app-bar';
 import { AppText } from '@/components/app-text';
+import { ListItem } from '@/components/list-item';
 import { Screen } from '@/components/screen';
+import { useOnboarding } from '@/onboarding/onboarding-provider';
 import { useTheme } from '@/theme/theme-provider';
 
 export default function AboutScreen() {
   const router = useRouter();
   const { colors, spacing } = useTheme();
   const version = Constants.expoConfig?.version ?? '—';
+  const { restart } = useOnboarding();
+
+  const replay = async () => {
+    await restart();
+    router.replace('/onboarding');
+  };
+
   return (
     <Screen style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
       <AppBar title="About" variant="detail" onBack={() => router.back()} />
@@ -20,6 +29,14 @@ export default function AboutScreen() {
         <AppText variant="body" color={colors.onSurfaceVariant ?? colors.onSurface} style={{ marginTop: spacing.md }}>
           A fast, local video player with smart library grouping, resume, and Material You theming.
         </AppText>
+      </View>
+      <View style={{ paddingTop: spacing.xl }}>
+        <ListItem
+          icon="sparkles-outline"
+          title="Show the tour again"
+          subtitle="Replay the intro and the in-app tips"
+          onPress={replay}
+        />
       </View>
     </Screen>
   );
