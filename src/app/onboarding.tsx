@@ -1,7 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState, type ReactNode } from 'react';
-import { BackHandler, View } from 'react-native';
-import Animated, { FadeIn, FadeOut, useReducedMotion } from 'react-native-reanimated';
+import { BackHandler, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { PillButton } from '@/components/pill-button';
@@ -14,7 +13,7 @@ import { MockupGrouping } from '@/components/onboarding/mockup-grouping';
 import { MockupMoments } from '@/components/onboarding/mockup-moments';
 import { MockupWelcome } from '@/components/onboarding/mockup-welcome';
 import { PagerDots } from '@/components/onboarding/pager-dots';
-import { SlideFrame } from '@/components/onboarding/slide-frame';
+import { SlideFrame, type MockupFrame } from '@/components/onboarding/slide-frame';
 import { isLastSlide, nextSlideIndex, prevSlideIndex } from '@/onboarding/policy';
 import { SLIDES, type SlideKey } from '@/onboarding/slides';
 import { useOnboarding } from '@/onboarding/onboarding-provider';
@@ -23,13 +22,13 @@ import { openAppSettings } from '@/permissions/open-app-settings';
 import { openAllFilesAccessSettings } from '@/subtitles/storage-access';
 import { useTheme } from '@/theme/theme-provider';
 
-const MOCKUPS: Record<SlideKey, () => ReactNode> = {
-  welcome: MockupWelcome,
-  grouping: MockupGrouping,
-  continuity: MockupContinuity,
-  gestures: MockupGestures,
-  moments: MockupMoments,
-  done: MockupDone,
+const MOCKUPS: Record<SlideKey, { Component: () => ReactNode; frame: MockupFrame }> = {
+  welcome: { Component: MockupWelcome, frame: 'phone' },
+  grouping: { Component: MockupGrouping, frame: 'phone' },
+  continuity: { Component: MockupContinuity, frame: 'phone' },
+  gestures: { Component: MockupGestures, frame: 'wide' },
+  moments: { Component: MockupMoments, frame: 'phone' },
+  done: { Component: MockupDone, frame: 'free' },
 };
 
 export default function OnboardingScreen() {
@@ -37,7 +36,6 @@ export default function OnboardingScreen() {
   const router = useRouter();
   const { complete } = useOnboarding();
   const { videoAccess, requestVideoAccess, allFilesAccess } = useMediaAccess();
-  const reducedMotion = useReducedMotion();
   const [index, setIndex] = useState(0);
   const slide = SLIDES[index];
   const last = isLastSlide(index, SLIDES.length);
@@ -119,41 +117,35 @@ export default function OnboardingScreen() {
     }, []),
   );
 
+  const { Component: Mockup, frame } = MOCKUPS[slide.key];
+
   return (
     <Screen>
       {/* `Screen` already applies the safe-area insets — do not add
           useSafeAreaInsets() padding on top of it or they double up. */}
-      <View style={{ flex: 1, paddingTop: spacing.md, paddingBottom: spacing.lg }}>
-        <View style={{ alignItems: 'flex-end', paddingHorizontal: spacing.xl, height: 44, justifyContent: 'center' }}>
-          {last ? null : (
-            <PressableScale
-              onPress={finish}
-              accessibilityRole="button"
-              accessibilityLabel="Skip the tour"
-              style={{ minHeight: 44, justifyContent: 'center' }}
-            >
-              <AppText variant="label" color={colors.onSurfaceVariant ?? colors.onSurface}>
-                Skip
-              </AppText>
-            </PressableScale>
-          )}
-        </View>
+      <View style={{ flex: 1, paddingBottom: spacing.lg }}>
+        <SlideFrame
+          slideKey={slide.key}
+          headline={slide.headline}
+          body={slide.body}
+          frame={frame}
+          mockup={<Mockup />}
+        />
 
-        <Animated.View
-          key={slide.key}
-          style={{ flex: 1 }}
-          entering={reducedMotion ? undefined : FadeIn.duration(220)}
-          exiting={reducedMotion ? undefined : FadeOut.duration(140)}
-        >
-          <SlideFrame
-            headline={slide.headline}
-            body={slide.body}
-            mockup={(() => {
-              const Mockup = MOCKUPS[slide.key];
-              return <Mockup />;
-            })()}
-          />
-        </Animated.View>
+        {/* Skip floats over the stage's top-right rather than taking a row of
+            its own, so the stage can start at the very top of the screen. */}
+        {last ? null : (
+          <PressableScale
+            onPress={finish}
+            accessibilityRole="button"
+            accessibilityLabel="Skip the tour"
+            style={[styles.skip, { right: spacing.xl }]}
+          >
+            <AppText variant="label" color={colors.onPrimaryContainer ?? colors.onSurface}>
+              Skip
+            </AppText>
+          </PressableScale>
+        )}
 
         <View
           style={{
@@ -172,3 +164,7 @@ export default function OnboardingScreen() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  skip: { position: 'absolute', top: 0, height: 56, minWidth: 44, justifyContent: 'center', alignItems: 'flex-end' },
+});

@@ -1,12 +1,6 @@
-import { useEffect, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, FadeInUp, FadeOut, useReducedMotion } from 'react-native-reanimated';
 
 import { AppText } from '@/components/app-text';
 import { useTheme } from '@/theme/theme-provider';
@@ -19,77 +13,112 @@ const EASE = Easing.bezier(0.23, 1, 0.32, 1);
  * `body` variants locally rather than widening the global ramp, which every
  * other screen is tuned against.
  */
-const HERO_HEADLINE = { fontSize: 34, lineHeight: 40, letterSpacing: -0.8 } as const;
+const HERO_HEADLINE = { fontSize: 32, lineHeight: 38, letterSpacing: -0.8 } as const;
 const HERO_BODY = { fontSize: 16, lineHeight: 24 } as const;
 
 /**
- * The shared composition every slide uses: a tinted hero slab that absorbs the
- * flex and carries the mockup, then headline + body stacked directly above the
- * footer. The slab is `primaryContainer` — the wallpaper tint — so the panel
- * itself is the visual, and a mockup sitting on it reads as content on a
- * surface rather than a small card lost on a white page.
+ * How a slide's mockup sits on the stage. `phone` is a portrait screen anchored
+ * to the stage's bottom edge and cropped by it; `wide` is a landscape frame
+ * centred with side margins; `free` is a composition with no device at all.
+ */
+export type MockupFrame = 'phone' | 'wide' | 'free';
+
+/**
+ * What the copy and footer need below the stage: headline (two lines), body
+ * (up to five — slide 5 is the longest), the footer row and the paddings around
+ * them. The stage takes everything else, capped so a tablet does not turn it
+ * into a page with a small phone floating in it.
+ */
+const COPY_AND_FOOTER = 372;
+export function stageHeight(windowHeight: number): number {
+  return Math.max(280, Math.min(Math.round(windowHeight * 0.62), windowHeight - COPY_AND_FOOTER));
+}
+
+/**
+ * The composition every slide shares: a full-bleed tinted stage across the top
+ * half carrying the mockup, then headline + body above the footer.
+ *
+ * The stage is the constant. It is the same tint on every slide and is never
+ * keyed, so only the mockup and the copy cross-fade between slides — the panel
+ * itself does not flicker in and out with them. It is `primaryContainer`, the
+ * wallpaper tint, so a screen sitting on it reads as the product on a surface.
  */
 export function SlideFrame({
+  slideKey,
   headline,
   body,
   mockup,
+  frame,
 }: {
+  slideKey: string;
   headline: string;
   body: string;
   mockup: ReactNode;
+  frame: MockupFrame;
 }) {
   const { colors, spacing, radius } = useTheme();
   const { height } = useWindowDimensions();
   const reduced = useReducedMotion();
-  // Purpose: preventing a jarring cut. The slab settles in behind the mockup
-  // so each slide arrives as one piece instead of a card popping onto a panel.
-  const settle = useSharedValue(reduced ? 1 : 0);
 
-  useEffect(() => {
-    if (reduced) return;
-    settle.set(withTiming(1, { duration: 260, easing: EASE }));
-  }, [reduced, settle]);
-
-  const slab = useAnimatedStyle(() => ({
-    opacity: 0.6 + settle.get() * 0.4,
-    transform: [{ scale: 0.96 + settle.get() * 0.04 }],
-  }));
+  // Purpose: spatial continuity. A phone rises into place from just below its
+  // rest; a wide or free composition simply settles in. Copy fades.
+  const enterMockup = reduced
+    ? undefined
+    : frame === 'phone'
+      ? FadeInUp.duration(320).easing(EASE)
+      : FadeIn.duration(260).easing(EASE);
 
   return (
-    <View style={[styles.root, { paddingHorizontal: spacing.lg }]}>
-      <Animated.View
+    <View style={styles.root}>
+      <View
         style={[
-          slab,
-          styles.slab,
+          styles.stage,
+          frame === 'phone' ? styles.stagePhone : styles.stageCentered,
           {
-            // A fixed height, not flex: the text block below varies from one
-            // to four lines across slides, and a flexing slab would bounce
-            // with it. The slab is the constant; the copy takes what is left.
-            height: Math.round(height * 0.46),
+            height: stageHeight(height),
             backgroundColor: colors.primaryContainer ?? colors.surfaceContainer ?? colors.surfaceVariant,
-            borderRadius: radius.xl,
-            padding: spacing.xl,
+            borderBottomLeftRadius: radius.xl,
+            borderBottomRightRadius: radius.xl,
+            paddingHorizontal: frame === 'phone' ? 0 : spacing.lg,
           },
         ]}
       >
-        <View style={styles.mockup}>{mockup}</View>
-      </Animated.View>
+        <Animated.View
+          key={slideKey}
+          style={frame === 'phone' ? styles.mockupPhone : styles.mockupCentered}
+          entering={enterMockup}
+          exiting={reduced ? undefined : FadeOut.duration(140)}
+        >
+          {mockup}
+        </Animated.View>
+      </View>
 
-      <View style={{ gap: spacing.sm, paddingTop: spacing.xl, paddingHorizontal: spacing.sm }}>
+      <Animated.View
+        key={`${slideKey}-copy`}
+        style={{ gap: spacing.sm, paddingTop: spacing.xl, paddingHorizontal: spacing.xl }}
+        entering={reduced ? undefined : FadeIn.duration(220).delay(60)}
+        exiting={reduced ? undefined : FadeOut.duration(120)}
+      >
         <AppText variant="display" style={HERO_HEADLINE}>
           {headline}
         </AppText>
         <AppText variant="body" color={colors.onSurfaceVariant ?? colors.onSurface} style={HERO_BODY}>
           {body}
         </AppText>
-      </View>
+      </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  slab: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  // Cap the mockup so a tablet does not stretch a phone-sized composition.
-  mockup: { width: '100%', maxWidth: 360, alignItems: 'center' },
+  stage: { overflow: 'hidden', borderCurve: 'continuous', alignItems: 'center' },
+  stagePhone: {},
+  stageCentered: { justifyContent: 'center' },
+  // Pinned to the top (below the Skip control the screen lays over the stage)
+  // and left to run past the bottom edge, where the stage clips it — so it is
+  // always the *top* of the screen that shows, whatever the window height.
+  mockupPhone: { position: 'absolute', top: 56, left: 0, right: 0, alignItems: 'center' },
+  // Cap the composition so a tablet does not stretch a phone-sized frame.
+  mockupCentered: { width: '100%', maxWidth: 440, alignItems: 'center' },
 });

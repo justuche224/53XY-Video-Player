@@ -1,9 +1,9 @@
-// Purpose: spatial continuity. The frame lifting out of the video and landing
-// as a card with its note attached is the mental model of the whole feature —
-// a moment is a thing that leaves the video and survives on its own.
+// Purpose: explanation. The Moments tab with real-looking captures — frame,
+// timestamp, episode, the subtitle line as the note — and the newest one
+// landing in the grid, which is what a capture feels like from the player.
+import { Image } from 'expo-image';
 import { useEffect } from 'react';
-import { View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -14,71 +14,107 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { AppText } from '@/components/app-text';
-import { ON_ARTWORK } from '@/theme/resolve-theme';
+import { PhoneScreen } from '@/components/onboarding/device-frame';
+import { FauxStatusBar } from '@/components/onboarding/faux-home';
+import { STILLS, type StillKey } from '@/components/onboarding/stills';
 import { useTheme } from '@/theme/theme-provider';
 
 const EASE = Easing.bezier(0.23, 1, 0.32, 1);
 
+interface FauxMoment {
+  key: string;
+  still: StillKey;
+  time: string;
+  episode: string;
+  note?: string;
+}
+
+const MOMENTS: FauxMoment[] = [
+  { key: 'a', still: 'neon', time: '24:11', episode: 'Show · S01E02', note: '“You were never supposed to find that.”' },
+  { key: 'b', still: 'sunset', time: '03:45', episode: 'Show · S01E01', note: 'Opening titles' },
+  { key: 'c', still: 'desert', time: '12:08', episode: 'Trip 2025 · Day 3', note: 'The view from the ridge' },
+  { key: 'd', still: 'steel', time: '41:02', episode: 'Lecture 04', note: 'Key theorem — rewatch' },
+  { key: 'e', still: 'forest', time: '08:51', episode: 'Trip 2025 · Day 1', note: 'Where we parked' },
+  { key: 'f', still: 'night', time: '01:20', episode: 'Product demo v2', note: '“And this is the part everyone asks about.”' },
+];
+
 export function MockupMoments() {
-  const { colors, spacing, radius, icon, shadow } = useTheme();
+  const { colors, spacing } = useTheme();
   const reduced = useReducedMotion();
-  // 0 = frame sitting in the video, 1 = lifted out as a saved card.
-  const lift = useSharedValue(reduced ? 1 : 0);
+  const land = useSharedValue(reduced ? 1 : 0);
 
   useEffect(() => {
     if (reduced) return;
-    lift.set(withDelay(400, withTiming(1, { duration: 300, easing: EASE })));
-  }, [reduced, lift]);
+    land.set(withDelay(450, withTiming(1, { duration: 320, easing: EASE })));
+  }, [reduced, land]);
 
-  const card = useAnimatedStyle(() => ({
-    opacity: lift.get(),
-    transform: [{ translateY: (1 - lift.get()) * 24 }, { scale: 0.95 + lift.get() * 0.05 }],
+  const newest = useAnimatedStyle(() => ({
+    opacity: land.get(),
+    transform: [{ scale: 0.9 + land.get() * 0.1 }, { translateY: (1 - land.get()) * -12 }],
   }));
 
   return (
-    <View style={{ width: '100%', gap: spacing.md }}>
-      <View
-        style={{
-          width: '100%',
-          aspectRatio: 16 / 9,
-          backgroundColor: '#101014',
-          borderRadius: radius.md,
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: shadow(2),
-        }}
-      >
-        <View
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: radius.pill,
-            backgroundColor: ON_ARTWORK.tonal,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Ionicons name="bookmark" size={icon.lg} color={ON_ARTWORK.primary} />
+    <PhoneScreen>
+      <FauxStatusBar tone="surface" />
+      <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md }}>
+        <AppText variant="display">Moments</AppText>
+      </View>
+      <View style={{ paddingHorizontal: spacing.lg, gap: spacing.lg }}>
+        <View style={{ flexDirection: 'row', gap: spacing.md }}>
+          <Animated.View style={[{ flex: 1 }, newest]}>
+            <MomentTile moment={MOMENTS[0]} />
+          </Animated.View>
+          <MomentTile moment={MOMENTS[1]} />
+        </View>
+        <View style={{ flexDirection: 'row', gap: spacing.md }}>
+          <MomentTile moment={MOMENTS[2]} />
+          <MomentTile moment={MOMENTS[3]} />
+        </View>
+        <View style={{ flexDirection: 'row', gap: spacing.md }}>
+          <MomentTile moment={MOMENTS[4]} />
+          <MomentTile moment={MOMENTS[5]} />
         </View>
       </View>
+      {/* Reserve a hairline of page below so the crop never lands on a tile edge. */}
+      <View style={{ height: spacing.xl, backgroundColor: colors.background }} />
+    </PhoneScreen>
+  );
+}
 
-      <Animated.View
-        style={[
-          card,
-          {
-            backgroundColor: colors.surface,
-            borderRadius: radius.md,
-            padding: spacing.lg,
-            gap: spacing.xs,
-            boxShadow: shadow(2),
-          },
-        ]}
-      >
-        <AppText variant="meta" color={colors.primary}>
-          S01E02 · 24:11
+/** `MomentCard`, with a still for the captured frame. */
+function MomentTile({ moment }: { moment: FauxMoment }) {
+  const { colors, radius, spacing } = useTheme();
+  return (
+    <View style={{ flex: 1 }}>
+      <View style={[styles.frame, { borderRadius: radius.md, backgroundColor: colors.surfaceVariant ?? '#222' }]}>
+        <Image source={STILLS[moment.still]} style={StyleSheet.absoluteFill} contentFit="cover" />
+        <View style={[styles.badge, { borderRadius: radius.sm }]}>
+          <AppText variant="meta" color="#fff" style={styles.badgeText}>
+            {moment.time}
+          </AppText>
+        </View>
+      </View>
+      <AppText variant="label" numberOfLines={1} style={{ marginTop: spacing.xs }}>
+        {moment.episode}
+      </AppText>
+      {moment.note ? (
+        <AppText variant="meta" numberOfLines={2} color={colors.onSurfaceVariant ?? colors.onSurface} style={{ marginTop: 2 }}>
+          {moment.note}
         </AppText>
-        <AppText variant="title">“You were never supposed to find that.”</AppText>
-      </Animated.View>
+      ) : null}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  frame: { aspectRatio: 16 / 9, overflow: 'hidden', borderCurve: 'continuous' },
+  badge: {
+    position: 'absolute',
+    right: 6,
+    bottom: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+  },
+  badgeText: { fontSize: 11, lineHeight: 14, fontWeight: '700' },
+});
