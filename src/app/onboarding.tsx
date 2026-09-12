@@ -8,9 +8,11 @@ import { PillButton } from '@/components/pill-button';
 import { PressableScale } from '@/components/pressable-scale';
 import { Screen } from '@/components/screen';
 import { MockupContinuity } from '@/components/onboarding/mockup-continuity';
+import { MockupDone } from '@/components/onboarding/mockup-done';
 import { MockupGestures } from '@/components/onboarding/mockup-gestures';
 import { MockupGrouping } from '@/components/onboarding/mockup-grouping';
 import { MockupMoments } from '@/components/onboarding/mockup-moments';
+import { MockupWelcome } from '@/components/onboarding/mockup-welcome';
 import { PagerDots } from '@/components/onboarding/pager-dots';
 import { SlideFrame } from '@/components/onboarding/slide-frame';
 import { isLastSlide, nextSlideIndex, prevSlideIndex } from '@/onboarding/policy';
@@ -21,11 +23,13 @@ import { openAppSettings } from '@/permissions/open-app-settings';
 import { openAllFilesAccessSettings } from '@/subtitles/storage-access';
 import { useTheme } from '@/theme/theme-provider';
 
-const MOCKUPS: Partial<Record<SlideKey, () => ReactNode>> = {
+const MOCKUPS: Record<SlideKey, () => ReactNode> = {
+  welcome: MockupWelcome,
   grouping: MockupGrouping,
   continuity: MockupContinuity,
   gestures: MockupGestures,
   moments: MockupMoments,
+  done: MockupDone,
 };
 
 export default function OnboardingScreen() {
@@ -146,7 +150,7 @@ export default function OnboardingScreen() {
             body={slide.body}
             mockup={(() => {
               const Mockup = MOCKUPS[slide.key];
-              return Mockup ? <Mockup /> : null;
+              return <Mockup />;
             })()}
           />
         </Animated.View>
@@ -154,6 +158,7 @@ export default function OnboardingScreen() {
         <View
           style={{
             paddingHorizontal: spacing.xl,
+            paddingTop: spacing.xl,
             gap: spacing.lg,
             flexDirection: 'row',
             alignItems: 'center',

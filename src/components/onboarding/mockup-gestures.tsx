@@ -18,7 +18,7 @@ const GESTURES: { icon: IoniconName; label: string }[] = [
 ];
 
 export function MockupGestures() {
-  const { spacing, radius, icon } = useTheme();
+  const { spacing, radius, icon, shadow } = useTheme();
   return (
     <View
       style={{
@@ -30,6 +30,7 @@ export function MockupGestures() {
         borderRadius: radius.md,
         padding: spacing.lg,
         gap: spacing.md,
+        boxShadow: shadow(2),
       }}
     >
       {GESTURES.map((g) => (

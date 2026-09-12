@@ -54,7 +54,7 @@ export const SLIDES: OnboardingSlide[] = [
   {
     key: 'moments',
     headline: 'Save the scene, not a screenshot',
-    body: 'Capture the exact frame with its title, timestamp and the subtitle line on screen. Storage access keeps moments safe even if you reinstall — and lets 53XY read .srt subtitle files, which Android does not treat as media.',
+    body: 'Capture the exact frame — title, timestamp and the subtitle line on screen. Storage access keeps moments safe through a reinstall, and lets 53XY read .srt files.',
     action: 'all-files',
   },
   {

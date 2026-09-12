@@ -3,6 +3,7 @@
 // remembers".
 import { useEffect } from 'react';
 import { View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -19,7 +20,7 @@ const EASE = Easing.bezier(0.23, 1, 0.32, 1);
 const TARGET = 0.62;
 
 export function MockupContinuity() {
-  const { colors, spacing, radius } = useTheme();
+  const { colors, spacing, radius, shadow } = useTheme();
   const reduced = useReducedMotion();
   const progress = useSharedValue(reduced ? TARGET : 0);
 
@@ -34,37 +35,45 @@ export function MockupContinuity() {
     <View
       style={{
         width: '100%',
-        backgroundColor: colors.surfaceContainer ?? colors.surfaceVariant,
+        backgroundColor: colors.surface,
         borderRadius: radius.md,
         padding: spacing.lg,
         gap: spacing.md,
+        boxShadow: shadow(2),
       }}
     >
+      {/* A real frame shape, not a grey bar: 16:9 with the play glyph the
+          hero shows over its artwork. */}
       <View
         style={{
-          height: 96,
+          width: '100%',
+          aspectRatio: 16 / 9,
           backgroundColor: colors.surfaceContainerHighest ?? colors.surfaceVariant,
           borderRadius: radius.sm,
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
-      />
+      >
+        <Ionicons name="play" size={36} color={colors.onSurfaceVariant ?? colors.onSurface} />
+      </View>
       <View style={{ gap: spacing.xs }}>
         <AppText variant="meta" color={colors.primary}>
           CONTINUE WATCHING
         </AppText>
-        <AppText variant="title">Show · S01E02</AppText>
+        <AppText variant="headline">Show · S01E02</AppText>
         <AppText variant="meta" color={colors.onSurfaceVariant ?? colors.onSurface}>
           18 minutes left
         </AppText>
       </View>
       <View
         style={{
-          height: 4,
+          height: 6,
           borderRadius: radius.pill,
           backgroundColor: colors.surfaceContainerHighest ?? colors.surfaceVariant,
           overflow: 'hidden',
         }}
       >
-        <Animated.View style={[fill, { height: 4, backgroundColor: colors.primary }]} />
+        <Animated.View style={[fill, { height: 6, backgroundColor: colors.primary }]} />
       </View>
     </View>
   );

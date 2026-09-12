@@ -20,7 +20,7 @@ import { useTheme } from '@/theme/theme-provider';
 const EASE = Easing.bezier(0.23, 1, 0.32, 1);
 
 export function MockupMoments() {
-  const { colors, spacing, radius, icon } = useTheme();
+  const { colors, spacing, radius, icon, shadow } = useTheme();
   const reduced = useReducedMotion();
   // 0 = frame sitting in the video, 1 = lifted out as a saved card.
   const lift = useSharedValue(reduced ? 1 : 0);
@@ -39,31 +39,45 @@ export function MockupMoments() {
     <View style={{ width: '100%', gap: spacing.md }}>
       <View
         style={{
-          height: 132,
+          width: '100%',
+          aspectRatio: 16 / 9,
           backgroundColor: '#101014',
           borderRadius: radius.md,
           alignItems: 'center',
           justifyContent: 'center',
+          boxShadow: shadow(2),
         }}
       >
-        <Ionicons name="bookmark" size={icon.lg} color={ON_ARTWORK.primary} />
+        <View
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: radius.pill,
+            backgroundColor: ON_ARTWORK.tonal,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="bookmark" size={icon.lg} color={ON_ARTWORK.primary} />
+        </View>
       </View>
 
       <Animated.View
         style={[
           card,
           {
-            backgroundColor: colors.surfaceContainer ?? colors.surfaceVariant,
+            backgroundColor: colors.surface,
             borderRadius: radius.md,
             padding: spacing.lg,
             gap: spacing.xs,
+            boxShadow: shadow(2),
           },
         ]}
       >
         <AppText variant="meta" color={colors.primary}>
           S01E02 · 24:11
         </AppText>
-        <AppText variant="body">“You were never supposed to find that.”</AppText>
+        <AppText variant="title">“You were never supposed to find that.”</AppText>
       </Animated.View>
     </View>
   );

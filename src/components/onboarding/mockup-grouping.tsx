@@ -20,7 +20,7 @@ const EASE = Easing.bezier(0.23, 1, 0.32, 1);
 const FILES = ['Show.S01E01.1080p.mkv', 'Show.S01E02.1080p.mkv', 'Show.S01E03.1080p.mkv'];
 
 export function MockupGrouping() {
-  const { colors, spacing, radius } = useTheme();
+  const { colors, spacing, radius, shadow } = useTheme();
   const reduced = useReducedMotion();
   // 0 = loose files, 1 = collapsed into the series card.
   const collapse = useSharedValue(reduced ? 1 : 0);
@@ -36,7 +36,9 @@ export function MockupGrouping() {
   }));
 
   return (
-    <View style={{ width: '100%', gap: spacing.sm }}>
+    // The collapsed card is absolutely positioned over the rows and is now
+    // taller than they are, so the wrapper reserves its height explicitly.
+    <View style={{ width: '100%', gap: spacing.sm, minHeight: 212 }}>
       {FILES.map((name, i) => (
         <LooseFileRow key={name} name={name} index={i} collapse={collapse} />
       ))}
@@ -49,17 +51,38 @@ export function MockupGrouping() {
             left: 0,
             right: 0,
             top: 0,
-            backgroundColor: colors.surfaceContainer ?? colors.surfaceVariant,
+            backgroundColor: colors.surface,
             borderRadius: radius.md,
             padding: spacing.lg,
-            gap: spacing.xs,
+            gap: spacing.md,
+            boxShadow: shadow(2),
           },
         ]}
       >
-        <AppText variant="title">Show</AppText>
-        <AppText variant="meta" color={colors.primary}>
-          3 episodes · S01E01–E03
-        </AppText>
+        {/* The collage the real group card draws: one poster per episode. */}
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          {FILES.map((name, i) => (
+            <View
+              key={name}
+              style={{
+                flex: 1,
+                aspectRatio: 2 / 3,
+                borderRadius: radius.sm,
+                // Step the tones so three blank posters still read as three
+                // different frames rather than one grey bar.
+                backgroundColor:
+                  [colors.surfaceContainerHighest, colors.surfaceContainerHigh, colors.surfaceContainer][i] ??
+                  colors.surfaceVariant,
+              }}
+            />
+          ))}
+        </View>
+        <View style={{ gap: 2 }}>
+          <AppText variant="headline">Show</AppText>
+          <AppText variant="label" color={colors.primary}>
+            3 episodes · S01E01–E03
+          </AppText>
+        </View>
       </Animated.View>
     </View>
   );
@@ -91,14 +114,14 @@ function LooseFileRow({
       style={[
         row,
         {
-          backgroundColor: colors.surfaceContainerLow ?? colors.surfaceVariant,
+          backgroundColor: colors.surface,
           borderRadius: radius.sm,
-          paddingVertical: spacing.sm,
-          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.md,
+          paddingHorizontal: spacing.lg,
         },
       ]}
     >
-      <AppText variant="meta" color={colors.onSurfaceVariant ?? colors.onSurface}>
+      <AppText variant="label" color={colors.onSurfaceVariant ?? colors.onSurface}>
         {name}
       </AppText>
     </Animated.View>
