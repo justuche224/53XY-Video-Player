@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Pressable, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, type AccessibilityRole, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useTheme } from '@/theme/theme-provider';
 
@@ -12,6 +12,9 @@ export function PressableScale({
   children,
   style,
   morph,
+  accessibilityLabel,
+  accessibilityRole,
+  hitSlop,
 }: {
   onPress?: () => void;
   onLongPress?: () => void;
@@ -24,6 +27,9 @@ export function PressableScale({
    * direction M3's button-group morph runs.
    */
   morph?: { from: number; to: number };
+  accessibilityLabel?: string;
+  accessibilityRole?: AccessibilityRole;
+  hitSlop?: number;
 }) {
   const pressed = useSharedValue(0);
   const animatedStyle = useAnimatedStyle(() => ({
@@ -39,6 +45,9 @@ export function PressableScale({
       onPressIn={() => (pressed.value = withTiming(1, { duration: 60 }))}
       onPressOut={() => (pressed.value = withTiming(0, { duration: 140 }))}
       android_ripple={{ color: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole={accessibilityRole}
+      hitSlop={hitSlop}
       style={[style, animatedStyle]}>
       {children}
     </AnimatedPressable>

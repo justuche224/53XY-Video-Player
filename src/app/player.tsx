@@ -72,6 +72,11 @@ import { momentsDirIsShared, invalidateMomentsDir } from '@/moments/storage';
 import { getSetting, setSetting } from '@/db/settings-repo';
 import { openAllFilesAccessSettings } from '@/subtitles/storage-access';
 import type { Moment } from '@/moments/types';
+import { GestureCoachCard } from '@/components/player/gesture-coach-card';
+import { shouldShowPlayerCard } from '@/onboarding/coach';
+import { SETTING_KEYS } from '@/onboarding/policy';
+import { useCoachFlag } from '@/onboarding/use-coach-flag';
+import { useOnboarding } from '@/onboarding/onboarding-provider';
 
 // Vertical-swipe sensitivity: a drag of ~(screen height / VERTICAL_GAIN) spans
 // the full 0→1 brightness/volume range.
@@ -92,6 +97,12 @@ export default function PlayerScreen() {
 
   const db = useSQLiteContext();
   useKeepAwake();
+
+  // ── Coach mark: first-open-after-tour gesture card ──────────────────────
+  const { status: onboardingStatus } = useOnboarding();
+  const playerCoach = useCoachFlag(SETTING_KEYS.playerCoach);
+  const showCoach =
+    playerCoach.ready && shouldShowPlayerCard(playerCoach.dismissed, onboardingStatus === 'done');
 
   // ── Group / playlist ────────────────────────────────────────────────────
   const groupMode = mode === 'folder' ? 'folder' : 'name';
@@ -1430,6 +1441,13 @@ export default function PlayerScreen() {
           onDismiss={() => setShowStorageSheet(false)}
         />
       )}
+
+      {/* Coach mark: last child of the outermost view, after the gesture
+          layer, the controls overlay, and the autoplay card, so it is on top
+          of everything and no sibling can steal its touches. See the
+          gesture-arena warning in gesture-coach-card.tsx — this is a plain
+          overlay, not wired into any gesture relation. */}
+      {showCoach ? <GestureCoachCard onDismiss={playerCoach.dismiss} /> : null}
     </GestureHandlerRootView>
   );
 }

@@ -24,6 +24,12 @@ import { getProgressMap, type ProgressMap } from '@/db/progress-repo';
 import { getSetting, setSetting } from '@/db/settings-repo';
 import { getHistory } from '@/db/history-repo';
 import { setManualGroup } from '@/db/manual-groups-repo';
+import { HintChip } from '@/components/onboarding/hint-chip';
+import { shouldShowHomeHint } from '@/onboarding/coach';
+import { SETTING_KEYS } from '@/onboarding/policy';
+import { useCoachFlag } from '@/onboarding/use-coach-flag';
+import { openAppSettings } from '@/permissions/open-app-settings';
+import { useMediaAccess } from '@/permissions/media-access-provider';
 import { resolveLastPlayed } from '@/player/resume-last';
 import { selectionQueueIds } from '@/player/queue';
 import { stashQueue } from '@/player/queue-store';
@@ -78,11 +84,32 @@ export default function LibraryScreen() {
   const [progress, setProgress] = useState<ProgressMap>(new Map());
   const { status, refreshing, groups } = useLibrary(mode);
   const { videos, reload } = useLibraryData();
+  const { requestVideoAccess } = useMediaAccess();
   const [resumeTarget, setResumeTarget] = useState<LibraryVideo | null>(null);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [playlistVideoIds, setPlaylistVideoIds] = useState<string[]>([]);
   const [ungroupVideoIds, setUngroupVideoIds] = useState<string[]>([]);
   const [infoVideoId, setInfoVideoId] = useState<string | null>(null);
+
+  const homeCoach = useCoachFlag(SETTING_KEYS.homeCoach);
+  const [visits, setVisits] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      getSetting(db, SETTING_KEYS.homeVisits).then((raw) => {
+        if (cancelled) return;
+        const next = (Number.parseInt(raw ?? '0', 10) || 0) + 1;
+        setVisits(next);
+        void setSetting(db, SETTING_KEYS.homeVisits, String(next));
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [db]),
+  );
+
+  const showHint = homeCoach.ready && shouldShowHomeHint(homeCoach.dismissed, visits);
 
   // Clear selection on back press
   useEffect(() => {
@@ -267,29 +294,53 @@ export default function LibraryScreen() {
   // rows have none and take the full inset from the container.
   const gutter = layout === 'grid' ? spacing.sm : spacing.lg;
 
+  // The hero bleeds edge-to-edge by cancelling the list's horizontal padding
+  // on just that inner wrapper. The hint chip sits below it, outside that
+  // negative-margin wrapper with its own `gutter` margin — inside the wrapper
+  // it would inherit the bleed and its rounded corners would run flush to
+  // both screen edges. It also renders below the hero rather than above it:
+  // the hero is a signature screen element and a tip must not push it down.
   const listHeader = (
-    <View style={{ marginHorizontal: -gutter }}>
-      {status === 'denied' ? (
-        <HomeHeroPlaceholder
-          message="Media permission denied"
-          hint="Enable it in system settings to scan your library."
-        />
-      ) : heroVideo ? (
-        <HomeHero
-          video={heroVideo}
-          kind={heroKind}
-          percent={progress.get(heroVideo.id)?.percent ?? 0}
-          onPlay={() => openVideo(heroVideo)}
-          onOpenGroup={
-            heroGroup && heroGroup.count > 1 ? () => openGroup(heroGroup) : undefined
-          }
-        />
-      ) : (
-        <HomeHeroPlaceholder
-          message={refreshing ? 'Scanning your library…' : status === 'ready' ? 'No videos found' : 'Loading…'}
-          hint={status === 'ready' && !refreshing ? 'Try adjusting your filters or search query.' : undefined}
-        />
-      )}
+    <View>
+      <View style={{ marginHorizontal: -gutter }}>
+        {status === 'denied' ? (
+          <HomeHeroPlaceholder
+            message="Media permission denied"
+            hint="Enable it in system settings to scan your library."
+            action={{ label: 'Open settings', onPress: () => void openAppSettings() }}
+          />
+        ) : status === 'needs-permission' ? (
+          <HomeHeroPlaceholder
+            message="53XY needs access to your videos"
+            hint="Grant media access so it can scan your library."
+            action={{ label: 'Grant access', onPress: () => void requestVideoAccess() }}
+          />
+        ) : heroVideo ? (
+          <HomeHero
+            video={heroVideo}
+            kind={heroKind}
+            percent={progress.get(heroVideo.id)?.percent ?? 0}
+            onPlay={() => openVideo(heroVideo)}
+            onOpenGroup={
+              heroGroup && heroGroup.count > 1 ? () => openGroup(heroGroup) : undefined
+            }
+          />
+        ) : (
+          <HomeHeroPlaceholder
+            message={refreshing ? 'Scanning your library…' : status === 'ready' ? 'No videos found' : 'Loading…'}
+            hint={status === 'ready' && !refreshing ? 'Try adjusting your filters or search query.' : undefined}
+          />
+        )}
+      </View>
+      {showHint ? (
+        <View style={{ marginHorizontal: gutter, marginTop: spacing.md }}>
+          <HintChip
+            icon="hand-left-outline"
+            text="Long-press any video to select, share, or move it to another group."
+            onDismiss={homeCoach.dismiss}
+          />
+        </View>
+      ) : null}
     </View>
   );
 

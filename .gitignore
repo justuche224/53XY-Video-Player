@@ -49,3 +49,7 @@ build-*.aab
 53XY-production*.apk
 
 bundletool-all-1.18.3.jar
+# Agent skills are installed per-machine, not vendored into the repo.
+.agents/
+.claude/skills/
+skills-lock.json

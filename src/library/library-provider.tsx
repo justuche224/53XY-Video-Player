@@ -1,4 +1,3 @@
-import { usePermissions } from 'expo-media-library';
 import { useSQLiteContext } from 'expo-sqlite';
 import {
   createContext,
@@ -15,12 +14,13 @@ import { deleteProgressByIds } from '@/db/progress-repo';
 import { getManualGroupsMap } from '@/db/manual-groups-repo';
 import { deletePreviewFramesByIds } from '@/db/preview-frames-repo';
 import { scanVideos } from '@/media/media-scanner';
+import { useMediaAccess } from '@/permissions/media-access-provider';
 import { applyFilters } from './filter-videos';
 import { useFilterSettings } from './filter-settings';
 import { groupByFolder, groupByName } from './group-videos';
 import type { Group, LibraryVideo } from './types';
 
-export type LibraryStatus = 'loading' | 'ready' | 'denied' | 'error';
+export type LibraryStatus = 'loading' | 'ready' | 'denied' | 'needs-permission' | 'error';
 
 interface LibraryData {
   videos: LibraryVideo[];
@@ -48,13 +48,20 @@ const toMessage = (e: unknown) => (e instanceof Error ? e.message : String(e));
  * reconciles. Mounted once at the app root so every screen shares one in-memory
  * copy instead of re-reading the whole videos table on each navigation.
  */
-export function LibraryProvider({ children }: { children: ReactNode }) {
+export function LibraryProvider({
+  children,
+  autoRequest = true,
+}: {
+  children: ReactNode;
+  autoRequest?: boolean;
+}) {
   const db = useSQLiteContext();
-  const [permission, requestPermission] = usePermissions({ granularPermissions: ['video'] });
+  const { videoAccess, requestVideoAccess } = useMediaAccess();
   const [videos, setVideos] = useState<LibraryVideo[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [permDenied, setPermDenied] = useState(false);
+  const [needsPermission, setNeedsPermission] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [token, setToken] = useState(0);
 
@@ -93,13 +100,31 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     async function refresh() {
-      if (!permission) return; // permission still resolving
-      if (!permission.granted) {
-        if (permission.canAskAgain) await requestPermission();
-        else setPermDenied(true);
+      if (videoAccess === 'unknown') return; // permission still resolving
+      if (videoAccess !== 'granted') {
+        // While the onboarding tour is pending it owns the timing of the
+        // system dialog — firing it here would put it behind the carousel,
+        // before the slide that explains why we need it.
+        if (videoAccess === 'askable') {
+          if (autoRequest) {
+            setNeedsPermission(false);
+            await requestVideoAccess();
+          } else {
+            // Auto-ask is withheld this run (see `shouldAutoRequestAfterTour`) —
+            // most often a user who declined during onboarding. That must not
+            // read as a genuinely empty, scanned library: give the UI its own
+            // status so it can offer a way to grant access instead of lying.
+            setPermDenied(false);
+            setNeedsPermission(true);
+          }
+        } else if (videoAccess === 'blocked') {
+          setNeedsPermission(false);
+          setPermDenied(true);
+        }
         return;
       }
       setPermDenied(false);
+      setNeedsPermission(false);
       setRefreshing(true);
       try {
         const scanned = await scanVideos();
@@ -128,7 +153,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [permission, requestPermission, db, token]);
+  }, [videoAccess, requestVideoAccess, autoRequest, db, token]);
 
   const reload = useCallback(() => setToken((t) => t + 1), []);
 
@@ -136,9 +161,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     ? 'error'
     : permDenied && videos.length === 0
       ? 'denied'
-      : loaded
-        ? 'ready'
-        : 'loading';
+      : needsPermission && videos.length === 0
+        ? 'needs-permission'
+        : loaded
+          ? 'ready'
+          : 'loading';
 
   return (
     <LibraryContext.Provider

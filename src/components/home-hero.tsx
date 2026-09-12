@@ -129,7 +129,16 @@ export function HomeHero({
  * exists yet, so this keeps the same height and rhythm as the real hero instead
  * of collapsing the header.
  */
-export function HomeHeroPlaceholder({ message, hint }: { message: string; hint?: string }) {
+export function HomeHeroPlaceholder({
+  message,
+  hint,
+  action,
+}: {
+  message: string;
+  hint?: string;
+  /** e.g. a way out of a denied-permission dead end — see the 'denied' library status. */
+  action?: { label: string; onPress: () => void };
+}) {
   const { colors, spacing, elevation } = useTheme();
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
@@ -151,6 +160,11 @@ export function HomeHeroPlaceholder({ message, hint }: { message: string; hint?:
           <AppText variant="body" color={colors.onSurfaceVariant ?? colors.onSurface}>
             {hint}
           </AppText>
+        ) : null}
+        {action ? (
+          <View style={{ marginTop: spacing.md, alignItems: 'flex-start' }}>
+            <PillButton label={action.label} onPress={action.onPress} tone="tonal" />
+          </View>
         ) : null}
       </View>
     </View>
