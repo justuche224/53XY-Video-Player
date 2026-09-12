@@ -149,6 +149,17 @@ Each slide is a full-screen composition: an animated mockup in the upper two
 thirds, a display-face headline, one line of body copy, and the pager plus
 primary action pinned to the bottom safe area. Skip sits quietly top-right.
 
+> **Revised 2026-09-12.** The shipped first cut drew each mockup as an abstract
+> diagram on a tinted slab, and it read as placeholder. The composition is now a
+> full-bleed tinted stage with a scaled, bezel-less phone screen peeking out of
+> it, each slide a token-faithful facsimile of the real screen (Home, the grid,
+> the landscape player, the Moments tab) — the pattern Spotify, Plex and Google
+> Photos use. Posters are six bundled blurred "video still" JPEGs
+> (`assets/images/onboarding/`), a deliberate exception to §2's "no image
+> assets": a flat colour block where a poster belongs is what made the first
+> cut look fake. Everything else in this section — order, copy, actions,
+> permissions — is unchanged. See HANDOFF §7 for the details.
+
 | # | Slide | Mockup | Action |
 |---|---|---|---|
 | 1 | **Welcome** — what 53XY is | Wordmark, `53` in `onSurface` + `XY` in the Material You accent, as on Home | `Allow access to your videos` → system dialog |
