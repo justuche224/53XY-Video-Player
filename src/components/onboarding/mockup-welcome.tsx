@@ -41,7 +41,10 @@ export function MockupWelcome() {
   }));
   const glyphs = useAnimatedStyle(() => ({ opacity: strip.get() * 0.7 }));
 
-  const base = colors.onPrimaryContainer ?? colors.onSurface;
+  // Neutral `onSurface` for `53`, not `onPrimaryContainer`: in a dark scheme
+  // that token and `primary` are adjacent tones of the same hue and the
+  // two-tone mark collapses into one colour. Same split as the Home header.
+  const base = colors.onSurface;
   const accent = colors.primary ?? base;
 
   return (

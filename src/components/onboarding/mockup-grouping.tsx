@@ -68,10 +68,11 @@ export function MockupGrouping() {
                 flex: 1,
                 aspectRatio: 2 / 3,
                 borderRadius: radius.sm,
-                // Step the tones so three blank posters still read as three
-                // different frames rather than one grey bar.
+                // Three container tones the wallpaper palette already
+                // harmonises, so three blank posters read as three different
+                // frames rather than one grey bar — and still one accent.
                 backgroundColor:
-                  [colors.surfaceContainerHighest, colors.surfaceContainerHigh, colors.surfaceContainer][i] ??
+                  [colors.primaryContainer, colors.secondaryContainer, colors.surfaceContainerHighest][i] ??
                   colors.surfaceVariant,
               }}
             />

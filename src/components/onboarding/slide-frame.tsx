@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -39,6 +39,7 @@ export function SlideFrame({
   mockup: ReactNode;
 }) {
   const { colors, spacing, radius } = useTheme();
+  const { height } = useWindowDimensions();
   const reduced = useReducedMotion();
   // Purpose: preventing a jarring cut. The slab settles in behind the mockup
   // so each slide arrives as one piece instead of a card popping onto a panel.
@@ -61,6 +62,10 @@ export function SlideFrame({
           slab,
           styles.slab,
           {
+            // A fixed height, not flex: the text block below varies from one
+            // to four lines across slides, and a flexing slab would bounce
+            // with it. The slab is the constant; the copy takes what is left.
+            height: Math.round(height * 0.46),
             backgroundColor: colors.primaryContainer ?? colors.surfaceContainer ?? colors.surfaceVariant,
             borderRadius: radius.xl,
             padding: spacing.xl,
@@ -84,7 +89,7 @@ export function SlideFrame({
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  slab: { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  slab: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   // Cap the mockup so a tablet does not stretch a phone-sized composition.
   mockup: { width: '100%', maxWidth: 360, alignItems: 'center' },
 });

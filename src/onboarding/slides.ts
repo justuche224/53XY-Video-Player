@@ -29,8 +29,8 @@ export interface OnboardingSlide {
 export const SLIDES: OnboardingSlide[] = [
   {
     key: 'welcome',
-    headline: '53XY',
-    body: 'Your videos, organised — and a player that gets out of the way.',
+    headline: 'Watch it your way',
+    body: 'A fast, local player that stays out of the way — and a library that sorts itself.',
     action: 'video-access',
   },
   {
