@@ -30,6 +30,21 @@ describe('groupByName', () => {
     expect(banshee.items.map((i) => i.id)).toEqual(['0', '1', '2']);
   });
 
+  it('sorts spelled-out "Season N Episode N" names numerically, not lexically', () => {
+    const name = (s: number, e: number) => `_Succession_Season_${s}_Episode_${e}_720p_@Tv_Series_ETY_.Mkv`;
+    const videos = [
+      v({ id: 's1e1', filename: name(1, 1) }),
+      v({ id: 's1e10', filename: name(1, 10) }),
+      v({ id: 's1e2', filename: name(1, 2) }),
+      v({ id: 's2e1', filename: name(2, 1) }),
+      v({ id: 's1e9', filename: name(1, 9) }),
+    ];
+    const groups = groupByName(videos, new Map());
+    expect(groups).toHaveLength(1);
+    expect(groups[0].title).toBe('Succession');
+    expect(groups[0].items.map((i) => i.id)).toEqual(['s1e1', 's1e2', 's1e9', 's1e10', 's2e1']);
+  });
+
   it('keeps a standalone movie as its own group of one', () => {
     const groups = groupByName([v({ id: 'm', filename: 'The Best Man Holiday 2013 1080p.mp4' })], new Map());
     expect(groups).toHaveLength(1);

@@ -45,3 +45,7 @@ land as new fixtures in `normalize-title.test.ts` / `parse-episode.test.ts` firs
 - ✅ Dash-delimited episode numbers cut ("Boston Legal - 216 - Live Big" → "Boston Legal").
 - ✅ Conservative corroborated merge: numbered titles ("201 Boston Legal", "Boston Legal 301 …") fold into a clean anchor group when one exists; movies like "127 Hours"/"Apollo 13" are never mangled (guard tests added).
 - Still by-design-split (no anchor): number-prefixed siblings with no clean anchor (e.g. "201 Mystery"/"202 Mystery"). Screen-recording bucketing still low-priority/open.
+- ✅ Spelled-out `Season N Episode N` / `Season N - Ep N` / `Episode N` (Telegram-style
+  `_Succession_Season_1_Episode_10_720p_@Tv_Series_ETY_.Mkv`): `parseEpisode` now reads
+  them, so the group sorts numerically (1, 2 … 10) and shows the `S01E10` badge. Previously
+  only `normalizeTitle` knew these words, so the group formed but had no episode data.

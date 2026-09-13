@@ -20,6 +20,20 @@ describe('parseEpisode', () => {
     expect(parseEpisode('Citadel S01.mkv')).toEqual({ season: 1, episode: null });
   });
 
+  it('parses spelled-out "Season N Episode N"', () => {
+    expect(parseEpisode('_Succession_Season_1_Episode_10_720p_@Tv_Series_ETY_.Mkv')).toEqual({
+      season: 1,
+      episode: 10,
+    });
+    expect(parseEpisode('Succession Season 2 - Episode 3.mkv')).toEqual({ season: 2, episode: 3 });
+    expect(parseEpisode('Show Season 1 Ep 4.mkv')).toEqual({ season: 1, episode: 4 });
+  });
+
+  it('parses spelled-out season-only and episode-only', () => {
+    expect(parseEpisode('Show Season 3 Finale.mkv')).toEqual({ season: 3, episode: null });
+    expect(parseEpisode('Show Episode 7.mkv')).toEqual({ season: null, episode: 7 });
+  });
+
   it('returns nulls when no marker and ignores years', () => {
     expect(parseEpisode('The Best Man Holiday 2013.mp4')).toEqual({ season: null, episode: null });
     expect(parseEpisode('random clip.mp4')).toEqual({ season: null, episode: null });
