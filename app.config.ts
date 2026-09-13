@@ -58,6 +58,20 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   plugins: [
     'expo-router',
+    [
+      'expo-build-properties',
+      {
+        android: {
+          // x86/x86_64 are emulator-only; dropping them removes ~46 MB of
+          // native libs from the universal APK.
+          buildArchs: ['arm64-v8a', 'armeabi-v7a'],
+          enableMinifyInReleaseBuilds: true,
+          enableShrinkResourcesInReleaseBuilds: true,
+        },
+      },
+    ],
+    // One Gradle build -> arm64-v8a, armeabi-v7a and universal APKs.
+    './plugins/withAbiSplits',
     ['expo-video', { supportsBackgroundPlayback: true, supportsPictureInPicture: true }],
     'expo-sqlite',
     [
