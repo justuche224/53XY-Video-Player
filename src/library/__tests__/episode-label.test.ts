@@ -8,8 +8,10 @@ describe('formatEpisodeLabel', () => {
   it('formats season-only', () => {
     expect(formatEpisodeLabel(1, null)).toBe('S01');
   });
-  it('returns empty when season is null', () => {
+  it('formats episode-only', () => {
+    expect(formatEpisodeLabel(null, 5)).toBe('E05');
+  });
+  it('returns empty when nothing is known', () => {
     expect(formatEpisodeLabel(null, null)).toBe('');
-    expect(formatEpisodeLabel(null, 5)).toBe('');
   });
 });

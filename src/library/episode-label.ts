@@ -3,6 +3,7 @@ function pad2(n: number): string {
 }
 
 export function formatEpisodeLabel(season: number | null, episode: number | null): string {
-  if (season === null) return '';
-  return episode === null ? `S${pad2(season)}` : `S${pad2(season)}E${pad2(episode)}`;
+  const s = season === null ? '' : `S${pad2(season)}`;
+  const e = episode === null ? '' : `E${pad2(episode)}`;
+  return s + e;
 }

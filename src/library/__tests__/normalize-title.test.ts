@@ -15,6 +15,11 @@ describe('normalizeTitle', () => {
     ['Some.Show.1x05.mp4', 'Some Show'],
     ['Boston Legal S04xE01 - Beauty And The Beast(@Intermedia).avi', 'Boston Legal'],
     ['Boston Legal S04xE02 - The Innocent Man(@Intermedia).avi', 'Boston Legal'],
+    ['Show.S01.E05.1080p.mkv', 'Show'],
+    ['Squid Game E05 1080p.mkv', 'Squid Game'],
+    ['Squid_Game_EP12.mkv', 'Squid Game'],
+    ['Squid Game Ep.03.mkv', 'Squid Game'],
+    ['[SubsPlease] Frieren - 09 (1080p) [ABCD1234].mkv', 'Frieren'],
   ])('strips episode markers: %s -> %s', (input, expected) => {
     expect(normalizeTitle(input)).toBe(expected);
   });
@@ -45,6 +50,9 @@ describe('normalizeTitle', () => {
     ['Apollo 13.mkv', 'Apollo 13'],
     ['Spider-Man.mkv', 'Spider-Man'],
     ['The English Patient 1996 1080p.mkv', 'The English Patient'],
+    ['Ex Machina 2014.mkv', 'Ex Machina'],
+    ['Edge of Tomorrow.mkv', 'Edge of Tomorrow'],
+    ['E.T. 1982.mkv', 'E T'],
   ])('does not mangle numbers/words that belong to the title: %s -> %s', (input, expected) => {
     expect(normalizeTitle(input)).toBe(expected);
   });

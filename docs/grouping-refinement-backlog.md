@@ -49,3 +49,10 @@ land as new fixtures in `normalize-title.test.ts` / `parse-episode.test.ts` firs
   `_Succession_Season_1_Episode_10_720p_@Tv_Series_ETY_.Mkv`): `parseEpisode` now reads
   them, so the group sorts numerically (1, 2 … 10) and shows the `S01E10` badge. Previously
   only `normalizeTitle` knew these words, so the group formed but had no episode data.
+- ✅ Guarded ahead of time (fixtures in `parse-episode.test.ts` / `normalize-title.test.ts`):
+  separated `S01.E05` / `S01_E05` / `S01 E05`; bare `E05` / `EP12` / `Ep.03` (anime, K-drama,
+  Telegram rips — now also cut the title, so they group); anime dash-number `Show - 09` →
+  episode-only; dash-code `Show - 216 - Title` → `S02E16`; `formatEpisodeLabel` renders `E05`
+  for episode-only. Guards: `Ex Machina`, `Edge of Tomorrow`, `E.T.`, `127 Hours`, and
+  4-digit years after a dash are never read as episodes.
+- Still open: Spanish/PT `Capitulo N` / `Episodio N` — add only if seen in a real scan.
