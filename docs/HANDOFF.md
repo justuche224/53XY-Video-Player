@@ -28,7 +28,7 @@
 | Library 2A | Device scan → folder/title/episode parsing → grouping engine → SQLite | ✅ merged, device-verified |
 | Library 2B | Adaptive grid/list UI, Videos/Folders tabs, search, group detail, thumbnails | ✅ merged, device-verified |
 | Library polish | Scroll perf, cache-first background rescan, conservative numeric merge, multi-thumbnail collages | ✅ merged, device-verified |
-| Release pipeline | ABI-split + universal APKs from one local EAS build, R8 minify, `gh` release upload — [releasing.md](./releasing.md) | ✅ v1.0.0 published 2026-09-13; on-device smoke test of the R8 build pending |
+| Release pipeline | ABI-split + universal APKs from one local EAS build, R8 minify, `gh` release upload — [releasing.md](./releasing.md) | ✅ v1.0.0 published 2026-09-13; arm64 R8 build device-verified on S22 |
 | Plan 3a — Core player | `expo-video`, custom overlay, resume+snackbar, progress writes, orientation, keep-awake, next/prev, tracks, speed | ✅ merged, device-verified |
 | Plan 3b-i — Discrete gestures | Long-press→2×; 3-zone double-tap + indicators | ✅ merged, device-verified |
 | Plan 3b-ii-a — Pan gestures | Swipe brightness / system volume / horizontal drag-scrub + HUDs | ✅ merged, device-verified |
