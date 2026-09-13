@@ -14,6 +14,7 @@ chat history. Update it as decisions are made and work progresses.
   approved v1 design / spec.
 - [plans/README.md](./plans/README.md) — implementation roadmap (3 sequential plans).
 - [grouping-refinement-backlog.md](./grouping-refinement-backlog.md) — real-data grouping patterns to refine later.
+- [releasing.md](./releasing.md) — build the three ABI APKs and publish a GitHub release with `gh`.
 - [plans/2026-06-17-foundation.md](./plans/2026-06-17-foundation.md) — Plan 1: Foundation.
 
 ## Status
