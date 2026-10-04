@@ -52,6 +52,10 @@ Run the tests and type check with `npx jest` and `npx tsc --noEmit`.
 
 The design notes, plans and changelog are in [`docs/`](./docs). Start with [`docs/HANDOFF.md`](./docs/HANDOFF.md).
 
+## License
+
+[MIT](./LICENSE)
+
 ---
 
 Built by [Donald Amoke](https://www.donaldamoke.com).
